@@ -371,7 +371,7 @@ require_once 'include/header.php';
 
 .search-wrapper i {
     position: absolute;
-    left: 12px;
+    left: 30px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary);
@@ -924,16 +924,13 @@ require_once 'include/header.php';
                         </td>
                     </tr>
                 <?php endwhile; ?>
-            <?php else: ?>
+                    <?php else: ?>
                 <tr>
                     <td colspan="11" style="text-align: center; padding: 60px;"> <!-- Updated colspan to 11 -->
                         <div class="empty-state">
-                            <i class="fas fa-box-open"></i>
+                            <i class="fas fa-shopping-cart" style="font-size: 64px; color: var(--text-secondary); opacity: 0.5; margin-bottom: 20px;"></i>
                             <h3>No Pending Purchases Found</h3>
                             <p>No pending or processing purchases at the moment.</p>
-                            <a href="canvas.php" class="btn btn-primary">
-                                <i class="fas fa-shopping-cart"></i> Go to Canvas
-                            </a>
                         </div>
                     </td>
                 </tr>
@@ -1587,7 +1584,7 @@ function viewAllTransactions() {
                             
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <div class="search-wrapper" style="position: relative; width: 300px;">
-                                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 14px;"></i>
+                                    <i class="fas fa-search" style="position: absolute; left: 25px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 14px;"></i>
                                     <input type="text" 
                                            id="historySearch" 
                                            class="form-control" 

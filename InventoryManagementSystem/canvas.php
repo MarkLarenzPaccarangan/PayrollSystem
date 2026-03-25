@@ -21,35 +21,51 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Get parameters
-$search_item_no = isset($_GET['search_item']) ? $conn->real_escape_string($_GET['search_item']) : '';
+// Get parameters for filters
+$filter_category = isset($_GET['filter_category']) ? $conn->real_escape_string($_GET['filter_category']) : '';
+$filter_company = isset($_GET['filter_company']) ? $conn->real_escape_string($_GET['filter_company']) : '';
+$filter_search = isset($_GET['filter_search']) ? $conn->real_escape_string($_GET['filter_search']) : '';
 $sort_by = isset($_GET['sort']) ? $_GET['sort'] : '';
 $active_sort = isset($_GET['active_sort']) ? $_GET['active_sort'] : '';
 
-// Get all active companies
+// Get all active companies for filter dropdown - FROM THE MAIN TABLE ONLY
+$companies_filter_query = "
+    SELECT DISTINCT c.id, c.name 
+    FROM companies c
+    INNER JOIN company_prices cp ON c.id = cp.company_id
+    INNER JOIN canvas_items ci ON ci.id = cp.item_id
+    WHERE c.status = 'active'
+    ORDER BY c.name
+";
+$companies_filter = $conn->query($companies_filter_query);
+
+// Get all unique categories for filter dropdown - FROM THE MAIN TABLE ONLY
+$categories_filter_query = "
+    SELECT DISTINCT ci.category 
+    FROM canvas_items ci
+    INNER JOIN company_prices cp ON ci.id = cp.item_id
+    WHERE ci.category != '' AND ci.category IS NOT NULL
+    ORDER BY ci.category
+";
+$categories_filter = $conn->query($categories_filter_query);
+
+// Get all active companies for company colors and dropdown
 $companies = $conn->query("SELECT * FROM companies WHERE status = 'active' ORDER BY name");
 $companies_array = [];
 $company_colors = [];
+$companies_dropdown = [];
 if ($companies && $companies->num_rows > 0) {
     $colors = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#36b9cc', '#6f42c1', '#fd7e14', '#20c9a6'];
     $i = 0;
     while($comp = $companies->fetch_assoc()) {
         $companies_array[$comp['id']] = $comp;
         $company_colors[$comp['id']] = $colors[$i % count($colors)];
-        $i++;
-    }
-}
-
-// Get all companies for dropdown (for add company form)
-$companies_list = $conn->query("SELECT id, name, contact_person, contact_number FROM companies WHERE status = 'active' ORDER BY name");
-$companies_dropdown = [];
-if ($companies_list && $companies_list->num_rows > 0) {
-    while($comp = $companies_list->fetch_assoc()) {
         $companies_dropdown[] = $comp;
-    }
+        $i++;
+    }   
 }
 
-// Build query based on search and sort - WITH CATEGORY
+// Build query based on filters and sort - WITH CATEGORY
 $query = "
     SELECT ci.*, 
            cp.id as price_id,
@@ -67,10 +83,26 @@ $query = "
     WHERE c.status = 'active'
 ";
 
-// Add search condition if provided - EXACT MATCH gamit ang "="
-if (!empty($search_item_no)) {
-    $query .= " AND ci.item_no = '$search_item_no'";
+// Apply filters
+$where_conditions = [];
+
+if (!empty($filter_category)) {
+    $where_conditions[] = "ci.category = '$filter_category'";
 }
+
+if (!empty($filter_company)) {
+    $where_conditions[] = "c.id = '$filter_company'";
+}
+
+// MERGED SEARCH - searches in Item No, Description, and Category
+if (!empty($filter_search)) {
+    $where_conditions[] = "(ci.item_no LIKE '%$filter_search%' OR ci.description LIKE '%$filter_search%' OR ci.category LIKE '%$filter_search%')";
+}
+
+if (!empty($where_conditions)) {
+    $query .= " AND " . implode(" AND ", $where_conditions);
+}
+
 // Add sorting
 if ($active_sort == 'price') {
     if ($sort_by == 'price_asc') {
@@ -90,37 +122,91 @@ if ($active_sort == 'price') {
 
 $items = $conn->query($query);
 
+// ===== FIX: Check if filters are applied =====
+$has_filters = !empty($filter_category) || !empty($filter_company) || !empty($filter_search);
+// ===== END OF FIX =====
+
 // Get statistics
 $totalItems = $conn->query("SELECT COUNT(*) as count FROM canvas_items")->fetch_assoc()['count'] ?? 0;
 $totalCompanies = $conn->query("SELECT COUNT(*) as count FROM companies WHERE status = 'active'")->fetch_assoc()['count'] ?? 0;
 
-// Handle POST request for adding new company price - WITH CATEGORY
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_company_price') {
-    $item_no = $conn->real_escape_string($_POST['item_no']);
-    $description = $conn->real_escape_string($_POST['description']);
-    $category = $conn->real_escape_string($_POST['category'] ?? '');
+// Handle POST request for adding new company
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_company_only') {
     $company_name = $conn->real_escape_string($_POST['company_name']);
     $contact_person = $conn->real_escape_string($_POST['contact_person'] ?? '');
     $contact_number = $conn->real_escape_string($_POST['contact_number'] ?? '');
-    $quantity = intval($_POST['quantity']);
-    $price = floatval($_POST['price']);
-    $company_color = $conn->real_escape_string($_POST['company_color'] ?? '#6c5ce7');
     
-    // Check if company exists in companies table
+    // Check if company already exists
     $check_company = $conn->query("SELECT id FROM companies WHERE name = '$company_name'");
     if ($check_company->num_rows == 0) {
         // Insert new company
         $insert_company = $conn->query("INSERT INTO companies (name, contact_person, contact_number, status) VALUES ('$company_name', '$contact_person', '$contact_number', 'active')");
-        $company_id = $conn->insert_id;
-    } else {
-        $company = $check_company->fetch_assoc();
-        $company_id = $company['id'];
         
-        // Update contact info if provided
-        if (!empty($contact_person) || !empty($contact_number)) {
-            $conn->query("UPDATE companies SET contact_person = '$contact_person', contact_number = '$contact_number' WHERE id = $company_id");
+        if ($insert_company) {
+            // Redirect with success message
+            header("Location: canvas.php?company_added=1");
+            exit();
+        }
+    } else {
+        // Company already exists
+        header("Location: canvas.php?company_exists=1");
+        exit();
+    }
+}
+
+// Handle POST request for editing company
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit_company') {
+    $company_id = intval($_POST['company_id']);
+    $company_name = $conn->real_escape_string($_POST['company_name']);
+    $contact_person = $conn->real_escape_string($_POST['contact_person'] ?? '');
+    $contact_number = $conn->real_escape_string($_POST['contact_number'] ?? '');
+    
+    // Update company
+    $update_company = $conn->query("UPDATE companies SET name = '$company_name', contact_person = '$contact_person', contact_number = '$contact_number' WHERE id = $company_id");
+    
+    if ($update_company) {
+        header("Location: canvas.php?company_edited=1");
+        exit();
+    }
+}
+
+// Handle POST request for deleting companies
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_companies') {
+    if (isset($_POST['company_ids']) && is_array($_POST['company_ids'])) {
+        $company_ids = array_map('intval', $_POST['company_ids']);
+        $ids_string = implode(',', $company_ids);
+        
+        // Start transaction
+        $conn->begin_transaction();
+        
+        try {
+            // Delete related company_prices first
+            $conn->query("DELETE FROM company_prices WHERE company_id IN ($ids_string)");
+            
+            // Delete companies
+            $conn->query("DELETE FROM companies WHERE id IN ($ids_string)");
+            
+            // Commit transaction
+            $conn->commit();
+            
+            header("Location: canvas.php?companies_deleted=1");
+            exit();
+        } catch (Exception $e) {
+            $conn->rollback();
+            header("Location: canvas.php?delete_error=1");
+            exit();
         }
     }
+}
+
+// Handle POST request for adding new company price - WITH COMPANY DROPDOWN
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_company_price') {
+    $item_no = $conn->real_escape_string($_POST['item_no']);
+    $description = $conn->real_escape_string($_POST['description']);
+    $category = $conn->real_escape_string($_POST['category'] ?? '');
+    $company_id = intval($_POST['company_id']);
+    $quantity = intval($_POST['quantity']);
+    $price = floatval($_POST['price']);
     
     // Check if item exists in canvas_items - WITH CATEGORY
     $check_item = $conn->query("SELECT id FROM canvas_items WHERE item_no = '$item_no'");
@@ -158,71 +244,6 @@ require_once 'include/header.php';
 
 <style>
     /* Canvas Page Specific Styles */
-.stats-grid {
-    display: grid;
-    /* ... existing styles ... */
-}
-
-/* ... other existing styles ... */
-
-/* Action button base styles */
-.action-btn {
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-    font-size: 12px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-/* ... other existing button styles ... */
-
-/* Add these new Excel button styles here - around line 400-500 */
-/* Excel button */
-.btn-excel {
-    padding: 8px 15px;
-    background: linear-gradient(135deg, #27ae60, #219653);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.btn-excel:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(39, 174, 96, 0.4);
-    background: linear-gradient(135deg, #2ecc71, #27ae60);
-}
-
-.btn-excel i {
-    font-size: 14px;
-}
-
-/* Export button group */
-.comparison-export {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-/* Update comparison actions layout */
-.comparison-actions {
-    display: flex;
-    gap: 20px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-/* ... rest of your existing styles continue ... */
-/* Canvas Page Specific Styles */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -296,7 +317,7 @@ require_once 'include/header.php';
 
 /* Success message */
 .success-message {
-    background: linear-gradient(135deg, #00b894, #6c5ce7);
+    background: linear-gradient(135deg, #00b894);
     color: white;
     padding: 15px 25px;
     border-radius: 10px;
@@ -328,7 +349,7 @@ require_once 'include/header.php';
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
-    background: linear-gradient(135deg, #667eea, #764ba2);
+    background: linear-gradient(135deg, #667eea);
     color: white;
 }
 
@@ -402,7 +423,7 @@ require_once 'include/header.php';
 
 /* Add to Cart button */
 .action-btn.add-to-cart {
-    background: linear-gradient(135deg, #6c5ce7, #75e6da);
+    background: linear-gradient(135deg, #6c5ce7);
     color: white;
     width: 32px;
     height: 32px;
@@ -424,7 +445,7 @@ require_once 'include/header.php';
 
 /* View button */
 .action-btn.view-btn {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+    background: linear-gradient(135deg, #3498db);
     color: white;
     width: 32px;
     height: 32px;
@@ -454,7 +475,7 @@ require_once 'include/header.php';
 
 /* Delete button */
 .action-btn.delete-btn {
-    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    background: linear-gradient(135deg, #e74c3c);
     color: white;
     width: 32px;
     height: 32px;
@@ -471,9 +492,125 @@ require_once 'include/header.php';
     font-size: 14px;
 }
 
-/* Action button - Add Company */
-.action-btn.add-company {
-    background: linear-gradient(135deg, #00b894, #6c5ce7);
+/* Company Dropdown Styles - CLICK BASED (NO HOVER) */
+.company-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.company-dropdown-btn {
+    background: linear-gradient(135deg, #6c5ce7);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.company-dropdown-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);
+}
+
+.company-dropdown-btn.active {
+    background: linear-gradient(135deg, #6c5ce7);
+}
+
+.company-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    background: var(--bg-primary);
+    min-width: 320px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    z-index: 1000;
+    border: 1px solid var(--border-color);
+    margin-top: 5px;
+}
+
+.company-dropdown-content.show {
+    display: block;
+}
+
+.company-dropdown-item {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    transition: background 0.3s;
+    cursor: pointer;
+}
+
+.company-dropdown-item:last-child {
+    border-bottom: none;
+}
+
+.company-dropdown-item:hover {
+    background: var(--bg-secondary);
+}
+
+.company-info {
+    flex: 1;
+}
+
+.company-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+}
+
+.company-contact {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.company-dropdown-header {
+    padding: 15px;
+    background: linear-gradient(135deg, #6c5ce7);
+    color: white;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.company-dropdown-footer {
+    padding: 12px 15px;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.company-dropdown-footer a {
+    color: #00b894;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.company-dropdown-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Action button - Add Item */
+.action-btn.add-item {
+    background: linear-gradient(135deg, #6c5ce7);
     color: white;
     width: auto;
     padding: 8px 16px;
@@ -489,14 +626,14 @@ require_once 'include/header.php';
     margin-left: 10px;
 }
 
-.action-btn.add-company:hover {
+.action-btn.add-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);
+    box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
 }
 
 /* Action button - View Comparison */
 .action-btn.view-comparison {
-    background: linear-gradient(135deg, #9b59b6, #6c5ce7);
+    background: linear-gradient(135deg,  #6c5ce7);
     color: white;
     width: auto;
     padding: 8px 16px;
@@ -516,7 +653,7 @@ require_once 'include/header.php';
     box-shadow: 0 4px 10px rgba(155, 89, 182, 0.3);
 }
 
-/* Table styles */
+/* ===== UPDATED TABLE STYLES WITH CENTERED TEXT ===== */
 .table-wrapper {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -533,18 +670,12 @@ require_once 'include/header.php';
 
 .products-table th {
     padding: 15px 10px;
-    text-align: left;
+    text-align: center;
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     border-bottom: 2px solid var(--border-color);
     white-space: nowrap;
-}
-
-.products-table th i {
-    margin-left: 5px;
-    font-size: 10px;
-    color: #75e6da;
 }
 
 .products-table td {
@@ -553,11 +684,51 @@ require_once 'include/header.php';
     color: var(--text-primary);
     font-size: 13px;
     vertical-align: middle;
+    text-align: center;
 }
 
 .products-table tbody tr:hover {
     background: var(--bg-secondary);
 }
+
+/* Center all badges and inline elements */
+.products-table td .company-badge,
+.products-table td .category-badge,
+.products-table td .availability-badge,
+.products-table td .contact-person,
+.products-table td .contact-number {
+    margin: 0 auto;
+    display: inline-block;
+    text-align: center;
+}
+
+/* Center the total price span */
+.products-table td .total-price-cell {
+    margin: 0 auto;
+    display: inline-block;
+}
+
+/* Center the action buttons container */
+.products-table td div {
+    justify-content: center !important;
+}
+
+/* Center text in comparison table */
+.comparison-table th,
+.comparison-table td {
+    text-align: center !important;
+    vertical-align: middle;
+}
+
+.comparison-table td .company-badge,
+.comparison-table td .category-badge,
+.comparison-table td .availability-badge,
+.comparison-table td .total-price-cell {
+    margin: 0 auto;
+    display: inline-block;
+}
+
+/* ===== END OF UPDATED TABLE STYLES ===== */
 
 /* Empty state */
 .empty-state {
@@ -610,56 +781,198 @@ require_once 'include/header.php';
 .welcome-actions {
     display: flex;
     gap: 10px;
+    align-items: center;
 }
 
-/* Item search and sort section */
-.item-search-section {
+/* FILTERS SECTION */
+.filters-section {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 20px;
-    margin-bottom: 20px;
+    margin-bottom: 25   px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.filters-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 15px;
     display: flex;
     align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.search-item-box {
-    flex: 1;
-    min-width: 300px;
+.filters-title i {
+    color: #75e6da;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 15px;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Search group with icon */
+.search-group {
     position: relative;
+    grid-column: 1;
 }
 
-.search-item-box i {
+.search-group i {
     position: absolute;
-    left: 15px;
-    top: 50%;
+    left: 25px;
+    top: 70%;
     transform: translateY(-50%);
     color: var(--text-secondary);
     font-size: 14px;
+    z-index: 1;
 }
 
-.search-item-box input {
-    width: 100%;
-    padding: 12px 15px 12px 45px;
-    background: var(--bg-secondary);
+.search-group input {
+    padding: 10px 15px 10px 45px;
     border: 2px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    background: var(--bg-secondary);
     color: var(--text-primary);
-    font-size: 14px;
-    transition: all 0.3s ease;
+    width: 100%;
 }
 
-.search-item-box input:focus {
+.search-group input:focus {
     border-color: #75e6da;
-    outline: none;
     box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+    outline: none;
 }
 
-.search-item-box input::placeholder {
+.search-group input:hover {
+    border-color: #75e6da;
+}
+
+.search-group input::placeholder {
     color: var(--text-secondary);
     opacity: 0.7;
+}
+
+/* Regular filter controls */
+.filter-control {
+    padding: 10px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    width: 100%;
+}
+
+.filter-control:focus {
+    border-color: #75e6da;
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+    outline: none;
+}
+
+.filter-control:hover {
+    border-color: #75e6da;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.filter-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.filter-btn.primary {
+    background: linear-gradient(135deg, #75e6da);
+    color: white;
+    box-shadow: 0 2px 8px rgba(117, 230, 218, 0.3);
+}
+
+.filter-btn.primary:hover {
+    background: linear-gradient(135deg, #62d4c8, #4fb3aa);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(117, 230, 218, 0.4);
+}
+
+.filter-btn.secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.filter-btn.secondary:hover {
+    background: var(--border-color);
+    transform: translateY(-2px);
+}
+
+/* Price sort section with text container - UPDATED */
+.price-sort-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.sort-text-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg-secondary);
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.sort-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.sort-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    background: rgba(117, 230, 218, 0.1);
+    padding: 2px 8px;
+    border-radius: 20px;
 }
 
 .price-sort-buttons {
@@ -690,7 +1003,7 @@ require_once 'include/header.php';
 }
 
 .price-sort-btn.active {
-    background: linear-gradient(135deg, #75e6da, #6c5ce7);
+    background: linear-gradient(135deg, #6c5ce7);
     border-color: transparent;
     color: white;
 }
@@ -699,50 +1012,7 @@ require_once 'include/header.php';
     font-size: 12px;
 }
 
-/* Display info */
-.display-info {
-    background: rgba(117, 230, 218, 0.1);
-    border-radius: 8px;
-    padding: 15px 20px;
-    margin-bottom: 20px;
-    border-left: 4px solid #75e6da;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.display-info h3 {
-    color: var(--text-primary);
-    font-size: 16px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.display-info h3 i {
-    color: #75e6da;
-}
-
-.display-info p {
-    color: var(--text-secondary);
-    font-size: 13px;
-    margin-top: 5px;
-}
-
-.sort-indicator {
-    background: rgba(117, 230, 218, 0.2);
-    padding: 8px 20px;
-    border-radius: 30px;
-    color: #75e6da;
-    font-size: 13px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+/* REMOVED DISPLAY INFO SECTION - filter results box tinanggal */
 
 /* Item count badge */
 .item-count-badge {
@@ -761,13 +1031,49 @@ require_once 'include/header.php';
     margin-right: 5px;
 }
 
-/* Add Company Form Modal Styles */
+/* Add Company Modal Styles */
 .company-modal {
-    max-width: 800px !important;
+    max-width: 600px !important;
 }
 
 .company-modal .modal-header {
-    background: linear-gradient(135deg, #00b894, #6c5ce7);
+    background: linear-gradient(135deg, #00b894, #009688);
+}
+
+/* Edit Company Select Modal Styles */
+.edit-select-modal {
+    max-width: 600px !important;
+}
+
+.edit-select-modal .modal-header {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+/* Edit Company Form Modal Styles */
+.edit-company-modal {
+    max-width: 600px !important;
+}
+
+.edit-company-modal .modal-header {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+/* Delete Companies Modal Styles */
+.delete-companies-modal {
+    max-width: 600px !important;
+}
+
+.delete-companies-modal .modal-header {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* Add Item Modal Styles */
+.item-modal {
+    max-width: 800px !important;
+}
+
+.item-modal .modal-header {
+    background: linear-gradient(135deg, #6c5ce7, #75e6da);
 }
 
 /* View Modal Styles */
@@ -834,7 +1140,7 @@ require_once 'include/header.php';
     font-weight: 600;
 }
 
-/* Edit Modal Styles */
+/* Edit Price Modal Styles */
 .edit-modal {
     max-width: 800px !important;
 }
@@ -843,7 +1149,7 @@ require_once 'include/header.php';
     background: linear-gradient(135deg, #f39c12, #e67e22);
 }
 
-/* Delete Modal Enhanced Styles */
+/* Delete Price Modal Enhanced Styles */
 .delete-modal {
     max-width: 500px !important;
 }
@@ -1075,14 +1381,21 @@ require_once 'include/header.php';
     font-size: 16px;
 }
 
-/* Comparison Modal Styles - FROM OLD CODE */
+/* ===== UPDATED COMPARISON MODAL STYLES - SINGLE SCROLLABLE ===== */
 .comparison-modal {
     max-width: 1400px !important;
     width: 95% !important;
 }
 
 .comparison-modal .modal-header {
-    background: linear-gradient(135deg, #9b59b6, #6c5ce7);
+    background: linear-gradient(135deg, #75e6da);
+    flex-shrink: 0;
+}
+
+.comparison-modal .modal-body {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 130px) !important;
+    padding: 20px;
 }
 
 .comparison-header {
@@ -1092,6 +1405,7 @@ require_once 'include/header.php';
     margin-bottom: 20px;
     flex-wrap: wrap;
     gap: 15px;
+    flex-shrink: 0;
 }
 
 .comparison-title h3 {
@@ -1206,17 +1520,10 @@ require_once 'include/header.php';
     box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3);
 }
 
-.comparison-table-container {
-    max-height: 500px;
-    overflow-y: auto;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    margin-top: 20px;
-}
-
 .comparison-table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 10px;
 }
 
 .comparison-table th {
@@ -1229,6 +1536,7 @@ require_once 'include/header.php';
     color: var(--text-secondary);
     border-bottom: 2px solid var(--border-color);
     z-index: 10;
+    text-align: center;
 }
 
 .comparison-table td {
@@ -1236,10 +1544,21 @@ require_once 'include/header.php';
     border-bottom: 1px solid var(--border-color);
     font-size: 13px;
     color: var(--text-primary);
+    text-align: center;
+    vertical-align: middle;
 }
 
 .comparison-table tbody tr:hover {
     background: var(--bg-secondary);
+}
+
+/* Center badges in comparison table */
+.comparison-table td .company-badge,
+.comparison-table td .category-badge,
+.comparison-table td .availability-badge,
+.comparison-table td .total-price-cell {
+    margin: 0 auto;
+    display: inline-block;
 }
 
 /* Search box sa comparison modal */
@@ -1280,7 +1599,7 @@ require_once 'include/header.php';
     opacity: 0.7;
 }
 
-/* Print styles - FROM OLD CODE */
+/* Print styles */
 @media print {
     body * {
         visibility: hidden;
@@ -1304,6 +1623,7 @@ require_once 'include/header.php';
         display: none !important;
     }
 }
+/* ===== END OF UPDATED COMPARISON MODAL STYLES ===== */
 
 .form-grid {
     display: grid;
@@ -1357,8 +1677,8 @@ require_once 'include/header.php';
 
 .form-control[type="number"] {
     -moz-appearance: textfield;
+    appearance: textfield;
 }
-
 .form-control[type="number"]::-webkit-outer-spin-button,
 .form-control[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -1411,6 +1731,93 @@ require_once 'include/header.php';
 
 .form-hint i {
     color: #75e6da;
+}
+
+/* Checkbox Styles */
+.checkbox-grid {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--bg-secondary);
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.3s;
+}
+
+.checkbox-item:last-child {
+    border-bottom: none;
+}
+
+.checkbox-item:hover {
+    background: var(--bg-primary);
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin-right: 15px;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #e74c3c;
+}
+
+.checkbox-item label {
+    flex: 1;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.checkbox-item .company-contact {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-left: 10px;
+}
+
+.checkbox-actions {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.select-all-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-primary);
+}
+
+.select-all-btn:hover {
+    background: var(--border-color);
+}
+
+/* Company Select Dropdown */
+.company-select {
+    width: 100%;
+    padding: 12px 15px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.company-select:focus {
+    border-color: #f39c12;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.2);
 }
 
 /* Modal Styles - Scrollable */
@@ -1733,7 +2140,7 @@ require_once 'include/header.php';
 
 .btn-add-to-cart-modal {
     padding: 12px 35px;
-    background: linear-gradient(135deg, #75e6da, #6c5ce7);
+    background: linear-gradient(135deg, #75e6da);
     border: none;
     border-radius: 8px;
     color: white;
@@ -1762,7 +2169,7 @@ require_once 'include/header.php';
 
 .btn-save-company {
     padding: 12px 35px;
-    background: linear-gradient(135deg, #00b894, #6c5ce7);
+    background: linear-gradient(135deg, #75e6da);
     border: none;
     border-radius: 8px;
     color: white;
@@ -1781,9 +2188,93 @@ require_once 'include/header.php';
     box-shadow: 0 8px 20px rgba(0, 184, 148, 0.4);
 }
 
+.btn-next {
+    padding: 12px 35px;
+    background: linear-gradient(135deg,  #75e6da);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3);
+}
+
+.btn-next:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
+}
+
+.btn-update-company {
+    padding: 12px 35px;
+    background: linear-gradient(135deg,  #75e6da);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3);
+}
+
+.btn-update-company:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
+}
+
+.btn-delete-companies {
+    padding: 12px 35px;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 10px rgba(231, 76, 60, 0.3);
+}
+
+.btn-delete-companies:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(231, 76, 60, 0.4);
+}
+
+.btn-save-item {
+    padding: 12px 35px;
+    background: linear-gradient(135deg, #6c5ce7, #75e6da);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 10px rgba(108, 92, 231, 0.3);
+}
+
+.btn-save-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4);
+}
+
 .btn-save-edit {
     padding: 12px 35px;
-    background: linear-gradient(135deg, #f39c12, #e67e22);
+    background: linear-gradient(135deg, #75e6da);
     border: none;
     border-radius: 8px;
     color: white;
@@ -1913,19 +2404,100 @@ require_once 'include/header.php';
             <i class="fas fa-chart-bar"></i>
             View Comparison
         </button>
-       
-        <button class="action-btn add-company" onclick="openCompanyFormModal()">
-            <i class="fas fa-building"></i>
+        
+        <!-- Manage Companies Dropdown - CLICK BASED (NO HOVER) -->
+        <div class="company-dropdown">
+            <button class="company-dropdown-btn" onclick="toggleCompanyDropdown(event)">
+                <i class="fas fa-building"></i>
+                Manage Companies <i class="fas fa-chevron-down" style="font-size: 10px; margin-left: 5px;"></i>
+            </button>
+            <div class="company-dropdown-content" id="companyDropdown">
+                <div class="company-dropdown-header">
+                    <i class="fas fa-cog"></i> Company Management
+                </div>
+                
+                <!-- Edit Option -->
+                <div class="company-dropdown-item" onclick="openEditCompanySelectModal()">
+                    <div class="company-info">
+                        <div class="company-name">
+                            <i class="fas fa-edit" style="color: #ffc800; margin-right: 10px;"></i>
+                            Edit Company
+                        </div>
+                        <div class="company-contact">
+                            Select a company to edit its details
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Delete Option -->
+                <div class="company-dropdown-item" onclick="openDeleteCompaniesModal()">
+                    <div class="company-info">
+                        <div class="company-name">
+                            <i class="fas fa-trash" style="color: #e74c3c; margin-right: 10px;"></i>
+                            Delete Companies
+                        </div>
+                        <div class="company-contact">
+                            Select multiple companies to delete
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="company-dropdown-footer">
+                    <a href="#" onclick="openAddCompanyModal(); return false;">
+                        <i class="fas fa-plus-circle"></i> Add New Company
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Add Item Button (with company dropdown) -->
+        <button class="action-btn add-item" onclick="openAddItemModal()">
+            <i class="fas fa-plus-circle"></i>
             Add Item
         </button>
     </div>
 </div>
 
-<!-- Success Message -->
+<!-- Success Messages -->
 <?php if (isset($_GET['success']) && $_GET['success'] == '1'): ?>
 <div class="success-message" id="successMessage">
     <i class="fas fa-check-circle"></i>
     <span>Company price added successfully! The new entry has been added to the table.</span>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['company_added']) && $_GET['company_added'] == '1'): ?>
+<div class="success-message" id="companyAddedMessage" style="background: linear-gradient(135deg, #00b894, #009688);">
+    <i class="fas fa-check-circle"></i>
+    <span>Company added successfully! You can now select it in the Add Item form.</span>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['company_edited']) && $_GET['company_edited'] == '1'): ?>
+<div class="success-message" id="companyEditedMessage" style="background: linear-gradient(135deg,  #75e6da);">
+    <i class="fas fa-check-circle"></i>
+    <span>Company updated successfully!</span>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['companies_deleted']) && $_GET['companies_deleted'] == '1'): ?>
+<div class="success-message" id="companiesDeletedMessage" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+    <i class="fas fa-check-circle"></i>
+    <span>Selected companies deleted successfully!</span>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['company_exists']) && $_GET['company_exists'] == '1'): ?>
+<div class="success-message" id="companyExistsMessage" style="background: linear-gradient(135deg,  #75e6da);">
+    <i class="fas fa-exclamation-triangle"></i>
+    <span>Company already exists in the database.</span>
+</div>
+<?php endif; ?>
+
+<?php if (isset($_GET['delete_error']) && $_GET['delete_error'] == '1'): ?>
+<div class="success-message" id="deleteErrorMessage" style="background: linear-gradient(135deg,  #75e6da);">
+    <i class="fas fa-exclamation-circle"></i>
+    <span>Error deleting companies. Please try again.</span>
 </div>
 <?php endif; ?>
 
@@ -1954,100 +2526,115 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Item Search and Price Sort Section -->
-<div class="item-search-section">
-    <div class="search-item-box">
-        <i class="fas fa-search"></i>
-        <input type="text" id="itemSearch" placeholder="Search by Item No..." value="<?php echo htmlspecialchars($search_item_no); ?>" onkeyup="filterTable()">
+<!-- FILTERS SECTION -->
+<div class="filters-section">
+    <div class="filters-title">
+        <i class="fas fa-filter"></i>
+        Filter Canvas Items
     </div>
-    
+    <form method="GET" action="canvas.php" id="filterForm">
+        <div class="filter-grid">
+            <!-- Search on left side with icon -->
+            <div class="filter-group search-group">
+                <label for="filter_search">Search (Item No, Description, Category)</label>
+                <i class="fas fa-search"></i>
+                <input type="text" name="filter_search" id="filter_search" placeholder="Search by Item No, Description, or Category..." value="<?php echo htmlspecialchars($filter_search); ?>">
+            </div>
+            
+            <div class="filter-group">
+                <label for="filter_category">Category</label>
+                <select name="filter_category" id="filter_category" class="filter-control">
+                    <option value="">All Categories</option>
+                    <?php if ($categories_filter && $categories_filter->num_rows > 0): ?>
+                        <?php while($cat = $categories_filter->fetch_assoc()): ?>
+                            <option value="<?php echo htmlspecialchars($cat['category']); ?>" <?php echo $filter_category == $cat['category'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($cat['category']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="filter_company">Company</label>
+                <select name="filter_company" id="filter_company" class="filter-control">
+                    <option value="">All Companies</option>
+                    <?php if ($companies_filter && $companies_filter->num_rows > 0): ?>
+                        <?php while($comp = $companies_filter->fetch_assoc()): ?>
+                            <option value="<?php echo $comp['id']; ?>" <?php echo $filter_company == $comp['id'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($comp['name']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    <?php endif; ?>
+                </select>
+            </div>
+            
+            <div class="filter-actions">
+                <button type="submit" class="filter-btn primary">
+                    <i class="fas fa-filter"></i> Apply Filters
+                </button>
+                <button type="button" class="filter-btn secondary" onclick="resetFilters()">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+        </div>
+        
+        <!-- Preserve sort parameters when filtering -->
+        <?php if (!empty($sort_by)): ?>
+            <input type="hidden" name="sort" value="<?php echo htmlspecialchars($sort_by); ?>">
+        <?php endif; ?>
+        <?php if (!empty($active_sort)): ?>
+            <input type="hidden" name="active_sort" value="<?php echo htmlspecialchars($active_sort); ?>">
+        <?php endif; ?>
+    </form>
+</div>
+
+<!-- Price Sort Section - UPDATED with separate text container -->
+<div class="price-sort-section">
+    <div class="sort-text-container">
+        <span class="sort-label">All Items</span>
+        <span class="sort-count">(<?php echo $items ? $items->num_rows : 0; ?> entries)</span>
+    </div>
     <div class="price-sort-buttons">
         <button class="price-sort-btn <?php echo ($active_sort == 'price') ? 'active' : ''; ?>" onclick="togglePriceSort()" id="priceSortBtn">
             <i class="fas <?php echo ($sort_by == 'price_desc') ? 'fa-sort-amount-up' : 'fa-sort-amount-down'; ?>" id="sortIcon"></i> 
             <span id="sortText"><?php echo ($sort_by == 'price_desc') ? 'Price High to Low' : 'Price Low to High'; ?></span>
         </button>
         
-        <?php if (!empty($search_item_no) || $active_sort == 'price'): ?>
-        <button class="price-sort-btn" onclick="clearFilters()">
-            <i class="fas fa-times"></i> Clear Filters
+        <?php if (!empty($filter_category) || !empty($filter_company) || !empty($filter_search) || $active_sort == 'price'): ?>
+        <button class="price-sort-btn" onclick="clearAllFilters()">
+            <i class="fas fa-times"></i> Clear All Filters
         </button>
         <?php endif; ?>
     </div>
 </div>
 
-<!-- Display Info -->
-<?php if (!empty($search_item_no)): ?>
-    <div class="display-info">
-        <div>
-            <h3><i class="fas fa-search"></i> Search Results for: "<?php echo htmlspecialchars($search_item_no); ?>"</h3>
-            <p>Showing items matching your search</p>
-            <?php if($items): ?>
-                <span class="item-count-badge">
-                    <span><?php echo $items->num_rows; ?></span> price entries found
-                </span>
-            <?php endif; ?>
-        </div>
-        <?php if($active_sort == 'price'): ?>
-        <div class="sort-indicator">
-            <i class="fas <?php echo $sort_icon; ?>"></i> 
-            Sorted by: <?php echo $sort_label; ?>
-        </div>
-        <?php endif; ?>
-    </div>
-<?php elseif($active_sort == 'price'): ?>
-    <div class="display-info">
-        <div>
-            <h3><i class="fas fa-tags"></i> All Items</h3>
-            <p>Showing all items sorted by price</p>
-            <?php if($items): ?>
-                <span class="item-count-badge">
-                    <span><?php echo $items->num_rows; ?></span> price entries
-                </span>
-            <?php endif; ?>
-        </div>
-        <div class="sort-indicator">
-            <i class="fas <?php echo $sort_icon; ?>"></i> 
-            Sorted by: <?php echo $sort_label; ?>
-        </div>
-    </div>
-<?php else: ?>
-    <div class="display-info">
-        <div>
-            <h3><i class="fas fa-list"></i> All Items</h3>
-            <p>Showing all items with prices • Default view</p>
-            <?php if($items): ?>
-                <span class="item-count-badge">
-                    <span><?php echo $items->num_rows; ?></span> price entries
-                </span>
-            <?php endif; ?>
-        </div>
-    </div>
-<?php endif; ?>
+<!-- REMOVED: Display Info section (Filter Results box) -->
 
-<!-- Main Table - WITH CATEGORY COLUMN -->
+<!-- Main Table - WITH CATEGORY COLUMN - ALL TEXT CENTERED -->
 <div class="table-wrapper">
-    <table class="products-table" id="canvasTable">
-        <thead>
-            <tr>
-                <th>Item No</th>
-                <th>Description</th>
-                <th>Category</th>
-                <th>Company</th>
-                <th>Contact Person</th>
-                <th>Contact Number</th>
-                <th>Available Qty</th>
-                <th>Price 
-                    <?php if($active_sort == 'price'): ?>
-                        <i class="fas <?php echo $sort_by == 'price_asc' ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i>
-                    <?php endif; ?>
-                </th>
-                <th>Total Price</th>
-                <th>Availability</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="canvasTableBody">
-            <?php if ($items && $items->num_rows > 0): ?>
+    <?php if ($items && $items->num_rows > 0): ?>
+        <table class="products-table" id="canvasTable">
+            <thead>
+                <tr>
+                    <th>Item No</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Company</th>
+                    <th>Contact Person</th>
+                    <th>Contact Number</th>
+                    <th>Available Qty</th>
+                    <th>Price 
+                        <?php if($active_sort == 'price'): ?>
+                            <i class="fas <?php echo $sort_by == 'price_asc' ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i>
+                        <?php endif; ?>
+                    </th>
+                    <th>Total Price</th>
+                    <th>Availability</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="canvasTableBody">
                 <?php 
                 $items->data_seek(0);
                 while($row = $items->fetch_assoc()): 
@@ -2156,30 +2743,39 @@ require_once 'include/header.php';
                         </td>
                     </tr>
                 <?php endwhile; ?>
-            <?php else: ?>
-                <tr>
-                    <td colspan="11" style="text-align: center; padding: 60px;">
-                        <div class="empty-state">
-                            <i class="fas fa-box-open"></i>
-                            <h3>No Items Found</h3>
-                            <p>No items match your search criteria.</p>
-                            <button class="action-btn add-company" onclick="openCompanyFormModal()">
-                                <i class="fas fa-building"></i> Add Company Item
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            <?php endif; ?>
-        </tbody>
-    </table>
+            </tbody>
+        </table>
+        
+        <!-- Simple count display (removed filter details) -->
+        <?php if ($has_filters): ?>
+        <div style="margin-top: 20px; text-align: center; color: var(--text-secondary);">
+            <i class="fas fa-filter"></i> Showing <?php echo $items->num_rows; ?> result(s)
+        </div>
+        <?php endif; ?>
+        
+     <?php else: ?>
+        <!-- EMPTY STATE - With icon -->
+        <div style="text-align: center; padding: 60px 20px; background: var(--bg-primary); border: 2px dashed var(--border-color); border-radius: 12px; margin: 20px 0;">
+            <i class="fas fa-box-open" style="font-size: 64px; color: var(--text-secondary); opacity: 0.3; margin-bottom: 20px;"></i>
+            <h3 style="font-size: 24px; color: var(--text-primary); margin-bottom: 10px;">No Items or Companies Found</h3>
+            <p style="color: var(--text-secondary); font-size: 16px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                Your canvas is empty. Start by adding a company or creating a new item with price.
+            </p>
+        </div>
+    <?php endif; ?>
 </div>
 
-<!-- No Results Message -->
-<div id="noResultsMessage" style="display: none; text-align: center; padding: 40px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 12px; margin-top: 20px;">
+<!-- No Results Message for filters (only shown when filters are applied but no results) -->
+<?php if ($has_filters && (!$items || $items->num_rows == 0)): ?>
+<div id="noResultsMessage" style="text-align: center; padding: 40px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 12px; margin-top: 20px;">
     <i class="fas fa-search" style="font-size: 48px; color: var(--text-secondary); margin-bottom: 15px;"></i>
-    <h3 style="color: var(--text-primary); margin-bottom: 10px;">No Items Found</h3>
-    <p style="color: var(--text-secondary);">No items match your search criteria.</p>
+    <h3 style="color: var(--text-primary); margin-bottom: 10px;">No Matching Items Found</h3>
+    <p style="color: var(--text-secondary);">No items match your filter criteria.</p>
+    <button class="filter-btn secondary" onclick="resetFilters()" style="margin-top: 15px;">
+        <i class="fas fa-redo"></i> Clear Filters
+    </button>
 </div>
+<?php endif; ?>
 
 <!-- Add to Cart Modal -->
 <div id="cartModal" class="modal">
@@ -2219,15 +2815,173 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Add Company Form Modal - WITH CATEGORY FIELD -->
-<div id="companyFormModal" class="modal">
+<!-- Add Company Modal - PURE COMPANY ONLY -->
+<div id="addCompanyModal" class="modal">
     <div class="modal-content company-modal">
-        <div class="modal-header">
-            <h2><i class="fas fa-building"></i> Add Company Price</h2>
-            <span class="close-modal" onclick="closeCompanyFormModal()">&times;</span>
+        <div class="modal-header" style="background: linear-gradient(135deg, #75e6da);">
+            <h2><i class="fas fa-building"></i> Add New Company</h2>
+            <span class="close-modal" onclick="closeAddCompanyModal()">&times;</span>
         </div>
         <div class="modal-body">
-            <form method="POST" action="canvas.php" id="companyForm">
+            <form method="POST" action="canvas.php" id="addCompanyForm">
+                <input type="hidden" name="action" value="add_company_only">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label class="form-label"><i class="fas fa-building"></i> Company Name *</label>
+                        <input type="text" class="form-control" name="company_name" id="newCompanyName" placeholder="Enter company name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-user"></i> Contact Person</label>
+                        <input type="text" class="form-control" name="contact_person" id="newContactPerson" placeholder="Contact person name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-phone"></i> Contact Number</label>
+                        <input type="text" class="form-control" name="contact_number" id="newContactNumber" placeholder="Contact number">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeAddCompanyModal()"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-save-company" id="saveCompanyBtn"><i class="fas fa-save"></i> Save Company</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Company Select Modal - First step: Select company to edit -->
+<div id="editCompanySelectModal" class="modal">
+    <div class="modal-content edit-select-modal">
+        <div class="modal-header" style="background: linear-gradient(135deg, #75e6da);">
+            <h2><i class="fas fa-edit"></i> Select Company to Edit</h2>
+            <span class="close-modal" onclick="closeEditCompanySelectModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <?php if (!empty($companies_dropdown)): ?>
+                <select class="company-select" id="companySelectEdit">
+                    <option value="">-- Choose a company --</option>
+                    <?php foreach($companies_dropdown as $comp): ?>
+                        <option value="<?php echo $comp['id']; ?>" 
+                                data-name="<?php echo htmlspecialchars($comp['name']); ?>"
+                                data-contact="<?php echo htmlspecialchars($comp['contact_person'] ?? ''); ?>"
+                                data-phone="<?php echo htmlspecialchars($comp['contact_number'] ?? ''); ?>">
+                            <?php echo htmlspecialchars($comp['name']); ?>
+                            <?php if (!empty($comp['contact_person'])): ?>
+                                (<?php echo htmlspecialchars($comp['contact_person']); ?>)
+                            <?php endif; ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditCompanySelectModal()"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn-next" onclick="proceedToEditCompany()"><i class="fas fa-arrow-right"></i> Next</button>
+                </div>
+            <?php else: ?>
+                <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">No companies available to edit.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditCompanySelectModal()"><i class="fas fa-times"></i> Close</button>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Company Form Modal - Second step: Edit company details -->
+<div id="editCompanyModal" class="modal">
+    <div class="modal-content edit-company-modal">
+        <div class="modal-header" style="background: linear-gradient(135deg, #75e6da);">
+            <h2><i class="fas fa-edit"></i> Edit Company</h2>
+            <span class="close-modal" onclick="closeEditCompanyModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="canvas.php" id="editCompanyForm">
+                <input type="hidden" name="action" value="edit_company">
+                <input type="hidden" name="company_id" id="editCompanyId">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label class="form-label"><i class="fas fa-building"></i> Company Name *</label>
+                        <input type="text" class="form-control" name="company_name" id="editCompanyNameInput" placeholder="Enter company name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-user"></i> Contact Person</label>
+                        <input type="text" class="form-control" name="contact_person" id="editCompanyContactPerson" placeholder="Contact person name">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-phone"></i> Contact Number</label>
+                        <input type="text" class="form-control" name="contact_number" id="editCompanyContactNumber" placeholder="Contact number">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeEditCompanyModal()"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-update-company" id="updateCompanyBtn"><i class="fas fa-save"></i> Update Company</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Companies Modal -->
+<div id="deleteCompaniesModal" class="modal">
+    <div class="modal-content delete-companies-modal">
+        <div class="modal-header" style="background: linear-gradient(135deg, #75e6da);">
+            <h2><i class="fas fa-trash-alt"></i> Delete Companies</h2>
+            <span class="close-modal" onclick="closeDeleteCompaniesModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="canvas.php" id="deleteCompaniesForm">
+                <input type="hidden" name="action" value="delete_companies">
+                
+                <div style="margin-bottom: 20px; color: var(--text-secondary);">
+                    <i class="fas fa-exclamation-triangle" style="color: #e74c3c;"></i>
+                    Select the companies you want to delete. <strong>Warning:</strong> All items associated with these companies will also be deleted!
+                </div>
+                
+                <?php if (!empty($companies_dropdown)): ?>
+                    <div class="checkbox-actions">
+                        <button type="button" class="select-all-btn" onclick="selectAllCompanies()">Select All</button>
+                        <button type="button" class="select-all-btn" onclick="deselectAllCompanies()">Deselect All</button>
+                    </div>
+                    
+                    <div class="checkbox-grid" id="companyCheckboxGrid">
+                        <?php foreach($companies_dropdown as $comp): ?>
+                            <div class="checkbox-item">
+                                <input type="checkbox" name="company_ids[]" value="<?php echo $comp['id']; ?>" id="company_<?php echo $comp['id']; ?>">
+                                <label for="company_<?php echo $comp['id']; ?>">
+                                    <strong><?php echo htmlspecialchars($comp['name']); ?></strong>
+                                    <?php if (!empty($comp['contact_person']) || !empty($comp['contact_number'])): ?>
+                                        <span class="company-contact">
+                                            (<?php echo htmlspecialchars($comp['contact_person'] ?? ''); ?> 
+                                            <?php echo htmlspecialchars($comp['contact_number'] ?? ''); ?>)
+                                        </span>
+                                    <?php endif; ?>
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p style="text-align: center; color: var(--text-secondary); margin-bottom: 20px;">No companies available to delete.</p>
+                <?php endif; ?>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeDeleteCompaniesModal()"><i class="fas fa-times"></i> Cancel</button>
+                    <?php if (!empty($companies_dropdown)): ?>
+                        <button type="submit" class="btn-delete-companies" id="deleteCompaniesBtn"><i class="fas fa-trash"></i> Delete Selected</button>
+                    <?php endif; ?>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Item Modal - WITH COMPANY DROPDOWN -->
+<div id="addItemModal" class="modal">
+    <div class="modal-content item-modal">
+        <div class="modal-header" style="background: linear-gradient(135deg,  #75e6da);">
+            <h2><i class="fas fa-plus-circle"></i> Add Item with Price</h2>
+            <span class="close-modal" onclick="closeAddItemModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form method="POST" action="canvas.php" id="addItemForm">
                 <input type="hidden" name="action" value="add_company_price">
                 <div class="form-grid">
                     <div class="form-group">
@@ -2238,45 +2992,53 @@ require_once 'include/header.php';
                         <label class="form-label"><i class="fas fa-align-left"></i> Description *</label>
                         <input type="text" class="form-control" name="description" id="description" placeholder="Item description" required>
                     </div>
-                    <!-- NEW CATEGORY FIELD -->
                     <div class="form-group full-width">
                         <label class="form-label"><i class="fas fa-tags"></i> Category</label>
                         <input type="text" class="form-control" name="category" id="category" placeholder="e.g., Electronics, Office Supplies, Furniture">
-                        <div class="form-hint"><i class="fas fa-info-circle"></i> Optional: Add a category to organize your items</div>
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label"><i class="fas fa-building"></i> Company Name *</label>
-                        <input type="text" class="form-control" name="company_name" id="companyName" placeholder="Enter company name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label"><i class="fas fa-user"></i> Contact Person</label>
-                        <input type="text" class="form-control" name="contact_person" id="contactPerson" placeholder="Contact person name">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label"><i class="fas fa-phone"></i> Contact Number</label>
-                        <input type="text" class="form-control" name="contact_number" id="contactNumber" placeholder="Contact number">
+                        <select class="form-control" name="company_id" id="companySelect" required>
+                            <option value="">-- Select Company --</option>
+                            <?php if (!empty($companies_dropdown)): ?>
+                                <?php foreach($companies_dropdown as $comp): ?>
+                                    <option value="<?php echo $comp['id']; ?>">
+                                        <?php echo htmlspecialchars($comp['name']); ?>
+                                        <?php if (!empty($comp['contact_person'])): ?>
+                                            (<?php echo htmlspecialchars($comp['contact_person']); ?>)
+                                        <?php endif; ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="" disabled>No companies available. Add a company first.</option>
+                            <?php endif; ?>
+                        </select>
+                        <div class="form-hint">
+                            <i class="fas fa-info-circle"></i> 
+                            Select from existing companies. 
+                            <a href="#" onclick="openAddCompanyModal(); closeAddItemModal(); return false;" style="color: #75e6da; text-decoration: underline;">Add new company</a> if not listed.
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-cubes"></i> Available Qty *</label>
-                        <input type="number" class="form-control" name="quantity" id="availableQty" min="1" value="1" required onchange="calculateTotalPrice()" onkeyup="calculateTotalPrice()">
+                        <input type="number" class="form-control" name="quantity" id="availableQty" min="1" value="1" required onchange="calculateItemTotalPrice()" onkeyup="calculateItemTotalPrice()">
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-tag"></i> Price *</label>
                         <div class="form-row">
                             <span style="color: var(--text-primary); font-weight: 600;">₱</span>
-                            <input type="number" class="form-control" name="price" id="price" step="0.01" min="0" value="0.00" required onchange="calculateTotalPrice()" onkeyup="calculateTotalPrice()">
+                            <input type="number" class="form-control" name="price" id="price" step="0.01" min="0" value="0.00" required onchange="calculateItemTotalPrice()" onkeyup="calculateItemTotalPrice()">
                         </div>
                     </div>
-                    <input type="hidden" name="company_color" id="companyColor" value="#6c5ce7">
                 </div>
                 <div class="price-display">
                     <div class="label">TOTAL PRICE</div>
-                    <div class="amount" id="totalPriceDisplay">₱0.00</div>
+                    <div class="amount" id="itemTotalPriceDisplay">₱0.00</div>
                     <div class="form-hint"><i class="fas fa-info-circle"></i> Total = Quantity × Price</div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeCompanyFormModal()"><i class="fas fa-times"></i> Cancel</button>
-                    <button type="submit" class="btn-save-company" id="saveCompanyBtn"><i class="fas fa-save"></i> Save Company Price</button>
+                    <button type="button" class="btn-cancel" onclick="closeAddItemModal()"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="submit" class="btn-save-item" id="saveItemBtn"><i class="fas fa-save"></i> Save Item Price</button>
                 </div>
             </form>
         </div>
@@ -2299,7 +3061,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Edit Price Modal - WITH CATEGORY FIELD (FIXED) -->
+<!-- Edit Price Modal - WITH CATEGORY FIELD -->
 <div id="editModal" class="modal">
     <div class="modal-content edit-modal">
         <div class="modal-header">
@@ -2360,7 +3122,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
+<!-- Delete Price Confirmation Modal -->
 <div id="deleteConfirmModal" class="modal">
     <div class="modal-content delete-modal">
         <div class="modal-header">
@@ -2370,7 +3132,7 @@ require_once 'include/header.php';
         <div class="modal-body">
             <div class="delete-icon-container"><i class="fas fa-trash-alt delete-icon"></i></div>
             <div class="delete-title">Delete Price?</div>
-            <div class="delete-message">You are about to permanently delete this Company. This action cannot be undone.</div>
+            <div class="delete-message">You are about to permanently delete this price entry. This action cannot be undone.</div>
             <div class="delete-details-card">
                 <div class="delete-detail-row">
                     <div class="delete-detail-icon"><i class="fas fa-building"></i></div>
@@ -2399,14 +3161,14 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Comparison Modal - WITH CATEGORY COLUMN, SEARCH BAR, AND OLD CODE FUNCTIONALITY -->
+<!-- Comparison Modal - WITH SINGLE SCROLLABLE -->
 <div id="comparisonModal" class="modal">
     <div class="modal-content comparison-modal">
         <div class="modal-header">
             <h2><i class="fas fa-chart-bar"></i> Price Comparison</h2>
             <span class="close-modal" onclick="closeComparisonModal()">&times;</span>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="overflow-y: auto; max-height: calc(90vh - 130px);">
             <div class="comparison-header">
                 <div class="comparison-title">
                     <h3><i class="fas fa-store"></i> All Suppliers Comparison</h3>
@@ -2414,10 +3176,10 @@ require_once 'include/header.php';
                 <div class="comparison-actions">
                     <div class="comparison-search">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="comparisonSearch" placeholder="Search by Item No or Company..." onkeyup="filterComparisonTable()">
+                        <input type="text" id="comparisonSearch" placeholder="Search by Item No, Description, Category, or Company..." onkeyup="filterComparisonTable()">
                     </div>
                     <div class="comparison-sort">
-                        <button class="comparison-sort-btn" onclick="togglePriceSort()" id="togglePriceSortBtn">
+                        <button class="comparison-sort-btn" onclick="toggleComparisonSort()" id="togglePriceSortBtn">
                             <i class="fas fa-sort-amount-down-alt"></i> 
                             <span id="priceSortText">Price: Low to High</span>
                         </button>
@@ -2433,27 +3195,26 @@ require_once 'include/header.php';
                 </div>
             </div>
             
-            <div class="comparison-table-container" id="comparisonTableContainer">
-                <table class="comparison-table" id="comparisonTable">
-                    <thead>
-                        <tr>
-                            <th>Item No</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Company</th>
-                            <th>Contact Person</th>
-                            <th>Contact Number</th>
-                            <th>Available Qty</th>
-                            <th>Price</th>
-                            <th>Total Price</th>
-                            <th>Availability</th>
-                        </tr>
-                    </thead>
-                    <tbody id="comparisonTableBody">
-                        <!-- Will be populated by JavaScript -->
-                    </tbody>
-                </table>
-            </div>
+            <!-- Direct table without separate container - will scroll with modal body -->
+            <table class="comparison-table" id="comparisonTable">
+                <thead>
+                    <tr>
+                        <th>Item No</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Company</th>
+                        <th>Contact Person</th>
+                        <th>Contact Number</th>
+                        <th>Available Qty</th>
+                        <th>Price</th>
+                        <th>Total Price</th>
+                        <th>Availability</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTableBody">
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
             
             <div style="color: var(--text-secondary); font-size: 12px; text-align: right; margin-top: 15px;">
                 <i class="fas fa-info-circle"></i> Total entries: <span id="comparisonTotalCount">0</span>
@@ -2463,553 +3224,1606 @@ require_once 'include/header.php';
 </div>
 
 <script>
-    // Global variable to store current sort preference
-    let currentPriceSort = '<?php echo ($active_sort == 'price' && $sort_by == 'price_desc') ? 'price_desc' : 'price_asc'; ?>';
+// Global variable to store current sort preference
+let currentPriceSort = '<?php echo ($active_sort == 'price' && $sort_by == 'price_desc') ? 'price_desc' : 'price_asc'; ?>';
+
+// Cart data
+let currentCartItem = {
+    priceId: null,
+    itemNo: '',
+    description: '',
+    category: '',
+    companyName: '',
+    contactPerson: '',
+    contactNumber: '',
+    availableQuantity: 0,
+    price: 0,
+    companyColor: '',
+    rowElement: null
+};
+
+// Store all items data for comparison
+let allItemsData = [];
+
+// Delete price confirmation variables
+let pendingDeleteId = null;
+let pendingDeleteCompany = null;
+let pendingDeleteItem = null;
+
+// ==================== MAIN PAGE FUNCTIONS ====================
+
+// Toggle Price Sort on Main Page
+function togglePriceSort() {
+    const url = new URL(window.location.href);
+    const currentSort = url.searchParams.get('sort');
+    const currentActiveSort = url.searchParams.get('active_sort');
+    let nextSort = 'price_asc';
     
-    // Cart data
-    let currentCartItem = {
-        priceId: null,
-        itemNo: '',
-        description: '',
-        category: '',
-        companyName: '',
-        contactPerson: '',
-        contactNumber: '',
-        availableQuantity: 0,
-        price: 0,
-        companyColor: '',
-        rowElement: null
-    };
-
-    // Store all items data for comparison
-    let allItemsData = [];
-
-    // Delete confirmation variables
-    let pendingDeleteId = null;
-    let pendingDeleteCompany = null;
-    let pendingDeleteItem = null;
-
-    // Toggle Price Sort
-    function togglePriceSort() {
-        const url = new URL(window.location.href);
-        const currentSort = url.searchParams.get('sort');
-        const currentActiveSort = url.searchParams.get('active_sort');
-        let nextSort = 'price_asc';
-        
-        if (currentActiveSort === 'price') {
-            if (currentSort === 'price_asc') nextSort = 'price_desc';
-            else if (currentSort === 'price_desc') nextSort = 'price_asc';
-        }
-        
-        url.searchParams.set('sort', nextSort);
-        url.searchParams.set('active_sort', 'price');
-        
-        const searchTerm = document.getElementById('itemSearch').value.trim();
-        if (searchTerm) url.searchParams.set('search_item', searchTerm);
-        
-        window.location.href = url.toString();
+    if (currentActiveSort === 'price') {
+        if (currentSort === 'price_asc') nextSort = 'price_desc';
+        else if (currentSort === 'price_desc') nextSort = 'price_asc';
     }
+    
+    url.searchParams.set('sort', nextSort);
+    url.searchParams.set('active_sort', 'price');
+    
+    // Preserve filter parameters
+    const filterCategory = document.getElementById('filter_category')?.value;
+    const filterCompany = document.getElementById('filter_company')?.value;
+    const filterSearch = document.getElementById('filter_search')?.value.trim();
+    
+    if (filterCategory) url.searchParams.set('filter_category', filterCategory);
+    if (filterCompany) url.searchParams.set('filter_company', filterCompany);
+    if (filterSearch) url.searchParams.set('filter_search', filterSearch);
+    
+    window.location.href = url.toString();
+}
 
-    // Filter Table
-    function filterTable() {
-        const searchTerm = document.getElementById('itemSearch').value.trim();
-        const rows = document.querySelectorAll('#canvasTableBody .item-row');
-        let visibleCount = 0;
+// Reset all filters
+function resetFilters() {
+    document.getElementById('filter_category').value = '';
+    document.getElementById('filter_company').value = '';
+    document.getElementById('filter_search').value = '';
+    document.getElementById('filterForm').submit();
+}
+
+// Clear all filters and sort
+function clearAllFilters() {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('filter_category');
+    url.searchParams.delete('filter_company');
+    url.searchParams.delete('filter_search');
+    url.searchParams.delete('sort');
+    url.searchParams.delete('active_sort');
+    window.location.href = url.toString();
+}
+
+// ==================== COMPANY DROPDOWN FUNCTIONS ====================
+
+// Toggle company dropdown on click (NO HOVER)
+function toggleCompanyDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('companyDropdown');
+    const button = event.currentTarget;
+    
+    dropdown.classList.toggle('show');
+    button.classList.toggle('active');
+    
+    // Close dropdown when clicking outside
+    if (dropdown.classList.contains('show')) {
+        document.addEventListener('click', closeDropdownOnClickOutside);
+    } else {
+        document.removeEventListener('click', closeDropdownOnClickOutside);
+    }
+}
+
+// Close dropdown when clicking outside
+function closeDropdownOnClickOutside(event) {
+    const dropdown = document.getElementById('companyDropdown');
+    const button = document.querySelector('.company-dropdown-btn');
+    
+    if (!dropdown.contains(event.target) && !button.contains(event.target)) {
+        dropdown.classList.remove('show');
+        button.classList.remove('active');
+        document.removeEventListener('click', closeDropdownOnClickOutside);
+    }
+}
+
+// Close dropdown when pressing Escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        const dropdown = document.getElementById('companyDropdown');
+        const button = document.querySelector('.company-dropdown-btn');
         
-        rows.forEach(row => {
-            const itemNo = row.getAttribute('data-item-no') || '';
-            if (searchTerm === '' || itemNo === searchTerm) {
+        if (dropdown && dropdown.classList.contains('show')) {
+            dropdown.classList.remove('show');
+            button.classList.remove('active');
+            document.removeEventListener('click', closeDropdownOnClickOutside);
+        }
+    }
+});
+
+// Helper function to close dropdown
+function closeCompanyDropdown() {
+    const dropdown = document.getElementById('companyDropdown');
+    const button = document.querySelector('.company-dropdown-btn');
+    
+    if (dropdown) {
+        dropdown.classList.remove('show');
+    }
+    if (button) {
+        button.classList.remove('active');
+    }
+    document.removeEventListener('click', closeDropdownOnClickOutside);
+}
+
+// ==================== COMPANY MANAGEMENT FUNCTIONS ====================
+
+// Open Add Company Modal
+function openAddCompanyModal() {
+    closeCompanyDropdown(); // Close dropdown first
+    document.getElementById('addCompanyForm').reset();
+    document.getElementById('addCompanyModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Add Company Modal
+function closeAddCompanyModal() {
+    document.getElementById('addCompanyModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Open Edit Company Select Modal (first step)
+function openEditCompanySelectModal() {
+    closeCompanyDropdown(); // Close dropdown first
+    document.getElementById('editCompanySelectModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Edit Company Select Modal
+function closeEditCompanySelectModal() {
+    document.getElementById('editCompanySelectModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Proceed to Edit Company Form (second step)
+function proceedToEditCompany() {
+    const select = document.getElementById('companySelectEdit');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (!select.value) {
+        showNotification('Please select a company to edit', 'error');
+        return;
+    }
+    
+    const companyId = select.value;
+    const companyName = selectedOption.getAttribute('data-name');
+    const contactPerson = selectedOption.getAttribute('data-contact');
+    const contactNumber = selectedOption.getAttribute('data-phone');
+    
+    // Fill the edit form
+    document.getElementById('editCompanyId').value = companyId;
+    document.getElementById('editCompanyNameInput').value = companyName;
+    document.getElementById('editCompanyContactPerson').value = contactPerson || '';
+    document.getElementById('editCompanyContactNumber').value = contactNumber || '';
+    
+    // Close select modal and open edit modal
+    closeEditCompanySelectModal();
+    document.getElementById('editCompanyModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Edit Company Modal
+function closeEditCompanyModal() {
+    document.getElementById('editCompanyModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Open Delete Companies Modal
+function openDeleteCompaniesModal() {
+    closeCompanyDropdown(); // Close dropdown first
+    document.getElementById('deleteCompaniesModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Delete Companies Modal
+function closeDeleteCompaniesModal() {
+    document.getElementById('deleteCompaniesModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Select all companies in delete modal
+function selectAllCompanies() {
+    const checkboxes = document.querySelectorAll('#companyCheckboxGrid input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = true;
+    });
+}
+
+// Deselect all companies in delete modal
+function deselectAllCompanies() {
+    const checkboxes = document.querySelectorAll('#companyCheckboxGrid input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+}
+
+// ==================== ITEM MODAL FUNCTIONS ====================
+
+// Open Add Item Modal
+function openAddItemModal() {
+    document.getElementById('addItemForm').reset();
+    document.getElementById('itemTotalPriceDisplay').innerHTML = '₱0.00';
+    document.getElementById('addItemModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Add Item Modal
+function closeAddItemModal() {
+    document.getElementById('addItemModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Calculate total price in item form
+function calculateItemTotalPrice() {
+    const quantity = parseInt(document.getElementById('availableQty').value) || 0;
+    const price = parseFloat(document.getElementById('price').value) || 0;
+    const total = quantity * price;
+    
+    document.getElementById('itemTotalPriceDisplay').innerHTML = `₱${total.toFixed(2)} <small>(${quantity} × ₱${price.toFixed(2)})</small>`;
+}
+
+// ==================== COMPARISON MODAL FUNCTIONS ====================
+
+// Open Comparison Modal
+function openComparisonModal() {
+    console.log('Opening comparison modal');
+    collectAllItemsData();
+    
+    if (allItemsData.length === 0) {
+        showNotification('No items to compare', 'error');
+        return;
+    }
+    
+    // Apply current sort
+    sortComparisonItems();
+    
+    // Render the table
+    renderComparisonTable();
+    
+    // Update sort button text
+    updateComparisonSortButton();
+    
+    // Show modal
+    document.getElementById('comparisonModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+    
+    // Clear search input
+    document.getElementById('comparisonSearch').value = '';
+}
+
+// Close Comparison Modal
+function closeComparisonModal() {
+    document.getElementById('comparisonModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Collect all items data from the table
+function collectAllItemsData() {
+    const rows = document.querySelectorAll('#canvasTableBody .item-row');
+    allItemsData = [];
+    
+    rows.forEach(row => {
+        if (row.style.display !== 'none') {
+            allItemsData.push({
+                priceId: row.getAttribute('data-price-id'),
+                itemNo: row.getAttribute('data-item-no') || '',
+                description: row.getAttribute('data-description') || '',
+                category: row.getAttribute('data-category') || '',
+                company: row.getAttribute('data-company') || '',
+                contactPerson: row.getAttribute('data-contact') || '',
+                contactNumber: row.getAttribute('data-contact-number') || '',
+                quantity: parseInt(row.getAttribute('data-quantity')) || 0,
+                price: parseFloat(row.getAttribute('data-price')) || 0,
+                availability: row.getAttribute('data-availability') === '1' ? 'In Stock' : 'Out of Stock',
+                companyColor: row.getAttribute('data-company-color') || '#6c5ce7'
+            });
+        }
+    });
+    
+    return allItemsData;
+}
+
+// Toggle sort in comparison modal
+function toggleComparisonSort() {
+    console.log('Toggling comparison sort. Current:', currentPriceSort);
+    
+    // Toggle sort
+    if (currentPriceSort === 'price_asc') {
+        currentPriceSort = 'price_desc';
+    } else {
+        currentPriceSort = 'price_asc';
+    }
+    
+    console.log('New sort:', currentPriceSort);
+    
+    // Re-sort the items
+    sortComparisonItems();
+    
+    // Re-render the table
+    renderComparisonTable();
+    
+    // Update button text
+    updateComparisonSortButton();
+    
+    // Re-apply search filter
+    filterComparisonTable();
+}
+
+// Sort comparison items based on currentPriceSort
+function sortComparisonItems() {
+    if (currentPriceSort === 'price_desc') {
+        allItemsData.sort((a, b) => b.price - a.price);
+    } else {
+        allItemsData.sort((a, b) => a.price - b.price);
+    }
+}
+
+// Update comparison sort button text
+function updateComparisonSortButton() {
+    const sortBtn = document.getElementById('togglePriceSortBtn');
+    const sortText = document.getElementById('priceSortText');
+    
+    if (sortBtn && sortText) {
+        if (currentPriceSort === 'price_desc') {
+            sortText.textContent = 'Price: High to Low';
+            sortBtn.innerHTML = '<i class="fas fa-sort-amount-up-alt"></i> <span id="priceSortText">Price: High to Low</span>';
+        } else {
+            sortText.textContent = 'Price: Low to High';
+            sortBtn.innerHTML = '<i class="fas fa-sort-amount-down-alt"></i> <span id="priceSortText">Price: Low to High</span>';
+        }
+    }
+}
+
+// Render comparison table
+function renderComparisonTable() {
+    const tbody = document.getElementById('comparisonTableBody');
+    const totalCount = document.getElementById('comparisonTotalCount');
+    
+    if (!tbody) return;
+    
+    let html = '';
+    allItemsData.forEach(item => {
+        const total = item.quantity * item.price;
+        html += `
+            <tr>
+                <td><strong>${item.itemNo}</strong></td>
+                <td>${item.description}</td>
+                <td>
+                    ${item.category ? 
+                        `<span class="category-badge" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <i class="fas fa-tag"></i> ${item.category}
+                        </span>` : 
+                        '<span class="text-muted">—</span>'
+                    }
+                </td>
+                <td>
+                    <span class="company-badge" style="background: ${item.companyColor}">
+                        ${item.company}
+                    </span>
+                </td>
+                <td>${item.contactPerson || '—'}</td>
+                <td>${item.contactNumber || '—'}</td>
+                <td>${item.quantity.toLocaleString()}</td>
+                <td class="price-cell">₱${item.price.toFixed(2)}</td>
+                <td>
+                    <span class="total-price-cell">
+                        ₱${total.toFixed(2)}
+                    </span>
+                </td>
+                <td>
+                    <span class="availability-badge ${item.availability === 'In Stock' ? 'available' : 'unavailable'}">
+                        <i class="fas ${item.availability === 'In Stock' ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                        ${item.availability}
+                    </span>
+                </td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+    if (totalCount) {
+        totalCount.textContent = allItemsData.length;
+    }
+}
+
+// Filter comparison table by search term - SEARCH IN MULTIPLE COLUMNS
+function filterComparisonTable() {
+    const searchTerm = document.getElementById('comparisonSearch').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#comparisonTable tbody tr');
+    let visibleCount = 0;
+    
+    rows.forEach(row => {
+        // Get cell contents from multiple columns
+        const itemNo = row.cells[0]?.textContent.trim().toLowerCase() || '';
+        const description = row.cells[1]?.textContent.trim().toLowerCase() || '';
+        const category = row.cells[2]?.textContent.trim().toLowerCase() || '';
+        const company = row.cells[3]?.textContent.trim().toLowerCase() || '';
+        
+        // If search is empty, show all rows
+        if (searchTerm === '') {
+            row.style.display = '';
+            visibleCount++;
+        } 
+        // If search has value, check for matches in multiple columns
+        else {
+            if (itemNo.includes(searchTerm) || 
+                description.includes(searchTerm) || 
+                category.includes(searchTerm) || 
+                company.includes(searchTerm)) {
                 row.style.display = '';
                 visibleCount++;
             } else {
                 row.style.display = 'none';
             }
-        });
-        
-        document.getElementById('noResultsMessage').style.display = 
-            (visibleCount === 0 && searchTerm !== '') ? 'block' : 'none';
-    }
-
-    // Clear Filters
-    function clearFilters() {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('search_item');
-        url.searchParams.delete('sort');
-        url.searchParams.delete('active_sort');
-        window.location.href = url.toString();
-    }
-
-    // Collect all items data from the table - WITH CATEGORY
-    function collectAllItemsData() {
-        const rows = document.querySelectorAll('#canvasTableBody .item-row');
-        allItemsData = [];
-        
-        rows.forEach(row => {
-            if (row.style.display !== 'none') {
-                allItemsData.push({
-                    itemNo: row.getAttribute('data-item-no') || '',
-                    description: row.getAttribute('data-description') || '',
-                    category: row.getAttribute('data-category') || '',
-                    company: row.getAttribute('data-company') || '',
-                    contactPerson: row.getAttribute('data-contact') || '',
-                    contactNumber: row.getAttribute('data-contact-number') || '',
-                    quantity: parseInt(row.getAttribute('data-quantity')) || 0,
-                    price: parseFloat(row.getAttribute('data-price')) || 0,
-                    availability: row.getAttribute('data-availability') === '1' ? 'In Stock' : 'Out of Stock',
-                    companyColor: row.getAttribute('data-company-color') || '#6c5ce7',
-                    priceId: row.getAttribute('data-price-id')
-                });
-            }
-        });
-        
-        // Apply current sort to the collected data
-        if (currentPriceSort === 'price_desc') {
-            allItemsData.sort((a, b) => b.price - a.price);
-        } else {
-            allItemsData.sort((a, b) => a.price - b.price);
-        }
-        
-        return allItemsData;
-    }
-
-    // Open Cart Modal - WITH CATEGORY
-    function openCartModal(button) {
-        const row = button.closest('tr');
-        
-        // Get data from row attributes
-        currentCartItem = {
-            priceId: row.getAttribute('data-price-id'),
-            itemNo: row.getAttribute('data-item-no'),
-            description: row.getAttribute('data-description'),
-            category: row.getAttribute('data-category') || '',
-            companyName: row.getAttribute('data-company'),
-            contactPerson: row.getAttribute('data-contact'),
-            contactNumber: row.getAttribute('data-contact-number'),
-            availableQuantity: parseInt(row.getAttribute('data-quantity')),
-            price: parseFloat(row.getAttribute('data-price')),
-            companyColor: row.getAttribute('data-company-color'),
-            rowElement: row
-        };
-        
-        // Populate modal with item details - WITH CATEGORY
-        const detailsHtml = `
-            <div class="detail-item">
-                <span class="detail-label">Item No</span>
-                <span class="detail-value">${currentCartItem.itemNo}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Description</span>
-                <span class="detail-value">${currentCartItem.description}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Category</span>
-                <span class="detail-value ${currentCartItem.category ? 'category-badge-modal' : ''}" ${currentCartItem.category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>
-                    ${currentCartItem.category || '—'}
-                </span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Company</span>
-                <span class="detail-value company-badge-modal" style="background: ${currentCartItem.companyColor}">${currentCartItem.companyName}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Contact Person</span>
-                <span class="detail-value">${currentCartItem.contactPerson || '—'}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Contact Number</span>
-                <span class="detail-value">${currentCartItem.contactNumber || '—'}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Available Quantity</span>
-                <span class="detail-value">${currentCartItem.availableQuantity.toLocaleString()}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Price per Unit</span>
-                <span class="detail-value price-highlight">₱${currentCartItem.price.toFixed(2)}</span>
-            </div>
-        `;
-        
-        document.getElementById('modalItemDetails').innerHTML = detailsHtml;
-        document.getElementById('availableStock').textContent = currentCartItem.availableQuantity.toLocaleString();
-        
-        // Reset quantity to 1
-        document.getElementById('cartQuantity').value = 1;
-        document.getElementById('cartQuantity').max = currentCartItem.availableQuantity;
-        
-        // Update buttons state
-        updateQuantityButtons();
-        
-        // Calculate and display total price
-        updateTotalPrice();
-        
-        // Show modal
-        document.getElementById('cartModal').style.display = 'block';
-        
-        // Prevent body scrolling when modal is open
-        document.body.style.overflow = 'hidden';
-    }
-
-    // Increase quantity
-    function increaseQuantity() {
-        const input = document.getElementById('cartQuantity');
-        let value = parseInt(input.value) || 1;
-        if (value < currentCartItem.availableQuantity) {
-            input.value = value + 1;
-            updateTotalPrice();
-            updateQuantityButtons();
-        }
-    }
-
-    // Decrease quantity
-    function decreaseQuantity() {
-        const input = document.getElementById('cartQuantity');
-        let value = parseInt(input.value) || 1;
-        if (value > 1) {
-            input.value = value - 1;
-            updateTotalPrice();
-            updateQuantityButtons();
-        }
-    }
-
-    // Update quantity buttons state
-    function updateQuantityButtons() {
-        const input = document.getElementById('cartQuantity');
-        const value = parseInt(input.value) || 1;
-        
-        document.getElementById('decreaseQtyBtn').disabled = (value <= 1);
-        document.getElementById('increaseQtyBtn').disabled = (value >= currentCartItem.availableQuantity);
-    }
-
-    // Update total price
-    function updateTotalPrice() {
-        const input = document.getElementById('cartQuantity');
-        let quantity = parseInt(input.value) || 1;
-        
-        // Validate quantity
-        if (quantity < 1) quantity = 1;
-        if (quantity > currentCartItem.availableQuantity) quantity = currentCartItem.availableQuantity;
-        
-        input.value = quantity;
-        
-        const total = quantity * currentCartItem.price;
-        document.getElementById('modalTotalPrice').innerHTML = `₱${total.toFixed(2)} <small>(${quantity} x ₱${currentCartItem.price.toFixed(2)})</small>`;
-        
-        updateQuantityButtons();
-    }
-
-    // Add to cart function - WITH CATEGORY
-    function addToCart() {
-        const quantity = parseInt(document.getElementById('cartQuantity').value);
-        
-        // Check if quantity is valid
-        if (quantity > currentCartItem.availableQuantity) {
-            showNotification('Cannot add more than available stock!', 'error');
-            return;
-        }
-        
-        // Show loading
-        const addToCartBtn = document.getElementById('addToCartBtn');
-        const originalText = addToCartBtn.innerHTML;
-        addToCartBtn.innerHTML = '<span class="loading-spinner"></span> Adding...';
-        addToCartBtn.disabled = true;
-        
-        // Prepare data for database - WITH CATEGORY
-        const purchaseData = {
-            price_id: currentCartItem.priceId,
-            item_no: currentCartItem.itemNo,
-            description: currentCartItem.description,
-            category: currentCartItem.category,
-            company_name: currentCartItem.companyName,
-            contact_person: currentCartItem.contactPerson,
-            contact_number: currentCartItem.contactNumber,
-            quantity: quantity,
-            price: currentCartItem.price,
-            total: quantity * currentCartItem.price,
-            company_color: currentCartItem.companyColor
-        };
-        
-        // Send to server
-        fetch('process_purchase.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(purchaseData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showNotification(`
-                    <strong>✅ Item added to Purchase List!</strong><br>
-                    Item: ${currentCartItem.itemNo} - ${currentCartItem.description}<br>
-                    Company: ${currentCartItem.companyName}<br>
-                    Quantity: ${quantity}<br>
-                    <small style="color: #75e6da;">✓ Redirecting to purchase.php...</small>
-                `, 'success');
-                
-                closeCartModal();
-                
-                setTimeout(() => {
-                    window.location.href = 'purchase.php';
-                }, 1500);
-            } else {
-                showNotification('Error: ' + data.message, 'error');
-                addToCartBtn.innerHTML = originalText;
-                addToCartBtn.disabled = false;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showNotification('Error adding to cart. Check console.', 'error');
-            addToCartBtn.innerHTML = originalText;
-            addToCartBtn.disabled = false;
-        });
-    }
-
-    // Open Company Form Modal
-    function openCompanyFormModal() {
-        document.getElementById('companyForm').reset();
-        document.getElementById('totalPriceDisplay').innerHTML = '₱0.00';
-        document.getElementById('companyFormModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-
-    // Close Company Form Modal
-    function closeCompanyFormModal() {
-        document.getElementById('companyFormModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    // Calculate total price in form
-    function calculateTotalPrice() {
-        const quantity = parseInt(document.getElementById('availableQty').value) || 0;
-        const price = parseFloat(document.getElementById('price').value) || 0;
-        const total = quantity * price;
-        
-        document.getElementById('totalPriceDisplay').innerHTML = `₱${total.toFixed(2)} <small>(${quantity} × ₱${price.toFixed(2)})</small>`;
-    }
-
-    // View Company Price - WITH CATEGORY
-    function viewCompanyPrice(priceId) {
-        // Find the row with this price ID
-        const row = document.querySelector(`.item-row[data-price-id="${priceId}"]`);
-        
-        if (!row) {
-            showNotification('Price not found', 'error');
-            return;
-        }
-        
-        // Get data from row
-        const itemNo = row.getAttribute('data-item-no');
-        const description = row.getAttribute('data-description');
-        const category = row.getAttribute('data-category') || '';
-        const company = row.getAttribute('data-company');
-        const contactPerson = row.getAttribute('data-contact');
-        const contactNumber = row.getAttribute('data-contact-number');
-        const quantity = parseInt(row.getAttribute('data-quantity'));
-        const price = parseFloat(row.getAttribute('data-price'));
-        const companyColor = row.getAttribute('data-company-color');
-        const total = quantity * price;
-        
-        // Populate view modal - WITH CATEGORY
-        const viewHtml = `
-            <div class="view-detail-item">
-                <span class="view-detail-label">Item No</span>
-                <span class="view-detail-value">${itemNo}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Description</span>
-                <span class="view-detail-value">${description}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Category</span>
-                <span class="view-detail-value ${category ? 'category-badge-view' : ''}" ${category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>${category || '—'}</span>
-            </div>
-            <div class="view-detail-item full-width">
-                <span class="view-detail-label">Company</span>
-                <span class="view-detail-value company-badge-view" style="background: ${companyColor}">${company}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Contact Person</span>
-                <span class="view-detail-value">${contactPerson || '—'}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Contact Number</span>
-                <span class="view-detail-value">${contactNumber || '—'}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Available Quantity</span>
-                <span class="view-detail-value">${quantity.toLocaleString()}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Price per Unit</span>
-                <span class="view-detail-value price-highlight">₱${price.toFixed(2)}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Total Price</span>
-                <span class="view-detail-value" style="color: #6c5ce7; font-weight: 700;">₱${total.toFixed(2)}</span>
-            </div>
-            <div class="view-detail-item">
-                <span class="view-detail-label">Availability</span>
-                <span class="view-detail-value">
-                    <span class="availability-badge ${parseInt(row.getAttribute('data-availability')) ? 'available' : 'unavailable'}">
-                        <i class="fas ${parseInt(row.getAttribute('data-availability')) ? 'fa-check-circle' : 'fa-times-circle'}"></i>
-                        ${parseInt(row.getAttribute('data-availability')) ? 'In Stock' : 'Out of Stock'}
-                    </span>
-                </span>
-            </div>
-        `;
-        
-        document.getElementById('viewDetails').innerHTML = viewHtml;
-        document.getElementById('viewModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-
-    // Close View Modal
-    function closeViewModal() {
-        document.getElementById('viewModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    // Edit Company Price - WITH CATEGORY (FIXED)
-    function editCompanyPrice(priceId) {
-        console.log('Editing price ID:', priceId);
-        
-        // Find the row with this price ID
-        const row = document.querySelector(`.item-row[data-price-id="${priceId}"]`);
-        
-        if (!row) {
-            showNotification('Price not found', 'error');
-            return;
-        }
-        
-        // Get data from row
-        const itemNo = row.getAttribute('data-item-no');
-        const description = row.getAttribute('data-description');
-        const category = row.getAttribute('data-category') || '';
-        const company = row.getAttribute('data-company');
-        const contactPerson = row.getAttribute('data-contact');
-        const contactNumber = row.getAttribute('data-contact-number');
-        const quantity = parseInt(row.getAttribute('data-quantity'));
-        const price = parseFloat(row.getAttribute('data-price'));
-        
-        // Populate edit form - WITH CATEGORY
-        document.getElementById('editPriceId').value = priceId;
-        document.getElementById('editItemNo').value = itemNo;
-        document.getElementById('editDescription').value = description;
-        document.getElementById('editCategory').value = category;
-        document.getElementById('editCompanyName').value = company;
-        document.getElementById('editContactPerson').value = contactPerson || '';
-        document.getElementById('editContactNumber').value = contactNumber || '';
-        document.getElementById('editQuantity').value = quantity;
-        document.getElementById('editPrice').value = price.toFixed(2);
-        
-        // Calculate total
-        calculateEditTotal();
-        
-        // Show modal
-        document.getElementById('editModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-    }
-
-    // Close Edit Modal
-    function closeEditModal() {
-        document.getElementById('editModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    // Calculate edit total
-    function calculateEditTotal() {
-        const quantity = parseInt(document.getElementById('editQuantity').value) || 0;
-        const price = parseFloat(document.getElementById('editPrice').value) || 0;
-        const total = quantity * price;
-        
-        document.getElementById('editTotalPrice').innerHTML = `₱${total.toFixed(2)} <small>(${quantity} × ₱${price.toFixed(2)})</small>`;
-    }
-
-    // Handle edit form submit - WITH CATEGORY (FIXED)
-    document.addEventListener('DOMContentLoaded', function() {
-        const editForm = document.getElementById('editForm');
-        if (editForm) {
-            editForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                console.log('Edit form submitted');
-                
-                const formData = new FormData(editForm);
-                
-                // Show loading
-                const saveBtn = document.getElementById('saveEditBtn');
-                const originalText = saveBtn.innerHTML;
-                saveBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
-                saveBtn.disabled = true;
-                
-                // Send update request - WITH CATEGORY
-                fetch('update_price.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Update response:', data);
-                    if (data.success) {
-                        showNotification('Price updated successfully!', 'success');
-                        closeEditModal();
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1000);
-                    } else {
-                        showNotification('Error: ' + data.message, 'error');
-                        saveBtn.innerHTML = originalText;
-                        saveBtn.disabled = false;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showNotification('Error updating price', 'error');
-                    saveBtn.innerHTML = originalText;
-                    saveBtn.disabled = false;
-                });
-            });
         }
     });
-// DELETE FUNCTIONS - USING MODAL (not confirm)
-function deleteCompanyPrice(priceId, companyName, itemNo) {
-    console.log('Delete clicked - Price ID:', priceId);
     
-    // Simple validation
-    if (!priceId) {
-        showNotification('Error: Invalid price ID', 'error');
+    // Update the total count display
+    const totalCountSpan = document.getElementById('comparisonTotalCount');
+    if (totalCountSpan) {
+        totalCountSpan.textContent = visibleCount;
+    }
+}
+
+// ==================== EXPORT FUNCTIONS ====================
+
+// Export to Excel function - OPTIMIZED FOR A4 LANDSCAPE PRINTING
+function exportToExcel() {
+    const items = collectAllItemsData();
+    
+    if (items.length === 0) {
+        showNotification('No data to export', 'error');
         return;
     }
     
-    // Store the data for the modal
+    // Get current search term from comparison modal
+    const searchTerm = document.getElementById('comparisonSearch').value.trim();
+    let filteredItems = items;
+    
+    if (searchTerm !== '') {
+        // Search in multiple columns
+        const searchTermLower = searchTerm.toLowerCase();
+        filteredItems = items.filter(item => {
+            return (item.itemNo && item.itemNo.toLowerCase().includes(searchTermLower)) ||
+                   (item.company && item.company.toLowerCase().includes(searchTermLower)) ||
+                   (item.description && item.description.toLowerCase().includes(searchTermLower)) ||
+                   (item.category && item.category.toLowerCase().includes(searchTermLower));
+        });
+    }
+    
+    if (filteredItems.length === 0) {
+        showNotification('No items match your search', 'error');
+        return;
+    }
+    
+    // GROUP BY ITEM NO AND DESCRIPTION
+    const groupedItems = {};
+    filteredItems.forEach(item => {
+        const key = `${item.itemNo}|${item.description}`;
+        if (!groupedItems[key]) {
+            groupedItems[key] = {
+                itemNo: item.itemNo,
+                description: item.description,
+                category: item.category,
+                companies: []
+            };
+        }
+        groupedItems[key].companies.push(item);
+    });
+    
+    // Convert to array at i-sort
+    let itemsArray = Object.values(groupedItems);
+    itemsArray.sort((a, b) => a.itemNo.localeCompare(b.itemNo, undefined, { numeric: true }));
+    
+    // Get UNIQUE companies
+    const allCompanies = [...new Set(filteredItems.map(item => item.company))];
+    allCompanies.sort();
+    
+    // MAXIMUM 8 COMPANIES PER ROW (optimized for A4 Landscape)
+    const MAX_COMPANIES_PER_ROW = 8;
+    
+    // Calculate totals per company
+    const companyTotals = {};
+    allCompanies.forEach(company => {
+        let total = 0;
+        itemsArray.forEach(item => {
+            const companyItem = item.companies.find(c => c.company === company);
+            if (companyItem) {
+                total += companyItem.quantity * companyItem.price;
+            }
+        });
+        companyTotals[company] = total;
+    });
+    
+    // Calculate lowest price per item
+    itemsArray.forEach(item => {
+        if (item.companies.length > 0) {
+            const lowestPriceItem = item.companies.reduce((prev, curr) => 
+                (curr.price < prev.price) ? curr : prev, item.companies[0]);
+            item.lowestTotal = lowestPriceItem.quantity * lowestPriceItem.price;
+        } else {
+            item.lowestTotal = 0;
+        }
+    });
+    
+    // Grand total
+    const grandTotal = itemsArray.reduce((sum, item) => sum + (item.lowestTotal || 0), 0);
+    
+    // Current date
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const dateTimeStr = `${dateStr} 00:00:00`;
+    
+    // Create CSV content
+    let csvContent = "";
+    
+    // ===== HEADER SECTION =====
+    csvContent += "JLC BEST CONSTRUCTION OPC,,,,,,,,,,,,,,,,Ref. No.,202511-002\n";
+    csvContent += "\n";
+    csvContent += "CANVASS FORM,,,,,,,,,,,,,,,,\n";
+    csvContent += "\n";
+    
+    // Customer and Date row
+    csvContent += "Customer:,,,,,,,,,,,,,,Date:," + dateTimeStr + "\n";
+    
+    // Project Name and Date Needed row
+    csvContent += "Project Name:,,,,,,,,,,,,,,Date Needed:,\n";
+    csvContent += "\n";
+    
+    // Split companies into rows of 8
+    for (let rowIndex = 0; rowIndex < allCompanies.length; rowIndex += MAX_COMPANIES_PER_ROW) {
+        const rowCompanies = allCompanies.slice(rowIndex, rowIndex + MAX_COMPANIES_PER_ROW);
+        const isLastRow = (rowIndex + MAX_COMPANIES_PER_ROW >= allCompanies.length);
+        
+        // ===== TABLE HEADER =====
+        // Row 1: Main headers
+        let headerRow1 = "Item No,Description,Category,,,,,Qty,Unit";
+        
+        // Add company headers for this row
+        rowCompanies.forEach(company => {
+            // Truncate long company names for better fit
+            let displayName = company.length > 15 ? company.substring(0, 12) + '...' : company;
+            headerRow1 += ",," + displayName;
+        });
+        
+        // Add Lowest Total column only for LAST row
+        if (isLastRow) {
+            headerRow1 += ",Lowest Total";
+        }
+        csvContent += headerRow1 + "\n";
+        
+        // Row 2: Sub headers (Price and Total)
+        let headerRow2 = ",,,,,,,,,Price,Total";
+        
+        // Add Price/Total subheaders for each company
+        rowCompanies.forEach(() => {
+            headerRow2 += ",Price,Total";
+        });
+        
+        if (isLastRow) {
+            headerRow2 += ",";
+        }
+        csvContent += headerRow2 + "\n";
+        
+        // ===== DATA ROWS =====
+        let rowNumber = 1;
+        itemsArray.forEach(item => {
+            const qty = item.companies[0]?.quantity || 0;
+            
+            let dataRow = `${rowNumber},${item.description},${item.category || ''}`;
+            dataRow += ",,,,,,";
+            dataRow += `${qty},pcs`;
+            
+            // Add prices for companies in this row
+            rowCompanies.forEach(company => {
+                const companyItem = item.companies.find(c => c.company === company);
+                if (companyItem) {
+                    const unitPrice = companyItem.price.toFixed(2);
+                    const total = (companyItem.quantity * companyItem.price).toFixed(2);
+                    dataRow += `,${unitPrice},${total}`;
+                } else {
+                    dataRow += ",,";
+                }
+            });
+            
+            // Add lowest total for LAST row only with formula format
+            if (isLastRow) {
+                dataRow += `,=${item.lowestTotal.toFixed(2)}`;
+            }
+            
+            csvContent += dataRow + "\n";
+            rowNumber++;
+        });
+        
+        // ===== EMPTY ROWS (for consistent layout) =====
+        const emptyRowsNeeded = Math.max(0, 20 - itemsArray.length);
+        for (let i = 0; i < emptyRowsNeeded; i++) {
+            let emptyRow = `${itemsArray.length + i + 1},,,,,,,,,,`;
+            
+            rowCompanies.forEach(() => {
+                emptyRow += ",";
+            });
+            
+            if (isLastRow) {
+                emptyRow += ",";
+            }
+            
+            csvContent += emptyRow + "\n";
+        }
+        
+        // ===== TOTALS ROW =====
+        let totalRow = "TOTAL,,,,,,,,,,";
+        
+        rowCompanies.forEach(company => {
+            const total = companyTotals[company] || 0;
+            totalRow += `,=${total.toFixed(2)}`;
+        });
+        
+        if (isLastRow) {
+            totalRow += `,=${grandTotal.toFixed(2)}`;
+        }
+        
+        csvContent += totalRow + "\n";
+        
+        // Add separator between company rows (kung hindi last row)
+        if (!isLastRow) {
+            csvContent += "\n\n";
+        }
+    }
+    
+    // ===== FOOTER SECTION =====
+    csvContent += "\n";
+    csvContent += "*NOTE:,Project,Stocks\n";
+    csvContent += "\n";
+    csvContent += "\n";
+    csvContent += "Canvass By:,ENGR. CM GALLOS\n";
+    csvContent += "Date:,\n";
+    csvContent += "\n";
+    csvContent += "Noted By:,Engr. Louisito De Guzman\n";
+    csvContent += "Date:," + dateTimeStr + "\n";
+    
+    // Add page break indicators for multi-page support
+    if (allCompanies.length > MAX_COMPANIES_PER_ROW) {
+        csvContent += "\n\n\n";
+        csvContent += "=== Page 2 ===\n";
+    }
+    
+    // Create and download file
+    const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    // Generate filename with date and search term
+    const searchSuffix = searchTerm ? `_${searchTerm}` : '';
+    const filename = `CANVASS_FORM${searchSuffix}_${dateStr}.csv`;
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification(`✅ Exported to ${filename} (A4 Landscape optimized)`, 'success');
+}
+
+// Print Comparison function - GROUP BY ITEM NUMBER - WITH CENTERED TEXT
+function printComparison() {
+    const items = collectAllItemsData();
+    
+    if (items.length === 0) {
+        showNotification('No data to print', 'error');
+        return;
+    }
+    
+    // Get current search term
+    const searchTerm = document.getElementById('comparisonSearch').value.trim().toLowerCase();
+    let filteredItems = items;
+    
+    if (searchTerm !== '') {
+        filteredItems = items.filter(item => {
+            return (item.itemNo && item.itemNo.toLowerCase().includes(searchTerm)) ||
+                   (item.company && item.company.toLowerCase().includes(searchTerm)) ||
+                   (item.description && item.description.toLowerCase().includes(searchTerm)) ||
+                   (item.category && item.category.toLowerCase().includes(searchTerm));
+        });
+    }
+    
+    if (filteredItems.length === 0) {
+        showNotification('No items match your search', 'error');
+        return;
+    }
+    
+    // GROUP BY ITEM NUMBER
+    const itemsByItemNo = {};
+    filteredItems.forEach(item => {
+        if (!itemsByItemNo[item.itemNo]) {
+            itemsByItemNo[item.itemNo] = [];
+        }
+        itemsByItemNo[item.itemNo].push(item);
+    });
+    
+    // Group by description
+    const groupedItems = [];
+    const itemNumbers = Object.keys(itemsByItemNo).sort((a, b) => 
+        a.localeCompare(b, undefined, { numeric: true })
+    );
+    
+    itemNumbers.forEach(itemNo => {
+        const itemsWithSameNo = itemsByItemNo[itemNo];
+        const byDescription = {};
+        
+        itemsWithSameNo.forEach(item => {
+            const key = `${itemNo}|${item.description}`;
+            if (!byDescription[key]) {
+                byDescription[key] = {
+                    itemNo: item.itemNo,
+                    description: item.description,
+                    category: item.category,
+                    companies: []
+                };
+            }
+            byDescription[key].companies.push(item);
+        });
+        
+        Object.values(byDescription).forEach(group => {
+            groupedItems.push(group);
+        });
+    });
+    
+    // Get UNIQUE companies lang
+    const allCompanies = [...new Set(filteredItems.map(item => item.company))];
+    allCompanies.sort();
+    
+    // MAXIMUM 10 COMPANIES PER TABLE
+    const MAX_COMPANIES_PER_TABLE = 10;
+    const companyTables = [];
+    
+    // Hatiin ang companies sa tables (maximum 10 per table)
+    for (let i = 0; i < allCompanies.length; i += MAX_COMPANIES_PER_TABLE) {
+        companyTables.push({
+            name: `Supplier Group ${Math.floor(i/MAX_COMPANIES_PER_TABLE) + 1}`,
+            companies: allCompanies.slice(i, i + MAX_COMPANIES_PER_TABLE)
+        });
+    }
+    
+    // Kung walang companies, mag-error
+    if (companyTables.length === 0) {
+        showNotification('No companies to display', 'error');
+        return;
+    }
+    
+    // Calculate totals per company
+    const companyTotals = {};
+    allCompanies.forEach(company => {
+        let total = 0;
+        groupedItems.forEach(group => {
+            const companyItem = group.companies.find(c => c.company === company);
+            if (companyItem) {
+                total += companyItem.quantity * companyItem.price;
+            }
+        });
+        companyTotals[company] = total;
+    });
+    
+    // Calculate lowest price totals
+    groupedItems.forEach(group => {
+        if (group.companies.length > 0) {
+            const lowestPriceItem = group.companies.reduce((prev, curr) => 
+                (curr.price < prev.price) ? curr : prev, group.companies[0]);
+            group.lowestTotal = lowestPriceItem.quantity * lowestPriceItem.price;
+        } else {
+            group.lowestTotal = 0;
+        }
+    });
+    
+    const grandTotal = groupedItems.reduce((sum, g) => sum + (g.lowestTotal || 0), 0);
+    
+    // Rows per page
+    const ROWS_PER_PAGE = 15;
+    const pages = [];
+    for (let i = 0; i < groupedItems.length; i += ROWS_PER_PAGE) {
+        pages.push(groupedItems.slice(i, i + ROWS_PER_PAGE));
+    }
+    
+    if (pages.length === 0) pages.push([]);
+    
+    // Current date
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')} 00:00:00`;
+    
+    const getProjectName = (pageIndex) => {
+        return pageIndex === 0 ? '6th flr' : '4TH & 5TH FLOOR';
+    };
+    
+    // Create print window
+    const printWindow = window.open('', '_blank');
+    
+    // Start HTML - WITH CENTERED TEXT STYLES
+    let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>CANVASS FORM</title>
+        <style>
+            body { 
+                font-family: 'Calibri', 'Arial', sans-serif; 
+                margin: 0.75in 0.5in; 
+                padding: 0; 
+                background: white; 
+                font-size: 10pt;
+            }
+            .page { 
+                page-break-after: always; 
+                page-break-inside: avoid; 
+                position: relative;
+            }
+            .page:last-child { 
+                page-break-after: auto; 
+            }
+            .company-header { 
+                font-size: 14pt; 
+                font-weight: bold; 
+                text-align: left; 
+                margin-bottom: 0; 
+            }
+            .ref-no { 
+                position: absolute; 
+                top: 0; 
+                right: 0; 
+                font-size: 10pt; 
+            }
+            .canvas-form { 
+                font-size: 16pt; 
+                font-weight: bold; 
+                margin: 8px 0 10px 0; 
+                text-align: left; 
+                text-transform: uppercase;
+            }
+            .info-row { 
+                display: flex; 
+                margin: 6px 0; 
+                font-size: 11pt;
+                align-items: center;
+            }
+            .info-label { 
+                width: 80px; 
+                font-weight: 600; 
+            }
+            .info-value { 
+                flex: 1; 
+                border-bottom: 1px solid #000; 
+                margin-left: 5px; 
+            }
+            .date-label {
+                font-weight: 600;
+                margin-left: 40px;
+                margin-right: 5px;
+            }
+            .date-value {
+                border-bottom: 1px solid #000;
+                width: 180px;
+            }
+            .project-row { 
+                display: flex; 
+                margin: 6px 0; 
+                font-size: 11pt;
+                align-items: center;
+            }
+            .project-label { 
+                width: 90px; 
+                font-weight: 600; 
+            }
+            .project-value { 
+                width: 250px; 
+                border-bottom: 1px solid #000; 
+                margin-left: 5px; 
+            }
+            .date-needed-label { 
+                font-weight: 600; 
+                margin-left: 40px; 
+                margin-right: 5px;
+            }
+            .date-needed-value { 
+                width: 180px; 
+                border-bottom: 1px solid #000; 
+            }
+            table { 
+                border-collapse: collapse; 
+                width: 100%; 
+                margin: 10px 0; 
+                font-size: 9pt; 
+                border: 1px solid #000;
+            }
+            th, td { 
+                border: 1px solid #000; 
+                padding: 4px 3px; 
+                vertical-align: middle;
+            }
+            th { 
+                background-color: #f0f0f0; 
+                font-weight: 600; 
+                text-align: center; 
+            }
+            td { 
+                text-align: center; /* CENTER ALL TEXT IN ROWS */
+            }
+            .item-no-cell { 
+                text-align: center; 
+                font-weight: 600; 
+            }
+            .qty-cell, .unit-cell { 
+                text-align: center; 
+            }
+            .price-cell { 
+                text-align: center; /* Changed from right to center */
+                padding-right: 0;
+            }
+            .formula-cell { 
+                text-align: center; /* Changed from right to center */
+                padding-right: 0;
+                color: #006100;
+                font-family: 'Courier New', monospace;
+            }
+            .total-row { 
+                font-weight: 600; 
+                background-color: #e8f0f8;
+            }
+            .company-section {
+                margin-top: 15px;
+                border-top: 2px solid #000;
+                padding-top: 10px;
+            }
+            .company-section-title {
+                font-weight: bold;
+                font-size: 10pt;
+                margin-bottom: 5px;
+            }
+            .signature-section { 
+                margin-top: 30px; 
+                font-size: 11pt; 
+            }
+            .signature-row { 
+                display: flex; 
+                margin: 8px 0; 
+                align-items: center;
+            }
+            .signature-label { 
+                width: 100px; 
+                font-weight: 600; 
+            }
+            .signature-value { 
+                flex: 1; 
+                border-bottom: 1px solid #000; 
+                margin-left: 10px; 
+                padding-bottom: 2px;
+            }
+            .note { 
+                font-size: 9pt; 
+                margin-top: 15px; 
+                font-style: italic; 
+                text-align: left;
+            }
+            .note-bold { 
+                font-weight: 700; 
+                font-style: normal;
+            }
+            .page-number { 
+                text-align: center; 
+                font-size: 8pt; 
+                color: #666; 
+                margin-top: 10px; 
+            }
+        </style>
+    </head>
+    <body>`;
+    
+    // Generate each page
+    pages.forEach((pageGroups, pageIndex) => {
+        const isLastPage = pageIndex === pages.length - 1;
+        const startRow = pageIndex * ROWS_PER_PAGE + 1;
+        const projectName = getProjectName(pageIndex);
+        
+        html += `
+        <div class="page">
+            <div style="position: relative;">
+                <div class="company-header">JLC BEST CONSTRUCTION OPC</div>
+                <div class="ref-no">Ref. No. 202511-002</div>
+            </div>
+            
+            <div class="canvas-form">CANVASS FORM</div>
+            
+            <div class="info-row">
+                <span class="info-label">Customer:</span>
+                <span class="info-value"></span>
+                <span class="date-label">Date:</span>
+                <span class="date-value">${dateStr}</span>
+            </div>
+            
+            <div class="project-row">
+                <span class="project-label">Project Name:</span>
+                <span class="project-value">${projectName}</span>
+                <span class="date-needed-label">Date Needed:</span>
+                <span class="date-needed-value"></span>
+            </div>`;
+        
+        // Create tables for EACH company group
+        companyTables.forEach((table, tableIndex) => {
+            const companiesInTable = table.companies;
+            const isLastTable = tableIndex === companyTables.length - 1;
+            
+            html += `
+            <div class="company-section">
+                <div class="company-section-title">${table.name} (${companiesInTable.length} companies)</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th rowspan="2" width="5%">Item No</th>
+                            <th rowspan="2" width="20%">Description</th>
+                            <th rowspan="2" width="10%">Category</th>
+                            <th rowspan="2" width="5%">Qty.</th>
+                            <th rowspan="2" width="5%">Unit</th>`;
+            
+            // Add headers for companies ONLY
+            companiesInTable.forEach(company => {
+                html += `<th colspan="2" width="${Math.floor(60 / companiesInTable.length)}%">${company}</th>`;
+            });
+            
+            // Add lowest total column ONLY for last table
+            if (isLastTable) {
+                html += `<th rowspan="2" width="8%">Lowest<br>Total</th>`;
+            }
+            
+            html += `</tr>
+                    <tr>`;
+            
+            // Add price/total subheaders for companies ONLY
+            companiesInTable.forEach(() => {
+                html += `<th width="5%">Price</th><th width="5%">Total</th>`;
+            });
+            
+            html += `</tr>
+                </thead>
+                <tbody>`;
+            
+            // Add data rows
+            pageGroups.forEach((group, index) => {
+                const rowNumber = startRow + index;
+                const qty = group.companies[0]?.quantity || 0;
+                
+                html += `<tr>
+                    <td class="item-no-cell">${group.itemNo}</td>
+                    <td>${group.description}</td>
+                    <td>${group.category || ''}</td>
+                    <td class="qty-cell">${qty.toLocaleString()}</td>
+                    <td class="unit-cell">pcs</td>`;
+                
+                // Add prices for companies ONLY
+                companiesInTable.forEach(company => {
+                    const companyItem = group.companies.find(c => c.company === company);
+                    if (companyItem) {
+                        const unitPrice = companyItem.price.toFixed(2);
+                        const total = (companyItem.quantity * companyItem.price).toFixed(2);
+                        html += `<td class="price-cell">${unitPrice}</td>
+                                 <td class="formula-cell">=${total}</td>`;
+                    } else {
+                        html += `<td class="price-cell"></td>
+                                 <td class="formula-cell"></td>`;
+                    }
+                });
+                
+                // Add lowest total for LAST table
+                if (isLastTable) {
+                    if (group.companies.length > 0) {
+                        const lowestPriceItem = group.companies.reduce((prev, curr) => 
+                            (curr.price < prev.price) ? curr : prev, group.companies[0]);
+                        const lowestTotal = (lowestPriceItem.quantity * lowestPriceItem.price).toFixed(2);
+                        html += `<td class="formula-cell">=${lowestTotal}</td>`;
+                    } else {
+                        html += `<td class="formula-cell"></td>`;
+                    }
+                }
+                
+                html += `</tr>`;
+            });
+            
+            // Add empty rows
+            const remainingRows = ROWS_PER_PAGE - pageGroups.length;
+            for (let i = 0; i < remainingRows; i++) {
+                const emptyRowNumber = startRow + pageGroups.length + i;
+                html += `<tr>
+                    <td class="item-no-cell">${emptyRowNumber}</td>
+                    <td></td>
+                    <td></td>
+                    <td class="qty-cell"></td>
+                    <td class="unit-cell"></td>`;
+                
+                companiesInTable.forEach(() => {
+                    html += `<td class="price-cell"></td>
+                             <td class="formula-cell"></td>`;
+                });
+                
+                if (isLastTable) {
+                    html += `<td class="formula-cell"></td>`;
+                }
+                
+                html += `</tr>`;
+            }
+            
+            // Add totals row
+            html += `<tr class="total-row">
+                <td colspan="5" style="text-align: right;"><strong>TOTAL:</strong></td>`;
+            
+            companiesInTable.forEach(company => {
+                const total = companyTotals[company] || 0;
+                html += `<td class="price-cell"></td>
+                         <td class="formula-cell"><strong>=${total.toFixed(2)}</strong></td>`;
+            });
+            
+            if (isLastTable) {
+                html += `<td class="formula-cell"><strong>=${grandTotal.toFixed(2)}</strong></td>`;
+            }
+            
+            html += `</tr>
+                    </tbody>
+                </table>
+            </div>`;
+        });
+        
+        // Add note and signature
+        html += `
+            <div class="note">
+                <span class="note-bold">*NOTE:</span> Project Stocks
+            </div>`;
+        
+        if (isLastPage) {
+            html += `
+            <div class="signature-section">
+                <div class="signature-row">
+                    <span class="signature-label">Canvass By:</span>
+                    <span class="signature-value">ENGR. CM GALLOS</span>
+                </div>
+                <div class="signature-row">
+                    <span class="signature-label">Date:</span>
+                    <span class="signature-value"></span>
+                </div>
+                
+                <div style="height: 15px;"></div>
+                
+                <div class="signature-row">
+                    <span class="signature-label">Noted By:</span>
+                    <span class="signature-value">Engr. Louisito De Guzman</span>
+                </div>
+                <div class="signature-row">
+                    <span class="signature-label">Date:</span>
+                    <span class="signature-value">${dateStr}</span>
+                </div>
+            </div>`;
+        }
+        
+        html += `<div class="page-number">Page ${pageIndex + 1} of ${pages.length}</div>`;
+        html += `</div>`;
+    });
+    
+    html += `
+        <script>
+            window.onload = function() { 
+                setTimeout(function() { 
+                    window.print();
+                }, 500);
+            }
+        <\/script>
+    </body>
+    </html>`;
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+}
+
+// Helper function to get current date
+function getCurrentDate() {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day} 00:00:00`;
+}
+
+// ==================== CART MODAL FUNCTIONS ====================
+
+// Open Cart Modal
+function openCartModal(button) {
+    const row = button.closest('tr');
+    
+    currentCartItem = {
+        priceId: row.getAttribute('data-price-id'),
+        itemNo: row.getAttribute('data-item-no'),
+        description: row.getAttribute('data-description'),
+        category: row.getAttribute('data-category') || '',
+        companyName: row.getAttribute('data-company'),
+        contactPerson: row.getAttribute('data-contact'),
+        contactNumber: row.getAttribute('data-contact-number'),
+        availableQuantity: parseInt(row.getAttribute('data-quantity')),
+        price: parseFloat(row.getAttribute('data-price')),
+        companyColor: row.getAttribute('data-company-color'),
+        rowElement: row
+    };
+    
+    const detailsHtml = `
+        <div class="detail-item">
+            <span class="detail-label">Item No</span>
+            <span class="detail-value">${currentCartItem.itemNo}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Description</span>
+            <span class="detail-value">${currentCartItem.description}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Category</span>
+            <span class="detail-value ${currentCartItem.category ? 'category-badge-modal' : ''}" ${currentCartItem.category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>
+                ${currentCartItem.category || '—'}
+            </span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Company</span>
+            <span class="detail-value company-badge-modal" style="background: ${currentCartItem.companyColor}">${currentCartItem.companyName}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Contact Person</span>
+            <span class="detail-value">${currentCartItem.contactPerson || '—'}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Contact Number</span>
+            <span class="detail-value">${currentCartItem.contactNumber || '—'}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Available Quantity</span>
+            <span class="detail-value">${currentCartItem.availableQuantity.toLocaleString()}</span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Price per Unit</span>
+            <span class="detail-value price-highlight">₱${currentCartItem.price.toFixed(2)}</span>
+        </div>
+    `;
+    
+    document.getElementById('modalItemDetails').innerHTML = detailsHtml;
+    document.getElementById('availableStock').textContent = currentCartItem.availableQuantity.toLocaleString();
+    document.getElementById('cartQuantity').value = 1;
+    document.getElementById('cartQuantity').max = currentCartItem.availableQuantity;
+    
+    updateQuantityButtons();
+    updateTotalPrice();
+    
+    document.getElementById('cartModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Cart Modal
+function closeCartModal() {
+    document.getElementById('cartModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Increase quantity
+function increaseQuantity() {
+    const input = document.getElementById('cartQuantity');
+    let value = parseInt(input.value) || 1;
+    if (value < currentCartItem.availableQuantity) {
+        input.value = value + 1;
+        updateTotalPrice();
+        updateQuantityButtons();
+    }
+}
+
+// Decrease quantity
+function decreaseQuantity() {
+    const input = document.getElementById('cartQuantity');
+    let value = parseInt(input.value) || 1;
+    if (value > 1) {
+        input.value = value - 1;
+        updateTotalPrice();
+        updateQuantityButtons();
+    }
+}
+
+// Update quantity buttons
+function updateQuantityButtons() {
+    const input = document.getElementById('cartQuantity');
+    const value = parseInt(input.value) || 1;
+    
+    document.getElementById('decreaseQtyBtn').disabled = (value <= 1);
+    document.getElementById('increaseQtyBtn').disabled = (value >= currentCartItem.availableQuantity);
+}
+
+// Update total price
+function updateTotalPrice() {
+    const input = document.getElementById('cartQuantity');
+    let quantity = parseInt(input.value) || 1;
+    
+    if (quantity < 1) quantity = 1;
+    if (quantity > currentCartItem.availableQuantity) quantity = currentCartItem.availableQuantity;
+    
+    input.value = quantity;
+    
+    const total = quantity * currentCartItem.price;
+    document.getElementById('modalTotalPrice').innerHTML = `₱${total.toFixed(2)} <small>(${quantity} x ₱${currentCartItem.price.toFixed(2)})</small>`;
+    
+    updateQuantityButtons();
+}
+
+// Add to cart
+function addToCart() {
+    const quantity = parseInt(document.getElementById('cartQuantity').value);
+    
+    if (quantity > currentCartItem.availableQuantity) {
+        showNotification('Cannot add more than available stock!', 'error');
+        return;
+    }
+    
+    const addToCartBtn = document.getElementById('addToCartBtn');
+    const originalText = addToCartBtn.innerHTML;
+    addToCartBtn.innerHTML = '<span class="loading-spinner"></span> Adding...';
+    addToCartBtn.disabled = true;
+    
+    const purchaseData = {
+        price_id: currentCartItem.priceId,
+        item_no: currentCartItem.itemNo,
+        description: currentCartItem.description,
+        category: currentCartItem.category,
+        company_name: currentCartItem.companyName,
+        contact_person: currentCartItem.contactPerson,
+        contact_number: currentCartItem.contactNumber,
+        quantity: quantity,
+        price: currentCartItem.price,
+        total: quantity * currentCartItem.price,
+        company_color: currentCartItem.companyColor
+    };
+    
+    fetch('process_purchase.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(purchaseData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`
+                <strong>✅ Item added to Purchase List!</strong><br>
+                Item: ${currentCartItem.itemNo} - ${currentCartItem.description}<br>
+                Company: ${currentCartItem.companyName}<br>
+                Quantity: ${quantity}<br>
+                <small style="color: #75e6da;">✓ Redirecting to purchase.php...</small>
+            `, 'success');
+            
+            closeCartModal();
+            
+            setTimeout(() => {
+                window.location.href = 'purchase.php';
+            }, 1500);
+        } else {
+            showNotification('Error: ' + data.message, 'error');
+            addToCartBtn.innerHTML = originalText;
+            addToCartBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error adding to cart. Check console.', 'error');
+        addToCartBtn.innerHTML = originalText;
+        addToCartBtn.disabled = false;
+    });
+}
+
+// ==================== VIEW MODAL FUNCTIONS ====================
+
+// View Company Price
+function viewCompanyPrice(priceId) {
+    const row = document.querySelector(`.item-row[data-price-id="${priceId}"]`);
+    
+    if (!row) {
+        showNotification('Price not found', 'error');
+        return;
+    }
+    
+    const itemNo = row.getAttribute('data-item-no');
+    const description = row.getAttribute('data-description');
+    const category = row.getAttribute('data-category') || '';
+    const company = row.getAttribute('data-company');
+    const contactPerson = row.getAttribute('data-contact');
+    const contactNumber = row.getAttribute('data-contact-number');
+    const quantity = parseInt(row.getAttribute('data-quantity'));
+    const price = parseFloat(row.getAttribute('data-price'));
+    const companyColor = row.getAttribute('data-company-color');
+    const total = quantity * price;
+    
+    const viewHtml = `
+        <div class="view-detail-item">
+            <span class="view-detail-label">Item No</span>
+            <span class="view-detail-value">${itemNo}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Description</span>
+            <span class="view-detail-value">${description}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Category</span>
+            <span class="view-detail-value ${category ? 'category-badge-view' : ''}" ${category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>${category || '—'}</span>
+        </div>
+        <div class="view-detail-item full-width">
+            <span class="view-detail-label">Company</span>
+            <span class="view-detail-value company-badge-view" style="background: ${companyColor}">${company}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Contact Person</span>
+            <span class="view-detail-value">${contactPerson || '—'}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Contact Number</span>
+            <span class="view-detail-value">${contactNumber || '—'}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Available Quantity</span>
+            <span class="view-detail-value">${quantity.toLocaleString()}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Price per Unit</span>
+            <span class="view-detail-value price-highlight">₱${price.toFixed(2)}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Total Price</span>
+            <span class="view-detail-value" style="color: #6c5ce7; font-weight: 700;">₱${total.toFixed(2)}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Availability</span>
+            <span class="view-detail-value">
+                <span class="availability-badge ${parseInt(row.getAttribute('data-availability')) ? 'available' : 'unavailable'}">
+                    <i class="fas ${parseInt(row.getAttribute('data-availability')) ? 'fa-check-circle' : 'fa-times-circle'}"></i>
+                    ${parseInt(row.getAttribute('data-availability')) ? 'In Stock' : 'Out of Stock'}
+                </span>
+            </span>
+        </div>
+    `;
+    
+    document.getElementById('viewDetails').innerHTML = viewHtml;
+    document.getElementById('viewModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close View Modal
+function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// ==================== EDIT PRICE MODAL FUNCTIONS ====================
+
+// Edit Company Price
+function editCompanyPrice(priceId) {
+    const row = document.querySelector(`.item-row[data-price-id="${priceId}"]`);
+    
+    if (!row) {
+        showNotification('Price not found', 'error');
+        return;
+    }
+    
+    const itemNo = row.getAttribute('data-item-no');
+    const description = row.getAttribute('data-description');
+    const category = row.getAttribute('data-category') || '';
+    const company = row.getAttribute('data-company');
+    const contactPerson = row.getAttribute('data-contact');
+    const contactNumber = row.getAttribute('data-contact-number');
+    const quantity = parseInt(row.getAttribute('data-quantity'));
+    const price = parseFloat(row.getAttribute('data-price'));
+    
+    document.getElementById('editPriceId').value = priceId;
+    document.getElementById('editItemNo').value = itemNo;
+    document.getElementById('editDescription').value = description;
+    document.getElementById('editCategory').value = category;
+    document.getElementById('editCompanyName').value = company;
+    document.getElementById('editContactPerson').value = contactPerson || '';
+    document.getElementById('editContactNumber').value = contactNumber || '';
+    document.getElementById('editQuantity').value = quantity;
+    document.getElementById('editPrice').value = price.toFixed(2);
+    
+    calculateEditTotal();
+    
+    document.getElementById('editModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close Edit Price Modal
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Calculate edit total
+function calculateEditTotal() {
+    const quantity = parseInt(document.getElementById('editQuantity').value) || 0;
+    const price = parseFloat(document.getElementById('editPrice').value) || 0;
+    const total = quantity * price;
+    
+    document.getElementById('editTotalPrice').innerHTML = `₱${total.toFixed(2)} <small>(${quantity} × ₱${price.toFixed(2)})</small>`;
+}
+
+// Handle edit form submit
+document.addEventListener('DOMContentLoaded', function() {
+    const editForm = document.getElementById('editForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(editForm);
+            
+            const saveBtn = document.getElementById('saveEditBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<span class="loading-spinner"></span> Saving...';
+            saveBtn.disabled = true;
+            
+            fetch('update_price.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Price updated successfully!', 'success');
+                    closeEditModal();
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    showNotification('Error: ' + data.message, 'error');
+                    saveBtn.innerHTML = originalText;
+                    saveBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error updating price', 'error');
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+        });
+    }
+});
+
+// ==================== DELETE PRICE FUNCTIONS ====================
+
+// Delete Company Price
+function deleteCompanyPrice(priceId, companyName, itemNo) {
     pendingDeleteId = priceId;
     pendingDeleteCompany = companyName;
     pendingDeleteItem = itemNo;
     
-    // Update modal content
     document.getElementById('deleteCompanyName').textContent = companyName || 'Unknown Company';
     document.getElementById('deleteItemNo').textContent = itemNo || 'Unknown Item';
     
-    // Show the modal
     document.getElementById('deleteConfirmModal').style.display = 'block';
-    document.body.style.overflow = 'hidden'; // Prevent scrolling
+    document.body.style.overflow = 'hidden';
 }
 
-// Delete now function - using modal
+// Delete Now
 function deleteNow() {
-    console.log('Deleting ID:', pendingDeleteId);
-    
     if (!pendingDeleteId) {
         showNotification('No item selected', 'error');
         closeDeleteConfirmModal();
         return;
     }
     
-    // Close modal
     closeDeleteConfirmModal();
-    
-    // Show loading notification
     showNotification('Deleting...', 'info');
     
     const formData = new FormData();
@@ -3021,10 +4835,8 @@ function deleteNow() {
     })
     .then(response => response.json())
     .then(data => {
-        console.log('Response:', data);
         if (data.success) {
             showNotification('✅ Price deleted successfully!', 'success');
-            // Reload after 1 second
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -3038,821 +4850,189 @@ function deleteNow() {
     });
 }
 
-// Close delete modal
+// Close Delete Price Confirm Modal
 function closeDeleteConfirmModal() {
     document.getElementById('deleteConfirmModal').style.display = 'none';
-    document.body.style.overflow = 'auto'; // Re-enable scrolling
-    // Don't clear pendingDeleteId immediately para magamit pa rin kung sakaling mag-cancel lang
-}  
+    document.body.style.overflow = 'auto';
+}
 
-    // Open Comparison Modal
-    function openComparisonModal() {
-        const items = collectAllItemsData();
-        
-        if (items.length === 0) {
-            showNotification('No items to compare', 'error');
-            return;
-        }
-        
-        // Update the toggle button text based on current sort
-        updatePriceSortButton();
-        
-        renderComparisonTable(items);
-        document.getElementById('comparisonModal').style.display = 'block';
-        document.body.style.overflow = 'hidden';
-        
-        // Clear search input when opening modal
-        document.getElementById('comparisonSearch').value = '';
+// ==================== NOTIFICATION FUNCTIONS ====================
+
+// Show notification
+function showNotification(message, type = 'success') {
+    const existingNotification = document.querySelector('.cart-notification');
+    if (existingNotification) {
+        existingNotification.remove();
     }
-
-    // Close Comparison Modal
-    function closeComparisonModal() {
-        document.getElementById('comparisonModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    // Update price sort button text
-    function updatePriceSortButton() {
-        const priceSortText = document.getElementById('priceSortText');
-        const toggleBtn = document.getElementById('togglePriceSortBtn');
-        
-        if (currentPriceSort === 'price_desc') {
-            priceSortText.textContent = 'Price: High to Low';
-            toggleBtn.innerHTML = '<i class="fas fa-sort-amount-up-alt"></i> <span id="priceSortText">Price: High to Low</span>';
-        } else {
-            priceSortText.textContent = 'Price: Low to High';
-            toggleBtn.innerHTML = '<i class="fas fa-sort-amount-down-alt"></i> <span id="priceSortText">Price: Low to High</span>';
-        }
-    }
-
-    // Filter comparison table by search term
-    function filterComparisonTable() {
-        const searchTerm = document.getElementById('comparisonSearch').value.toLowerCase().trim();
-        const rows = document.querySelectorAll('#comparisonTable tbody tr');
-        let visibleCount = 0;
-        
-        rows.forEach(row => {
-            const itemNo = row.cells[0]?.textContent.toLowerCase() || '';
-            const company = row.cells[3]?.textContent.toLowerCase() || '';
-            
-            if (searchTerm === '' || itemNo.includes(searchTerm) || company.includes(searchTerm)) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        
-        document.getElementById('comparisonTotalCount').textContent = visibleCount;
-    }
-
-    // Render comparison table - WITH CATEGORY
-    function renderComparisonTable(items) {
-        const tbody = document.getElementById('comparisonTableBody');
-        const totalCount = document.getElementById('comparisonTotalCount');
-        
-        let html = '';
-        items.forEach(item => {
-            const total = item.quantity * item.price;
-            html += `
-                <tr>
-                    <td><strong>${item.itemNo}</strong></td>
-                    <td>${item.description}</td>
-                    <td>
-                        ${item.category ? 
-                            `<span class="category-badge" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                                <i class="fas fa-tag"></i> ${item.category}
-                            </span>` : 
-                            '<span class="text-muted">—</span>'
-                        }
-                    </td>
-                    <td>
-                        <span class="company-badge" style="background: ${item.companyColor}">
-                            ${item.company}
-                        </span>
-                    </td>
-                    <td>${item.contactPerson || '—'}</td>
-                    <td>${item.contactNumber || '—'}</td>
-                    <td>${item.quantity.toLocaleString()}</td>
-                    <td class="price-cell">₱${item.price.toFixed(2)}</td>
-                    <td>
-                        <span class="total-price-cell">
-                            ₱${total.toFixed(2)}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="availability-badge ${item.availability === 'In Stock' ? 'available' : 'unavailable'}">
-                            <i class="fas ${item.availability === 'In Stock' ? 'fa-check-circle' : 'fa-times-circle'}"></i>
-                            ${item.availability}
-                        </span>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        tbody.innerHTML = html;
-        totalCount.textContent = items.length;
-    }
-
-    // Toggle between price low-high and high-low
-    function togglePriceSort() {
-        if (currentPriceSort === 'price_asc') {
-            currentPriceSort = 'price_desc';
-        } else {
-            currentPriceSort = 'price_asc';
-        }
-        
-        // Update button text
-        updatePriceSortButton();
-        
-        // Apply the sort
-        sortComparison(currentPriceSort);
-    }
-
-    // Sort comparison table
-    function sortComparison(type) {
-        let items = collectAllItemsData();
-        
-        document.querySelectorAll('.comparison-sort-btn').forEach(btn => btn.classList.remove('active'));
-        
-        renderComparisonTable(items);
-        
-        // Re-apply search filter after sorting
-        filterComparisonTable();
-    }
-
-    // Export to Excel function - FROM OLD CODE WITH CATEGORY
-    function exportToExcel() {
-        const items = collectAllItemsData();
-        
-        if (items.length === 0) {
-            showNotification('No data to export', 'error');
-            return;
-        }
-        
-        // Group items by description/item no
-        const groupedItems = {};
-        items.forEach(item => {
-            const key = `${item.itemNo}|${item.description}`;
-            if (!groupedItems[key]) {
-                groupedItems[key] = {
-                    itemNo: item.itemNo,
-                    description: item.description,
-                    category: item.category,
-                    companies: []
-                };
-            }
-            groupedItems[key].companies.push(item);
-        });
-        
-        // Get unique companies
-        const companies = [...new Set(items.map(item => item.company))];
-        
-        // Sort companies alphabetically for consistency
-        companies.sort();
-        
-        // Create CSV content
-        let csvContent = "";
-        
-        // Company Header
-        csvContent += "JLC BEST CONSTRUCTION OPC,,,,,,,,,,,,,,,Ref. No.,202511-002\n";
-        csvContent += "\n";
-        csvContent += "CANVASS FORM,,,,,,,,,,,,,,,\n";
-        csvContent += "\n";
-        csvContent += "Customer:,,,,,,,,,,,,,,Date:," + getCurrentDate() + "\n";
-        csvContent += "Project Name:,,,,,,,,,,,,,,Date Needed:,\n";
-        csvContent += "\n";
-        
-        // Main Header Row - WITH CATEGORY
-        csvContent += "Item No,Description,Category,,,,,,Qty.,Unit";
-        
-        // Add company headers
-        companies.forEach(company => {
-            csvContent += `,,${company}`;
-        });
-        csvContent += ",\n";
-        
-        // Sub Header Row
-        csvContent += ",,,,,,,,,,Unit Price,Total,Unit Price,Total,Unit Price,Total,Total\n";
-        
-        // Data Rows - sort groups based on current price preference
-        const groupsArray = Object.values(groupedItems);
-        
-        // Sort groups by lowest price in each group
-        groupsArray.sort((a, b) => {
-            const aLowestPrice = Math.min(...a.companies.map(c => c.price));
-            const bLowestPrice = Math.min(...b.companies.map(c => c.price));
-            
-            if (currentPriceSort === 'price_desc') {
-                return bLowestPrice - aLowestPrice; // High to low
-            } else {
-                return aLowestPrice - bLowestPrice; // Low to high
-            }
-        });
-        
-        let rowIndex = 1;
-        groupsArray.forEach(group => {
-            const qty = group.companies[0]?.quantity || 0;
-            
-            // Build row - Item No, Description, and Category first
-            let row = `${rowIndex},${group.description},${group.category || ''}`;
-            
-            // Add empty cells for spacing (columns D-H)
-            row += ",,,,,,,";
-            
-            // Add Qty and Unit (these will be in columns I and J)
-            row += `,${qty},pcs`;
-            
-            // Add company prices - sort companies within group based on current sort
-            const sortedCompanies = [...group.companies].sort((a, b) => {
-                if (currentPriceSort === 'price_desc') {
-                    return b.price - a.price; // High to low
-                } else {
-                    return a.price - b.price; // Low to high
-                }
-            });
-            
-            companies.forEach(company => {
-                const companyItem = group.companies.find(c => c.company === company);
-                if (companyItem) {
-                    const unitPrice = companyItem.price.toFixed(2);
-                    const total = (companyItem.quantity * companyItem.price).toFixed(2);
-                    row += `,,${unitPrice},${total}`;
-                } else {
-                    row += ",,,";
-                }
-            });
-            
-            // Add lowest total
-            const lowestPriceItem = group.companies.reduce((prev, curr) => 
-                (curr.price < prev.price) ? curr : prev, group.companies[0]);
-            const lowestTotal = (lowestPriceItem.quantity * lowestPriceItem.price).toFixed(2);
-            row += `,,${lowestTotal}`;
-            
-            csvContent += row + "\n";
-            rowIndex++;
-        });
-        
-        // Create and download file
-        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        const date = new Date();
-        const dateStr = date.toISOString().split('T')[0];
-        const sortSuffix = currentPriceSort === 'price_desc' ? '_HIGH_TO_LOW' : '_LOW_TO_HIGH';
-        const filename = `MRF_FORM_${dateStr}${sortSuffix}.csv`;
-        
-        link.setAttribute('href', url);
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        showNotification(`✅ Exported to ${filename}`, 'success');
-    }
-
-    // Helper function to get current date in YYYY-MM-DD format
-    function getCurrentDate() {
-        const date = new Date();
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day} 00:00:00`;
-    }
-
-    // Print Comparison function - FROM OLD CODE WITH CATEGORY
-    function printComparison() {
-        const items = collectAllItemsData();
-        
-        if (items.length === 0) {
-            showNotification('No data to print', 'error');
-            return;
-        }
-        
-        // Get current search term to filter printed items
-        const searchTerm = document.getElementById('comparisonSearch').value.toLowerCase().trim();
-        let filteredItems = items;
-        
-        if (searchTerm !== '') {
-            filteredItems = items.filter(item => 
-                item.itemNo.toLowerCase().includes(searchTerm) || 
-                item.company.toLowerCase().includes(searchTerm)
-            );
-        }
-        
-        if (filteredItems.length === 0) {
-            showNotification('No items match your search', 'error');
-            return;
-        }
-        
-        // Group items by description/item no
-        const groupedItems = {};
-        filteredItems.forEach(item => {
-            const key = `${item.itemNo}|${item.description}`;
-            if (!groupedItems[key]) {
-                groupedItems[key] = {
-                    itemNo: item.itemNo,
-                    description: item.description,
-                    category: item.category,
-                    companies: []
-                };
-            }
-            groupedItems[key].companies.push(item);
-        });
-        
-        // Get unique companies
-        const companies = [...new Set(filteredItems.map(item => item.company))];
-        companies.sort();
-        
-        // Sort groups based on current price preference
-        const groupsArray = Object.values(groupedItems);
-        groupsArray.sort((a, b) => {
-            const aLowestPrice = Math.min(...a.companies.map(c => c.price));
-            const bLowestPrice = Math.min(...b.companies.map(c => c.price));
-            
-            if (currentPriceSort === 'price_desc') {
-                return bLowestPrice - aLowestPrice; // High to low
-            } else {
-                return aLowestPrice - bLowestPrice; // Low to high
-            }
-        });
-        
-        // Calculate rows per page
-        const ROWS_PER_PAGE = 15;
-        
-        // Split groups into pages
-        const pages = [];
-        for (let i = 0; i < groupsArray.length; i += ROWS_PER_PAGE) {
-            pages.push(groupsArray.slice(i, i + ROWS_PER_PAGE));
-        }
-        
-        // Create print window
-        const printWindow = window.open('', '_blank');
-        
-        let html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>MRF Canvas Form</title>
-            <style>
-                body { 
-                    font-family: Arial, sans-serif; 
-                    margin: 0;
-                    padding: 20px;
-                    background: white;
-                }
-                .page {
-                    page-break-after: always;
-                    page-break-inside: avoid;
-                    margin: 0;
-                    padding: 0;
-                    position: relative;
-                }
-                .page:last-child {
-                    page-break-after: auto;
-                }
-                .company-header { 
-                    font-size: 16px; 
-                    font-weight: bold; 
-                    text-align: left;
-                    margin-bottom: 5px;
-                }
-                .ref-no { 
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    font-size: 12px;
-                }
-                .canvas-form { 
-                    font-size: 14px; 
-                    font-weight: bold; 
-                    margin: 10px 0; 
-                    text-align: left;
-                }
-                .info-row { 
-                    display: flex; 
-                    margin: 5px 0; 
-                    font-size: 12px;
-                }
-                .info-label {
-                    width: 80px;
-                    font-weight: bold;
-                }
-                .info-value {
-                    flex: 1;
-                    border-bottom: 1px solid #000;
-                    margin-left: 10px;
-                }
-                .project-row {
-                    display: flex;
-                    margin: 5px 0;
-                    font-size: 12px;
-                }
-                .project-label {
-                    width: 80px;
-                    font-weight: bold;
-                }
-                .project-value {
-                    width: 200px;
-                    border-bottom: 1px solid #000;
-                    margin-left: 10px;
-                }
-                .date-needed-label {
-                    margin-left: 50px;
-                    font-weight: bold;
-                }
-                .date-needed-value {
-                    width: 150px;
-                    border-bottom: 1px solid #000;
-                    margin-left: 10px;
-                }
-                table { 
-                    border-collapse: collapse; 
-                    width: 100%; 
-                    margin: 15px 0; 
-                    font-size: 10px; 
-                    border: 1px solid #000;
-                }
-                th, td { 
-                    border: 1px solid #000; 
-                    padding: 4px; 
-                    vertical-align: middle;
-                }
-                th { 
-                    background-color: #f0f0f0; 
-                    font-weight: bold; 
-                    text-align: center;
-                }
-                td {
-                    text-align: left;
-                }
-                td.item-no-cell {
-                    text-align: center;
-                    font-weight: bold;
-                }
-                td.qty-cell {
-                    text-align: center;
-                }
-                td.unit-cell {
-                    text-align: center;
-                }
-                td.price-cell {
-                    text-align: right;
-                }
-                td.total-cell {
-                    text-align: right;
-                }
-                td.formula-cell {
-                    text-align: right;
-                    color: #006100;
-                }
-                .total-row { 
-                    font-weight: bold; 
-                    background-color: #e8f4f8; 
-                }
-                .footer { 
-                    margin-top: 20px;
-                }
-                .signature-section {
-                    margin-top: 30px;
-                    font-size: 12px;
-                }
-                .signature-row {
-                    display: flex;
-                    margin: 5px 0;
-                }
-                .signature-label {
-                    width: 100px;
-                    font-weight: bold;
-                }
-                .signature-value {
-                    flex: 1;
-                    border-bottom: 1px solid #000;
-                    margin-left: 10px;
-                }
-                .note { 
-                    font-size: 10px; 
-                    margin-top: 10px; 
-                    font-style: italic;
-                }
-                .note-bold {
-                    font-weight: bold;
-                }
-                .page-number {
-                    text-align: center;
-                    font-size: 9px;
-                    color: #666;
-                    margin-top: 10px;
-                }
-                /* Ensure table headers repeat on each page */
-                thead {
-                    display: table-header-group;
-                }
-                tr {
-                    page-break-inside: avoid;
-                }
-                @media print {
-                    body { 
-                        margin: 0.5in; 
-                    }
-                    .page {
-                        page-break-after: always;
-                    }
-                }
-            </style>
-        </head>
-        <body>`;
-        
-        // Generate each page
-        pages.forEach((pageGroups, pageIndex) => {
-            const isLastPage = pageIndex === pages.length - 1;
-            const startRow = pageIndex * ROWS_PER_PAGE + 1;
-            
-            html += `
-            <div class="page">
-                <div style="position: relative;">
-                    <div class="company-header">JLC BEST CONSTRUCTION OPC</div>
-                    <div class="ref-no">Ref. No. 202511-002</div>
-                </div>
-                
-                <div class="canvas-form">CANVASS FORM</div>
-                
-                <div class="info-row">
-                    <span class="info-label">Customer:</span>
-                    <span class="info-value"></span>
-                    <span style="margin-left: 50px; font-weight: bold;">Date:</span>
-                    <span style="margin-left: 10px; border-bottom: 1px solid #000; width: 150px;">${getCurrentDate()}</span>
-                </div>
-                
-                <div class="project-row">
-                    <span class="project-label">Project Name:</span>
-                    <span class="project-value">${pageIndex === 0 ? '6th flr' : '4TH & 5TH FLOOR'}</span>
-                    <span class="date-needed-label">Date Needed:</span>
-                    <span class="date-needed-value"></span>
-                </div>
-                
-                <div style="height: 10px;"></div>
-                
-                <table>
-                    <thead>
-                        <tr>
-                            <th rowspan="2" width="5%">Item No</th>
-                            <th rowspan="2" width="20%">Description</th>
-                            <th rowspan="2" width="10%">Category</th>
-                            <th rowspan="2" width="5%">Qty.</th>
-                            <th rowspan="2" width="5%">Unit</th>`;
-            
-            // Add company headers
-            companies.forEach(company => {
-                html += `<th colspan="2" width="${12/companies.length}%">${company}</th>`;
-            });
-            
-            html += `<th rowspan="2" width="8%">Lowest<br>Total</th>
-                    </tr>
-                    <tr>`;
-            
-            // Add unit/total subheaders
-            companies.forEach(() => {
-                html += `<th width="5%">Price</th><th width="5%">Total</th>`;
-            });
-            
-            html += `</tr>
-                </thead>
-                <tbody>`;
-            
-            // Add data rows for this page
-            pageGroups.forEach((group, index) => {
-                const rowNumber = startRow + index;
-                const qty = group.companies[0]?.quantity || 0;
-                
-                html += `<tr>
-                    <td class="item-no-cell">${rowNumber}</td>
-                    <td>${group.description}</td>
-                    <td>${group.category || ''}</td>
-                    <td class="qty-cell">${qty.toLocaleString()}</td>
-                    <td class="unit-cell">pcs</td>`;
-                
-                // Add company prices
-                companies.forEach(company => {
-                    const companyItem = group.companies.find(c => c.company === company);
-                    if (companyItem) {
-                        const unitPrice = companyItem.price.toFixed(2);
-                        const total = (companyItem.quantity * companyItem.price).toFixed(2);
-                        html += `<td class="price-cell">${unitPrice}</td>
-                                 <td class="formula-cell">=${total}</td>`;
-                    } else {
-                        html += `<td class="price-cell"></td>
-                                 <td class="formula-cell"></td>`;
-                    }
-                });
-                
-                // Add lowest total
-                const companiesWithPrices = group.companies.filter(c => c.price > 0);
-                if (companiesWithPrices.length > 0) {
-                    companiesWithPrices.sort((a, b) => a.price - b.price);
-                    const lowestPriceItem = companiesWithPrices[0];
-                    const lowestTotal = (lowestPriceItem.quantity * lowestPriceItem.price).toFixed(2);
-                    html += `<td class="formula-cell">=${lowestTotal}</td>`;
-                } else {
-                    html += `<td class="formula-cell"></td>`;
-                }
-                
-                html += `</tr>`;
-            });
-            
-            // Add empty rows to maintain consistency if needed
-            const remainingRows = ROWS_PER_PAGE - pageGroups.length;
-            for (let i = 0; i < remainingRows; i++) {
-                const emptyRowNumber = startRow + pageGroups.length + i;
-                html += `<tr>
-                    <td class="item-no-cell">${emptyRowNumber}</td>
-                    <td></td>
-                    <td></td>
-                    <td class="qty-cell"></td>
-                    <td class="unit-cell"></td>`;
-                
-                companies.forEach(() => {
-                    html += `<td class="price-cell"></td>
-                             <td class="formula-cell"></td>`;
-                });
-                
-                html += `<td class="formula-cell"></td>
-                    </tr>`;
-            }
-            
-            // Add totals row
-            html += `<tr class="total-row">
-                <td colspan="5" style="text-align: right;"><strong>TOTAL:</strong></td>`;
-            
-            companies.forEach(() => {
-                html += `<td class="price-cell"></td>
-                         <td class="formula-cell"><strong>=SUM()</strong></td>`;
-            });
-            
-            html += `<td class="formula-cell"><strong>=SUM()</strong></td>
-                </tr>`;
-            
-            html += `</tbody>
-                </table>`;
-            
-            // Add note
-            html += `
-                <div class="note">
-                    <span class="note-bold">*NOTE:</span> Project Stocks
-                </div>
-                
-                <div style="height: 20px;"></div>`;
-            
-            // Add signature section (only on last page)
-            if (isLastPage) {
-                html += `
-                <div class="signature-section">
-                    <div class="signature-row">
-                        <span class="signature-label">Canvass By:</span>
-                        <span class="signature-value">ENGR. CM GALLOS</span>
-                    </div>
-                    <div class="signature-row">
-                        <span class="signature-label">Date:</span>
-                        <span class="signature-value"></span>
-                    </div>
-                    
-                    <div style="height: 15px;"></div>
-                    
-                    <div class="signature-row">
-                        <span class="signature-label">Noted By:</span>
-                        <span class="signature-value">Engr. Louisito De Guzman</span>
-                    </div>
-                    <div class="signature-row">
-                        <span class="signature-label">Date:</span>
-                        <span class="signature-value">${getCurrentDate()}</span>
-                    </div>
-                </div>`;
-            }
-            
-            html += `<div class="page-number">Page ${pageIndex + 1} of ${pages.length}</div>`;
-            html += `</div>`; // Close page div
-        });
-        
-        html += `
-            <script>
-                window.onload = function() { 
-                    setTimeout(function() { 
-                        window.print();
-                    }, 500);
-                }
-            <\/script>
-        </body>
-        </html>`;
-        
-        printWindow.document.write(html);
-        printWindow.document.close();
-    }
-
-    // Show notification
-    function showNotification(message, type = 'success') {
-        const existingNotification = document.querySelector('.cart-notification');
-        if (existingNotification) {
-            existingNotification.remove();
-        }
-        
-        const notification = document.createElement('div');
-        notification.className = `cart-notification ${type}`;
-        notification.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-            <span>${message}</span>
-        `;
-        
-        document.body.appendChild(notification);
-        
+    
+    const notification = document.createElement('div');
+    notification.className = `cart-notification ${type}`;
+    notification.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('fade-out');
         setTimeout(() => {
-            notification.classList.add('fade-out');
-            setTimeout(() => {
-                notification.remove();
-            }, 300);
-        }, 5000);
-    }
-
-    // Close cart modal
-    function closeCartModal() {
-        document.getElementById('cartModal').style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-
-    // Close modal when clicking outside
-    window.onclick = function(event) {
-        const cartModal = document.getElementById('cartModal');
-        const companyFormModal = document.getElementById('companyFormModal');
-        const viewModal = document.getElementById('viewModal');
-        const editModal = document.getElementById('editModal');
-        const comparisonModal = document.getElementById('comparisonModal');
-        const deleteModal = document.getElementById('deleteConfirmModal');
-        
-        if (event.target == cartModal) {
-            closeCartModal();
-        }
-        if (event.target == companyFormModal) {
-            closeCompanyFormModal();
-        }
-        if (event.target == viewModal) {
-            closeViewModal();
-        }
-        if (event.target == editModal) {
-            closeEditModal();
-        }
-        if (event.target == comparisonModal) {
-            closeComparisonModal();
-        }
-        if (event.target == deleteModal) {
-            closeDeleteConfirmModal();
-        }
-    }
-
-    // Auto-hide success message
-    setTimeout(function() {
-        const successMsg = document.getElementById('successMessage');
-        if (successMsg) {
-            successMsg.style.opacity = '0';
-            setTimeout(() => {
-                successMsg.style.display = 'none';
-            }, 300);
-        }
+            notification.remove();
+        }, 300);
     }, 5000);
+}
 
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set initial search value from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const searchItem = urlParams.get('search_item');
-        if (searchItem) {
-            document.getElementById('itemSearch').value = searchItem;
-            filterTable();
-        }
-        
-        // Initialize current price sort from PHP
-        <?php if ($active_sort == 'price' && $sort_by == 'price_desc'): ?>
-        currentPriceSort = 'price_desc';
-        <?php else: ?>
-        currentPriceSort = 'price_asc';
-        <?php endif; ?>
-        
-        // Update sort icon and text
-        const sortIcon = document.getElementById('sortIcon');
-        const sortText = document.getElementById('sortText');
-        if (sortIcon && sortText) {
-            <?php if ($active_sort == 'price'): ?>
-                <?php if ($sort_by == 'price_desc'): ?>
-                sortIcon.className = 'fas fa-sort-amount-up';
-                sortText.textContent = 'Price High to Low';
-                <?php else: ?>
-                sortIcon.className = 'fas fa-sort-amount-down';
-                sortText.textContent = 'Price Low to High';
-                <?php endif; ?>
+// ==================== MODAL CLICK HANDLERS ====================
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const cartModal = document.getElementById('cartModal');
+    const addCompanyModal = document.getElementById('addCompanyModal');
+    const editCompanySelectModal = document.getElementById('editCompanySelectModal');
+    const editCompanyModal = document.getElementById('editCompanyModal');
+    const deleteCompaniesModal = document.getElementById('deleteCompaniesModal');
+    const addItemModal = document.getElementById('addItemModal');
+    const viewModal = document.getElementById('viewModal');
+    const editModal = document.getElementById('editModal');
+    const comparisonModal = document.getElementById('comparisonModal');
+    const deleteConfirmModal = document.getElementById('deleteConfirmModal');
+    
+    if (event.target == cartModal) closeCartModal();
+    if (event.target == addCompanyModal) closeAddCompanyModal();
+    if (event.target == editCompanySelectModal) closeEditCompanySelectModal();
+    if (event.target == editCompanyModal) closeEditCompanyModal();
+    if (event.target == deleteCompaniesModal) closeDeleteCompaniesModal();
+    if (event.target == addItemModal) closeAddItemModal();
+    if (event.target == viewModal) closeViewModal();
+    if (event.target == editModal) closeEditModal();
+    if (event.target == comparisonModal) closeComparisonModal();
+    if (event.target == deleteConfirmModal) closeDeleteConfirmModal();
+}
+
+// ==================== INITIALIZATION ====================
+
+// Auto-hide success messages
+setTimeout(function() {
+    const successMsg = document.getElementById('successMessage');
+    if (successMsg) {
+        successMsg.style.opacity = '0';
+        setTimeout(() => {
+            successMsg.style.display = 'none';
+        }, 300);
+    }
+    
+    const companyAddedMsg = document.getElementById('companyAddedMessage');
+    if (companyAddedMsg) {
+        companyAddedMsg.style.opacity = '0';
+        setTimeout(() => {
+            companyAddedMsg.style.display = 'none';
+        }, 300);
+    }
+    
+    const companyEditedMsg = document.getElementById('companyEditedMessage');
+    if (companyEditedMsg) {
+        companyEditedMsg.style.opacity = '0';
+        setTimeout(() => {
+            companyEditedMsg.style.display = 'none';
+        }, 300);
+    }
+    
+    const companiesDeletedMsg = document.getElementById('companiesDeletedMessage');
+    if (companiesDeletedMsg) {
+        companiesDeletedMsg.style.opacity = '0';
+        setTimeout(() => {
+            companiesDeletedMsg.style.display = 'none';
+        }, 300);
+    }
+    
+    const companyExistsMsg = document.getElementById('companyExistsMessage');
+    if (companyExistsMsg) {
+        companyExistsMsg.style.opacity = '0';
+        setTimeout(() => {
+            companyExistsMsg.style.display = 'none';
+        }, 300);
+    }
+    
+    const deleteErrorMsg = document.getElementById('deleteErrorMessage');
+    if (deleteErrorMsg) {
+        deleteErrorMsg.style.opacity = '0';
+        setTimeout(() => {
+            deleteErrorMsg.style.display = 'none';
+        }, 300);
+    }
+}, 5000);
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Page loaded, initializing...');
+    
+    // Set initial search values from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterCategory = urlParams.get('filter_category');
+    const filterCompany = urlParams.get('filter_company');
+    const filterSearch = urlParams.get('filter_search');
+    
+    if (filterCategory) document.getElementById('filter_category').value = filterCategory;
+    if (filterCompany) document.getElementById('filter_company').value = filterCompany;
+    if (filterSearch) document.getElementById('filter_search').value = filterSearch;
+    
+    // Initialize current price sort from PHP
+    <?php if ($active_sort == 'price' && $sort_by == 'price_desc'): ?>
+    currentPriceSort = 'price_desc';
+    <?php else: ?>
+    currentPriceSort = 'price_asc';
+    <?php endif; ?>
+    
+    console.log('Current price sort:', currentPriceSort);
+    
+    // Update sort icon and text on main page
+    const sortIcon = document.getElementById('sortIcon');
+    const sortText = document.getElementById('sortText');
+    const priceSortBtn = document.getElementById('priceSortBtn');
+    
+    if (sortIcon && sortText && priceSortBtn) {
+        <?php if ($active_sort == 'price'): ?>
+            <?php if ($sort_by == 'price_desc'): ?>
+            sortIcon.className = 'fas fa-sort-amount-up';
+            sortText.textContent = 'Price High to Low';
+            priceSortBtn.classList.add('active');
             <?php else: ?>
-                sortIcon.className = 'fas fa-sort-amount-down';
-                sortText.textContent = 'Price Low to High';
+            sortIcon.className = 'fas fa-sort-amount-down';
+            sortText.textContent = 'Price Low to High';
+            priceSortBtn.classList.add('active');
             <?php endif; ?>
-        }
-    });
+        <?php else: ?>
+            sortIcon.className = 'fas fa-sort-amount-down';
+            sortText.textContent = 'Price Low to High';
+            priceSortBtn.classList.remove('active');
+        <?php endif; ?>
+    }
+    
+    // Attach event listener to price sort button
+    if (priceSortBtn) {
+        priceSortBtn.onclick = function(e) {
+            e.preventDefault();
+            togglePriceSort();
+            return false;
+        };
+    }
+    
+    // Attach event listener to comparison sort button
+    const toggleSortBtn = document.getElementById('togglePriceSortBtn');
+    if (toggleSortBtn) {
+        toggleSortBtn.onclick = function(e) {
+            e.preventDefault();
+            toggleComparisonSort();
+            return false;
+        };
+    }
+    
+    // Attach event listener to comparison search
+    const comparisonSearch = document.getElementById('comparisonSearch');
+    if (comparisonSearch) {
+        comparisonSearch.addEventListener('keyup', filterComparisonTable);
+    }
+});
 </script>
 
 <?php 

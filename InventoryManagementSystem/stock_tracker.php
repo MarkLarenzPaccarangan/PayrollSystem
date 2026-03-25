@@ -1,5 +1,5 @@
 <?php
-// stock_tracker.php - COMPLETE WITH PURCHASE INTEGRATION
+// stock_tracker.php - COMPLETE WITH PURCHASE INTEGRATION AND ENHANCED DATE PICKER
 ob_start();
 require_once 'config.php';
 requireLogin();
@@ -16,6 +16,16 @@ $database = 'inventory_system';
 $conn = new mysqli($host, $username, $password, $database);
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
+}
+
+// ========== GET SITES FOR QUICK SELECT DROPDOWN ==========
+$sites_for_dropdown = [];
+$sites_sql = "SELECT site_name FROM sites ORDER BY site_name";
+$sites_result = $conn->query($sites_sql);
+if ($sites_result) {
+    while ($row = $sites_result->fetch_assoc()) {
+        $sites_for_dropdown[] = $row['site_name'];
+    }
 }
 
 // Handle form submissions for stock in/out
@@ -59,6 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $quantity = intval($_POST['quantity']);
     $reference = $conn->real_escape_string($_POST['reference']);
     $notes = $conn->real_escape_string($_POST['notes']);
+    $site_location = isset($_POST['site_location']) ? trim($_POST['site_location']) : '';
     
     // Check if enough stock
     $check_sql = "SELECT quantity as current_stock FROM products WHERE id = ?";
@@ -74,6 +85,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     
+    // Check if site_location column exists, if not add it
+    $check_column = "SHOW COLUMNS FROM stock_movements LIKE 'site_location'";
+    $column_result = $conn->query($check_column);
+    if ($column_result->num_rows == 0) {
+        $conn->query("ALTER TABLE stock_movements ADD COLUMN site_location VARCHAR(255) DEFAULT NULL");
+    }
+    
     // Start transaction
     $conn->begin_transaction();
     
@@ -84,15 +102,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt->bind_param("ii", $quantity, $product_id);
         $stmt->execute();
         
-        // Record stock movement
-        $movement_sql = "INSERT INTO stock_movements (product_id, type, quantity, reference, notes, created_by) 
-                         VALUES (?, 'out', ?, ?, ?, ?)";
-        $stmt = $conn->prepare($movement_sql);
-        $stmt->bind_param("iissi", $product_id, $quantity, $reference, $notes, $current_user['id']);
+        // FIXED: Record stock movement with site location - Handle NULL properly
+        if (!empty($site_location)) {
+            // May site location na nilagay
+            $movement_sql = "INSERT INTO stock_movements (product_id, type, quantity, reference, notes, created_by, site_location) 
+                             VALUES (?, 'out', ?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($movement_sql);
+            $stmt->bind_param("iississ", $product_id, $quantity, $reference, $notes, $current_user['id'], $site_location);
+        } else {
+            // Walang site location - use NULL
+            $movement_sql = "INSERT INTO stock_movements (product_id, type, quantity, reference, notes, created_by, site_location) 
+                             VALUES (?, 'out', ?, ?, ?, ?, NULL)";
+            $stmt = $conn->prepare($movement_sql);
+            $stmt->bind_param("iissi", $product_id, $quantity, $reference, $notes, $current_user['id']);
+        }
         $stmt->execute();
         
         $conn->commit();
         $_SESSION['success'] = "Stock removed successfully! " . $quantity . " units deducted from inventory.";
+        if (!empty($site_location)) {
+            $_SESSION['success'] .= " Site: " . $site_location;
+        }
     } catch (Exception $e) {
         $conn->rollback();
         $_SESSION['error'] = "Error removing stock: " . $e->getMessage();
@@ -106,13 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get date filter (default to today)
 $selected_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
-// DEBUG: Check products with category
-$debug_sql = "SELECT id, name, category FROM products WHERE category IS NOT NULL AND category != '' LIMIT 10";
-$debug_result = $conn->query($debug_sql);
-// Optional: Uncomment to see debug info in HTML source
-// echo "<!-- DEBUG: Products with category: " . $debug_result->num_rows . " -->";
-
-// Get stock movements for the selected date - WITH CATEGORY
+// Get stock movements for the selected date
 $movements_sql = "SELECT 
                     sm.id,
                     sm.created_at,
@@ -143,7 +167,7 @@ $stmt->bind_param("s", $selected_date);
 $stmt->execute();
 $daily_movements = $stmt->get_result();
 
-// Get all stock out movements for history with optional date range - WITH CATEGORY
+// Get all stock out movements for history with optional date range - WITH CATEGORY AND SITE LOCATION
 $date_from = isset($_GET['from']) ? $_GET['from'] : date('Y-m-d', strtotime('-30 days'));
 $date_to = isset($_GET['to']) ? $_GET['to'] : date('Y-m-d');
 
@@ -153,6 +177,7 @@ $all_stock_out_sql = "SELECT
                         sm.reference,
                         sm.quantity,
                         sm.type,
+                        sm.site_location,
                         p.id as product_id,
                         p.name as product_name,
                         p.category,
@@ -210,6 +235,50 @@ require_once 'include/header.php';
     padding: 20px;
     max-width: 1600px;
     margin: 0 auto;
+}
+
+/* Add styles for site dropdown */
+.site-quick-select {
+    margin-top: 10px;
+}
+
+.site-quick-select select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.site-quick-select select:focus {
+    outline: none;
+    border-color: #e84393;
+}
+
+.site-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.site-input-group input {
+    flex: 1;
+}
+
+/* Site badge for history */
+.site-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    background: linear-gradient(135deg, #00b894, #75e6da);
+    color: #1a1c3c;
 }
 
 /* ========== STATS CARDS ========== */
@@ -316,7 +385,7 @@ require_once 'include/header.php';
     font-weight: 800;
     color: var(--text-primary);
     margin-bottom: 5px;
-    background: linear-gradient(135deg, #e84393, #d63031);
+    background: linear-gradient(135deg, #ffffff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -354,7 +423,7 @@ require_once 'include/header.php';
 }
 
 .btn-stock-out {
-    background: linear-gradient(135deg, #e84393, #d63031);
+    background: linear-gradient(135deg, #d63031);
     box-shadow: 0 4px 15px rgba(232, 67, 147, 0.3);
 }
 
@@ -426,23 +495,305 @@ require_once 'include/header.php';
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
-.date-picker {
-    background: var(--bg-secondary);
+/* ========== ENHANCED DATE PICKER STYLES ========== */
+.date-picker-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.date-input-group {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.date-field {
+    width: 100%;
+    padding: 10px 15px 10px 12px;
     border: 2px solid var(--border-color);
     border-radius: 10px;
-    padding: 10px 15px;
-    color: var(--text-primary);
     font-size: 14px;
+    transition: all 0.3s;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
     cursor: pointer;
-    transition: all 0.3s ease;
+    font-weight: 500;
+    height: 42px;
 }
 
-.date-picker:focus {
-    border-color: #00fc86;
+.date-field:hover {
+    border-color: #75e6da;
+}
+
+.date-field:focus {
+    border-color: #75e6da;
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.25);
     outline: none;
-    box-shadow: 0 0 0 3px rgba(232, 67, 147, 0.15);
+}
+
+.calendar-dropdown-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #75e6da;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.calendar-dropdown-btn:hover {
+    color: #62d4c8;
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* ===== DATE PICKER MODAL DISPLAY ONLY ===== */
+.calendar-wrapper {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 40% !important;
+    min-width: 240px;
+    right: auto !important;
+    background: var(--bg-primary);
+    border: 2px solid #75e6da;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 2000;
+    display: none;
+}
+
+.calendar-wrapper.show {
+    display: block;
+}
+
+#fromCalendar.calendar-wrapper,
+#toCalendar.calendar-wrapper {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    width: 40% !important;
+    min-width: 240px;
+}
+
+.calendar-day {
+    padding: 3px;
+    font-size: 0.7rem;
+}
+
+.calendar-weekdays {
+    font-size: 0.65rem;
+    padding: 5px 2px;
+}
+
+.calendar-select {
+    padding: 3px 5px;
+    font-size: 0.65rem;
+}
+
+.calendar-header {
+    padding: 6px 8px;
+}
+
+.calendar-nav-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 0.9rem;
+}
+
+.calendar-month-year {
+    font-size: 0.8rem;
+}
+
+.calendar-footer {
+    padding: 5px 8px;
+}
+
+.calendar-action-btn {
+    padding: 3px 8px;
+    font-size: 0.65rem;
+}
+
+.calendar-box {
+    width: 100%;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.calendar-header {
+    background: linear-gradient(135deg, #75e6da, #62d4c8);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.calendar-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.calendar-nav-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.calendar-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.calendar-selectors {
+    display: flex;
+    gap: 8px;
+    padding: 10px 10px 5px 10px;
+    background: var(--bg-primary);
+}
+
+.calendar-select {
+    flex: 1;
+    border: 2px solid var(--border-color);
+    border-radius: 6px;
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    cursor: pointer;
+    transition: all 0.3s;
+    outline: none;
+}
+
+.calendar-select:hover {
+    border-color: #75e6da;
+}
+
+.calendar-select:focus {
+    border-color: #75e6da;
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.25);
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: var(--bg-secondary);
+    text-align: center;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+    padding: 8px 5px;
+    background: var(--bg-primary);
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s;
+    color: var(--text-primary);
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+}
+
+.calendar-day:hover {
+    background: #e8f5e9;
+    color: #62d4c8;
+}
+
+.calendar-day.selected {
+    background: #75e6da;
+    color: white;
+    font-weight: 600;
+}
+
+.calendar-day.today {
+    border: 2px solid #75e6da;
+    font-weight: 600;
+}
+
+.calendar-day.weekend {
+    color: #e74c3c;
+}
+
+.calendar-day.other-month {
+    color: #7f8c8d;
+    opacity: 0.5;
+}
+
+.calendar-footer {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+}
+
+.calendar-action-btn {
+    border-radius: 5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+}
+
+.calendar-action-btn.clear {
+    background: var(--bg-primary);
+    color: #7f8c8d;
+    border: 1px solid var(--border-color);
+}
+
+.calendar-action-btn.clear:hover {
+    background: #e74c3c;
+    color: white;
+    border-color: #e74c3c;
+}
+
+.calendar-action-btn.today {
+    background: #75e6da;
+    color: white;
+    border: 1px solid #75e6da;
+}
+
+.calendar-action-btn.today:hover {
+    background: #62d4c8;
+}
+
+@media (max-width: 768px) {
+    .calendar-wrapper,
+    #fromCalendar.calendar-wrapper,
+    #toCalendar.calendar-wrapper {
+        width: 90% !important;
+        min-width: 260px;
+    }
 }
 
 .btn-date {
@@ -517,7 +868,7 @@ require_once 'include/header.php';
     left: 0;
     width: 100%;
     height: 3px;
-    background: linear-gradient(135deg, #e84393, #d63031);
+    background: linear-gradient(135deg, #ffffff);
     border-radius: 3px 3px 0 0;
 }
 
@@ -763,59 +1114,60 @@ require_once 'include/header.php';
     background: var(--bg-primary);
     margin: 30px auto;
     border: none;
-    border-radius: 24px;
+    border-radius: 20px;
     width: 100%;
-    max-width: 700px;
+    max-width: 500px;
     box-shadow: 0 30px 60px rgba(232, 67, 147, 0.3);
     animation: slideInUp 0.4s ease;
     overflow: hidden;
 }
 
 .modal-content.large-modal {
-    max-width: 1400px;
+    max-width: 1300px;
     width: 95%;
+    margin: 20px auto;
+    max-height: 90vh;
 }
 
-/* Modal Header */
 .modal-header {
-    background: linear-gradient(135deg,  #75e6da, #75e6da);
-    padding: 20px 30px;
+    background: linear-gradient(135deg, #75e6da, #75e6da);
+    padding: 15px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-radius: 24px 24px 0 0;
+    border-radius: 20px 20px 0 0;
 }
 
 .modal-header.view-header {
-    background: linear-gradient(135deg, #2b3030, #2b3030);
+    background: linear-gradient(135deg, #75e6da);
 }
 
 .modal-header h2 {
     color: white;
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 700;
     margin: 0;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
 .modal-header h2 i {
-    font-size: 24px;
+    font-size: 20px;
 }
 
 .close-btn {
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
-    width: 40px;
-    height: 40px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 24px;
+    font-size: 18px;
     transition: all 0.3s ease;
 }
 
@@ -824,10 +1176,10 @@ require_once 'include/header.php';
     transform: rotate(90deg);
 }
 
-/* Modal Body */
 .modal-body {
-    padding: 30px;
-    max-height: calc(90vh - 180px);
+    padding: 20px;
+    max-height: calc(90vh - 140px);
+    min-height: 500px;
     overflow-y: auto;
     background: var(--bg-primary);
     scrollbar-width: thin;
@@ -835,64 +1187,21 @@ require_once 'include/header.php';
 }
 
 .modal-body::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 .modal-body::-webkit-scrollbar-track {
     background: var(--bg-secondary);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .modal-body::-webkit-scrollbar-thumb {
     background: linear-gradient(135deg, #e84393, #d63031);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
-/* Form Sections */
-.form-section {
-    background: var(--bg-secondary);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 25px;
-    border: 1px solid var(--border-color);
-    transition: all 0.3s ease;
-}
-
-.form-section:last-child {
-    margin-bottom: 0;
-}
-
-.section-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--border-color);
-}
-
-.section-title i {
-    color: #39ceb5;
-    font-size: 18px;
-    width: 30px;
-    height: 30px;
-    background: rgba(232, 67, 147, 0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.section-title h3 {
-    color: var(--text-primary);
-    font-size: 16px;
-    font-weight: 700;
-    margin: 0;
-}
-
-/* Form Groups */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     position: relative;
 }
 
@@ -902,27 +1211,26 @@ require_once 'include/header.php';
 
 .form-group label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     color: var(--text-primary);
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .form-group label i {
     color: #f8017d;
-    margin-right: 8px;
-    width: 18px;
+    margin-right: 5px;
+    width: 16px;
 }
 
-/* Form Controls */
 .form-control {
     width: 100%;
-    padding: 14px 16px;
+    padding: 10px 12px;
     border: 2px solid var(--border-color);
-    border-radius: 12px;
+    border-radius: 8px;
     background: var(--bg-primary);
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 13px;
     transition: all 0.3s ease;
     box-sizing: border-box;
 }
@@ -930,7 +1238,7 @@ require_once 'include/header.php';
 .form-control:focus {
     border-color: #e84393;
     outline: none;
-    box-shadow: 0 0 0 4px rgba(232, 67, 147, 0.15);
+    box-shadow: 0 0 0 3px rgba(232, 67, 147, 0.15);
 }
 
 .form-control:disabled {
@@ -941,281 +1249,52 @@ require_once 'include/header.php';
 
 textarea.form-control {
     resize: vertical;
-    min-height: 80px;
+    min-height: 60px;
 }
 
-/* Form Hint */
-.form-hint {
-    display: block;
-    margin-top: 5px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-/* Search Container */
-.search-container {
-    position: relative;
-}
-
-.search-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-secondary);
-    font-size: 16px;
-    z-index: 1;
-}
-
-.search-input {
-    padding-left: 45px !important;
-    height: 50px;
-}
-
-/* Search Results */
-.search-results {
-    position: absolute;
-    background: var(--bg-primary);
-    border: 2px solid #e84393;
-    border-radius: 16px;
-    max-height: 350px;
-    overflow-y: auto;
-    width: calc(100% - 40px);
-    z-index: 10000;
-    margin-top: 5px;
-    box-shadow: 0 15px 40px rgba(232, 67, 147, 0.25);
-    left: 20px;
-    right: 20px;
-    display: none;
-}
-
-.search-result-item {
-    padding: 15px 20px;
-    border-bottom: 1px solid var(--border-color);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    background: var(--bg-primary);
-}
-
-.search-result-item:hover {
-    background: linear-gradient(135deg, rgba(232, 67, 147, 0.15), rgba(214, 48, 49, 0.15));
-    transform: translateX(5px);
-}
-
-.search-result-item:last-child {
-    border-bottom: none;
-}
-
-/* Selected Product Section */
-.selected-product-section {
-    margin: 20px 0 25px;
-    animation: slideIn 0.3s ease;
-}
-
-.selected-product-card {
-    background: linear-gradient(135deg, #2a1b2e, #1e1a2e);
-    border-radius: 20px;
-    padding: 25px;
-    border-left: 6px solid #e84393;
-    box-shadow: 0 15px 30px rgba(232, 67, 147, 0.25);
-    border: 1px solid rgba(232, 67, 147, 0.3);
-}
-
-.selected-product-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.selected-badge {
-    background: #00ffc8;
-    color: white;
-    padding: 6px 15px;
-    border-radius: 30px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.category-badge {
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    padding: 6px 15px;
-    border-radius: 30px;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.selected-product-details {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 20px;
-    margin: 20px 0;
-}
-
-.detail-item {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 15px;
-    border-radius: 12px;
-}
-
-.detail-label {
-    color: var(--text-secondary);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 5px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.detail-value {
-    color: white;
-    font-size: 18px;
-    font-weight: 700;
-    word-break: break-word;
-}
-
-.detail-value.small {
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-primary);
-}
-
-/* Stock Status */
-.stock-status-large {
-    text-align: center;
-    padding: 15px;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.2);
-    min-width: 140px;
-}
-
-.stock-status-large.available {
-    border: 2px solid #00b894;
-}
-
-.stock-status-large.unavailable {
-    border: 2px solid #351f1f;
-}
-
-.status-text {
-    font-size: 16px;
-    font-weight: 700;
-    margin-top: 5px;
-}
-
-.status-text.available {
-    color: #00b894;
-}
-
-.status-text.unavailable {
-    color: #d63031;
-}
-
-/* Stock Display */
-.stock-display {
-    background: var(--bg-primary);
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
-    padding: 12px 16px;
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-}
-
-.stock-value {
-    font-size: 28px;
-    font-weight: 800;
-    color: #e84393;
-    line-height: 1;
-}
-
-.stock-unit {
-    font-size: 14px;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-/* Two Column Layout */
 .two-column {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-/* Warning Container */
-.warning-container {
-    margin: 20px 0;
-    min-height: 50px;
+    gap: 15px;
+    margin-bottom: 15px;
 }
 
 .warning-message {
     background: rgba(214, 48, 49, 0.15);
     border: 2px solid #d63031;
-    border-radius: 12px;
-    padding: 15px 20px;
+    border-radius: 8px;
+    padding: 10px 15px;
     color: #d63031;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     animation: shake 0.5s ease;
+    font-size: 13px;
+    margin-bottom: 15px;
 }
 
-.warning-message i {
-    font-size: 24px;
-}
-
-.success-message {
-    background: rgba(0, 184, 148, 0.15);
-    border: 2px solid #00b894;
-    border-radius: 12px;
-    padding: 15px 20px;
-    color: #00b894;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.success-message i {
-    font-size: 24px;
-}
-
-/* Modal Footer */
 .modal-footer {
-    padding: 20px 30px;
+    padding: 15px 20px;
     background: var(--bg-secondary);
     border-top: 2px solid var(--border-color);
     display: flex;
     justify-content: flex-end;
-    gap: 15px;
-    border-radius: 0 0 24px 24px;
+    gap: 10px;
+    border-radius: 0 0 20px 20px;
 }
 
-/* Buttons */
 .btn {
-    padding: 14px 28px;
-    border-radius: 12px;
-    font-size: 15px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
     border: none;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
 .btn-secondary {
@@ -1257,19 +1336,19 @@ textarea.form-control {
 }
 
 .btn-filter {
-    padding: 12px 24px;
+    padding: 10px 18px;
     background: linear-gradient(135deg, #3498db, #2980b9);
     color: white;
     border: none;
-    border-radius: 10px;
-    font-size: 14px;
+    border-radius: 8px;
+    font-size: 13px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     transition: all 0.3s ease;
-    height: 48px;
+    height: 40px;
 }
 
 .btn-filter:hover {
@@ -1280,69 +1359,63 @@ textarea.form-control {
 /* View Modal Specific */
 .date-range-picker {
     display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 5px;
+    margin-bottom: 15px;
     align-items: flex-end;
     flex-wrap: wrap;
+    justify-content: flex-start;
 }
 
 .date-range-item {
-    flex: 1;
-    min-width: 200px;
+    flex: 0 1 auto;
+    min-width: 140px;
+    margin-right: 2px;
 }
 
 .date-range-item label {
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     color: var(--text-primary);
     font-weight: 600;
-    font-size: 14px;
+    font-size: 12px;
 }
 
 .date-range-item label i {
     color: #3498db;
-    margin-right: 5px;
+    margin-right: 3px;
 }
 
-.date-range-item input {
+.date-range-item .date-picker-wrapper {
     width: 100%;
-    padding: 12px 15px;
-    border: 2px solid var(--border-color);
-    border-radius: 10px;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: 14px;
-}
-
-.date-range-item input:focus {
-    border-color: #3498db;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+    min-width: 180px;
 }
 
 .search-bar {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
     position: relative;
+    display: flex;
+    justify-content: flex-start;
 }
 
 .search-bar i {
     position: absolute;
-    left: 15px;
+    left: 12px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: 13px;
     z-index: 1;
+    pointer-events: none;
 }
 
 .search-bar input {
-    width: 100%;
-    padding: 14px 16px 14px 45px;
-    border: 2px solid var(--border-color);
-    border-radius: 12px;
+    width: 250px;
+    padding: 8px 12px 8px 35px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
     background: var(--bg-secondary);
     color: var(--text-primary);
-    font-size: 15px;
+    font-size: 12px;
     transition: all 0.3s ease;
     box-sizing: border-box;
 }
@@ -1350,30 +1423,30 @@ textarea.form-control {
 .search-bar input:focus {
     border-color: #3498db;
     outline: none;
-    box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.15);
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    width: 280px;
 }
 
-/* View Table */
 .view-table-container {
     overflow-x: auto;
-    max-height: 400px;
+    max-height: 350px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
-    border-radius: 12px;
-    margin-top: 20px;
+    border-radius: 8px;
+    margin-top: 15px;
 }
 
 .view-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 1300px;
+    min-width: 1200px;
 }
 
 .view-table th {
     background: linear-gradient(135deg, #00e8f8, #00e8f8);
-    padding: 15px;
+    padding: 10px 8px;
     text-align: left;
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 600;
     color: white;
     border-bottom: 2px solid var(--border-color);
@@ -1383,16 +1456,16 @@ textarea.form-control {
 }
 
 .view-table th:first-child {
-    border-radius: 10px 0 0 10px;
+    border-radius: 8px 0 0 8px;
 }
 
 .view-table th:last-child {
-    border-radius: 0 10px 10px 0;
+    border-radius: 0 8px 8px 0;
 }
 
 .view-table td {
-    padding: 12px 15px;
-    font-size: 14px;
+    padding: 8px;
+    font-size: 12px;
     color: var(--text-primary);
     border-bottom: 1px solid var(--border-color);
 }
@@ -1404,14 +1477,14 @@ textarea.form-control {
 .view-table .stock-out {
     color: #d63031;
     font-weight: 700;
-    font-size: 16px;
+    font-size: 14px;
 }
 
 .view-count {
-    margin-top: 15px;
+    margin-top: 12px;
     text-align: right;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .view-count span {
@@ -1419,21 +1492,21 @@ textarea.form-control {
     font-weight: 700;
 }
 
-/* Alerts */
 .alert {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 9999;
-    padding: 16px 24px;
-    border-radius: 12px;
+    padding: 12px 20px;
+    border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     animation: slideInRight 0.3s ease;
     font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 12px;
-    max-width: 400px;
+    gap: 8px;
+    max-width: 350px;
+    font-size: 13px;
 }
 
 .alert-success {
@@ -1447,16 +1520,52 @@ textarea.form-control {
 }
 
 .alert i {
-    font-size: 20px;
+    font-size: 18px;
 }
 
-/* Text Utilities */
 .text-muted {
     color: var(--text-secondary);
     font-style: italic;
 }
 
-/* ========== ANIMATIONS ========== */
+.search-results {
+    position: absolute;
+    background: var(--bg-primary);
+    border: 2px solid #e84393;
+    border-radius: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    width: calc(100% - 30px);
+    z-index: 10000;
+    margin-top: 5px;
+    box-shadow: 0 15px 40px rgba(232, 67, 147, 0.25);
+    left: 15px;
+    right: 15px;
+    display: none;
+}
+
+.availability-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+}
+
+.availability-badge.available {
+    background: rgba(0, 184, 148, 0.15);
+    color: #00b894;
+    border: 1px solid #00b894;
+}
+
+.availability-badge.unavailable {
+    background: rgba(214, 48, 49, 0.15);
+    color: #d63031;
+    border: 1px solid #d63031;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -1517,30 +1626,7 @@ textarea.form-control {
     20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
-@keyframes pulse {
-    0% {
-        box-shadow: 0 0 0 0 rgba(232, 67, 147, 0.4);
-    }
-    70% {
-        box-shadow: 0 0 0 10px rgba(232, 67, 147, 0);
-    }
-    100% {
-        box-shadow: 0 0 0 0 rgba(232, 67, 147, 0);
-    }
-}
-
-/* ========== RESPONSIVE DESIGN ========== */
-@media (max-width: 1200px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
 @media (max-width: 768px) {
-    .stock-tracker-container {
-        padding: 15px;
-    }
-    
     .stats-grid {
         grid-template-columns: 1fr;
         gap: 15px;
@@ -1572,6 +1658,7 @@ textarea.form-control {
     
     .date-actions {
         flex-direction: column;
+        align-items: stretch;
     }
     
     .tab-navigation {
@@ -1594,35 +1681,46 @@ textarea.form-control {
     }
     
     .modal-body {
-        padding: 20px;
+        padding: 15px;
     }
     
     .two-column {
         grid-template-columns: 1fr;
-        gap: 15px;
-    }
-    
-    .selected-product-details {
-        grid-template-columns: 1fr;
-    }
-    
-    .selected-product-header {
-        flex-direction: column;
-        align-items: flex-start;
+        gap: 12px;
     }
     
     .date-range-picker {
         flex-direction: column;
+        gap: 10px;
+    }
+    
+    .date-range-item {
+        width: 100%;
+        margin-right: 0;
     }
     
     .btn-filter {
         width: 100%;
         justify-content: center;
+        margin-left: 0;
+    }
+    
+    .search-bar {
+        justify-content: flex-start;
+        width: 100%;
+    }
+    
+    .search-bar input {
+        width: 100%;
+    }
+    
+    .search-bar input:focus {
+        width: 100%;
     }
     
     .modal-footer {
         flex-direction: column-reverse;
-        gap: 10px;
+        gap: 8px;
     }
     
     .btn {
@@ -1630,44 +1728,7 @@ textarea.form-control {
         justify-content: center;
     }
 }
-
-@media (max-width: 480px) {
-    .stat-card {
-        padding: 20px;
-    }
-    
-    .stat-icon {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
-    }
-    
-    .stat-value {
-        font-size: 22px;
-    }
-    
-    .current-date {
-        font-size: 16px;
-    }
-    
-    .tracker-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    
-    .tracker-badge {
-        align-self: flex-start;
-    }
-    
-    .selected-product-card {
-        padding: 20px;
-    }
-}
 </style>
-
-
-
-
 
 <div class="stock-tracker-container">
     <!-- Welcome Section -->
@@ -1678,10 +1739,10 @@ textarea.form-control {
         </div>
         <div class="action-buttons">
             <button class="btn-action btn-stock-out" onclick="openStockOutModal()">
-                <i class="fas fa-minus-circle"></i> Add Stock Out
+                <i class="fas fa-minus-circle"></i> Pull out Item
             </button>
             <button class="btn-action btn-view-stock" onclick="openViewStockOutModal()">
-                <i class="fas fa-history"></i> View Stock Out
+                <i class="fas fa-history"></i> Pull-out Records
             </button>
         </div>
     </div>
@@ -1689,9 +1750,7 @@ textarea.form-control {
     <!-- Statistics Cards -->
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-boxes"></i>
-            </div>
+            <div class="stat-icon"><i class="fas fa-boxes"></i></div>
             <div class="stat-details">
                 <h3>TOTAL PRODUCTS</h3>
                 <p class="stat-value"><?php echo number_format($total_products); ?></p>
@@ -1700,9 +1759,7 @@ textarea.form-control {
         </div>
         
         <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-arrow-down"></i>
-            </div>
+            <div class="stat-icon"><i class="fas fa-arrow-down"></i></div>
             <div class="stat-details">
                 <h3>TOTAL STOCK IN</h3>
                 <p class="stat-value"><?php echo number_format($total_stock_in); ?></p>
@@ -1711,9 +1768,7 @@ textarea.form-control {
         </div>
         
         <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-arrow-up"></i>
-            </div>
+            <div class="stat-icon"><i class="fas fa-arrow-up"></i></div>
             <div class="stat-details">
                 <h3>TOTAL STOCK OUT</h3>
                 <p class="stat-value"><?php echo number_format($total_stock_out); ?></p>
@@ -1722,241 +1777,125 @@ textarea.form-control {
         </div>
         
         <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
+            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
             <div class="stat-details">
                 <h3>LOW STOCK ITEMS</h3>
                 <p class="stat-value <?php echo $low_stock_count > 0 ? 'warning' : ''; ?>"><?php echo number_format($low_stock_count); ?></p>
-                <span class="stat-trend <?php echo $low_stock_count > 0 ? 'warning' : 'positive'; ?>">
-                    Need attention
-                </span>
+                <span class="stat-trend <?php echo $low_stock_count > 0 ? 'warning' : 'positive'; ?>">Need attention</span>
             </div>
         </div>
     </div>
 
-    <!-- Date Navigation -->
+    <!-- Date Navigation with Enhanced Date Picker -->
     <div class="date-navigation">
         <div class="date-selector">
-            <button class="date-nav-btn" onclick="changeDate(-1)" title="Previous Day">
-                <i class="fas fa-chevron-left"></i>
-            </button>
+            <button class="date-nav-btn" onclick="changeDate(-1)" title="Previous Day"><i class="fas fa-chevron-left"></i></button>
             <span class="current-date" id="currentDateDisplay"><?php echo date('F d, Y', strtotime($selected_date)); ?></span>
-            <button class="date-nav-btn" onclick="changeDate(1)" title="Next Day">
-                <i class="fas fa-chevron-right"></i>
-            </button>
+            <button class="date-nav-btn" onclick="changeDate(1)" title="Next Day"><i class="fas fa-chevron-right"></i></button>
         </div>
         
         <div class="date-actions">
-            <input type="date" id="datePicker" class="date-picker" value="<?php echo $selected_date; ?>" onchange="goToDate()">
-            <button class="btn-date btn-today" onclick="goToToday()">
-                <i class="fas fa-calendar-day"></i> Today
-            </button>
-            <button class="btn-date btn-export" onclick="exportDailyData()">
-                <i class="fas fa-download"></i> Export
-            </button>
+            <div class="date-picker-wrapper" style="width: 180px;">
+                <div class="date-input-group">
+                    <input type="text" id="datePickerField" class="date-field" value="<?php echo date('m/d/Y', strtotime($selected_date)); ?>" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('main')">
+                    <input type="hidden" id="datePicker" name="datePicker" value="<?php echo $selected_date; ?>">
+                    <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('main')"><i class="fas fa-chevron-down"></i></button>
+                </div>
+                <div class="calendar-wrapper" id="mainCalendar">
+                    <div class="calendar-box">
+                        <div class="calendar-header"><div class="calendar-month-year" id="mainMonthYear"></div><div class="calendar-nav"><button type="button" class="calendar-nav-btn" onclick="navigateMonth('main', -1)">‹</button><button type="button" class="calendar-nav-btn" onclick="navigateMonth('main', 1)">›</button></div></div>
+                        <div class="calendar-selectors"><select id="mainMonthSelect" class="calendar-select" onchange="changeMonthYear('main')"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select><select id="mainYearSelect" class="calendar-select" onchange="changeMonthYear('main')"></select></div>
+                        <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                        <div class="calendar-days-grid" id="mainDaysGrid"></div>
+                        <div class="calendar-footer"><button type="button" class="calendar-action-btn clear" onclick="clearDate('main')"><i class="fas fa-times"></i> Clear</button><button type="button" class="calendar-action-btn today" onclick="setToday('main')"><i class="fas fa-calendar-check"></i> Today</button></div>
+                    </div>
+                </div>
+            </div>
+            <button class="btn-date btn-today" onclick="goToToday()"><i class="fas fa-calendar-day"></i> Today</button>
+            <button class="btn-date btn-export" onclick="exportDailyData()"><i class="fas fa-download"></i> Export</button>
         </div>
     </div>
 
     <!-- Tab Navigation -->
     <div class="tab-navigation">
-        <button class="tab-btn active" onclick="switchTab('daily')" id="tabDaily">
-            <i class="fas fa-calendar-day"></i> DAILY TRACKER
-        </button>
-        <button class="tab-btn" onclick="switchTab('balances')" id="tabBalances">
-            <i class="fas fa-balance-scale"></i> CURRENT BALANCES
-        </button>
+        <button class="tab-btn active" onclick="switchTab('daily')" id="tabDaily"><i class="fas fa-calendar-day"></i> DAILY TRACKER</button>
+        <button class="tab-btn" onclick="switchTab('balances')" id="tabBalances"><i class="fas fa-balance-scale"></i> CURRENT BALANCES</button>
     </div>
 
-    <!-- Daily Tracker Tab - WITH CATEGORY COLUMN -->
+    <!-- Daily Tracker Tab -->
     <div id="dailyTab" class="tab-content active">
         <div class="tracker-container">
             <div class="tracker-header">
-                <h3>
-                    <i class="fas fa-clipboard-list"></i>
-                    Stock Movements for <?php echo date('M d, Y', strtotime($selected_date)); ?>
-                </h3>
-                <span class="tracker-badge">
-                    <i class="fas fa-box"></i> <?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?> items
-                </span>
+                <h3><i class="fas fa-clipboard-list"></i> Stock Movements for <?php echo date('M d, Y', strtotime($selected_date)); ?></h3>
+                <span class="tracker-badge"><i class="fas fa-box"></i> <?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?> items</span>
             </div>
-            
             <table class="tracker-table">
-                <thead>
-                    <tr>
-                        <th>Item No</th>
-                        <th>Description</th>
-                        <th>Category</th>
-                        <th>Unit</th>
-                        <th>Date & Time</th>
-                        <th>Quantity</th>
-                        <th>Reference</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Item No</th><th>Description</th><th>Category</th><th>Unit</th><th>Date & Time</th><th>Quantity</th><th>Reference</th></tr></thead>
                 <tbody>
-<?php if ($daily_movements && $daily_movements->num_rows > 0): ?>
-    <?php 
-    $daily_movements->data_seek(0);
-    while($movement = $daily_movements->fetch_assoc()): 
-    ?>
-    <tr>
-        <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong></td>
-        <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?></td>
-        
-        <!-- CATEGORY CELL -->
-        <td>
-            <?php 
-            $category = isset($movement['category']) ? trim($movement['category']) : '';
-            if (!empty($category)): 
-            ?>
-                <span class="category-badge">
-                    <i class="fas fa-tag"></i> <?php echo htmlspecialchars($category); ?>
-                </span>
-            <?php else: ?>
-                <span class="text-muted">—</span>
-            <?php endif; ?>
-        </td>
-        
-        <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?></td>
-        <td><?php echo date('M d, Y h:i A', strtotime($movement['created_at'])); ?></td>
-        <td class="<?php echo $movement['type'] == 'in' ? 'stock-in' : 'stock-out'; ?>">
-            <?php echo $movement['type'] == 'in' ? '+' : '-'; ?>
-            <?php echo number_format($movement['quantity']); ?>
-        </td>
-        <td>
-            <span class="reference-tag <?php echo strpos($movement['reference'], 'PURCHASE') !== false ? 'reference-purchase' : 'reference-other'; ?>">
-                <i class="fas fa-tag"></i> 
-                <?php echo htmlspecialchars($movement['reference'] ?: 'N/A'); ?>
-            </span>
-        </td>
-    </tr>
-    <?php endwhile; ?>
-<?php else: ?>
-    <tr>
-        <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-            <i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-            No stock movements found for this date: <?php echo date('M d, Y', strtotime($selected_date)); ?>
-        </td>
-    </tr>
-<?php endif; ?>
+                    <?php if ($daily_movements && $daily_movements->num_rows > 0): ?>
+                        <?php while($movement = $daily_movements->fetch_assoc()): ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong></td>
+                            <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?></td>
+                            <td><?php if(!empty($movement['category'])): ?><span class="category-badge"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($movement['category']); ?></span><?php else: ?><span class="text-muted">—</span><?php endif; ?></td>
+                            <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?></td>
+                            <td><?php echo date('M d, Y h:i A', strtotime($movement['created_at'])); ?></td>
+                            <td class="<?php echo $movement['type'] == 'in' ? 'stock-in' : 'stock-out'; ?>"><?php echo $movement['type'] == 'in' ? '+' : '-'; ?><?php echo number_format($movement['quantity']); ?></td>
+                            <td><span class="reference-tag <?php echo strpos($movement['reference'], 'PURCHASE') !== false ? 'reference-purchase' : 'reference-other'; ?>"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($movement['reference'] ?: 'N/A'); ?></span></td>
+                        </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;"><i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>No stock movements found for this date: <?php echo date('M d, Y', strtotime($selected_date)); ?></td></tr>
+                    <?php endif; ?>
                 </tbody>
             </table>
-            
-            <div class="footer-stats">
-                <div>
-                    <i class="fas fa-boxes" style="color: #75e6da;"></i>
-                    Total Items: <strong style="color: #75e6da;"><?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?></strong>
-                </div>
-                <div>
-                    <i class="fas fa-calendar" style="color: #6c5ce7;"></i>
-                    Date: <strong style="color: #6c5ce7;"><?php echo date('F d, Y', strtotime($selected_date)); ?></strong>
-                </div>
-            </div>
+            <div class="footer-stats"><div><i class="fas fa-boxes" style="color: #75e6da;"></i> Total Items: <strong style="color: #75e6da;"><?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?></strong></div><div><i class="fas fa-calendar" style="color: #6c5ce7;"></i> Date: <strong style="color: #6c5ce7;"><?php echo date('F d, Y', strtotime($selected_date)); ?></strong></div></div>
         </div>
     </div>
 
-    <!-- Current Balances Tab - WITH CATEGORY COLUMN -->
+    <!-- Current Balances Tab -->
     <div id="balancesTab" class="tab-content">
         <div class="tracker-container">
             <div class="tracker-header">
-                <h3>
-                    <i class="fas fa-boxes"></i>
-                    Current Stock Balances
-                </h3>
-                <span class="tracker-badge">
-                    <i class="fas fa-box"></i> <?php echo ($balances) ? $balances->num_rows : 0; ?> products
-                </span>
+                <h3><i class="fas fa-boxes"></i> Current Stock Balances</h3>
+                <span class="tracker-badge"><i class="fas fa-box"></i> <?php echo ($balances) ? $balances->num_rows : 0; ?> products</span>
             </div>
-            
             <table class="tracker-table">
-                <thead>
-                    <tr>
-                        <th>Item No</th>
-                        <th>Description</th>
-                        <th>Category</th>
-                        <th>Unit</th>
-                        <th>Current Balance</th>
-                        <th>Status</th>
-                        <th>Last Movement</th>
-                    </tr>
-                </thead>
+                <thead><tr><th>Item No</th><th>Description</th><th>Category</th><th>Unit</th><th>Current Balance</th><th>Status</th><th>Last Movement</th></tr></thead>
                 <tbody>
                     <?php if ($balances && $balances->num_rows > 0): ?>
-                        <?php 
-                        $balances->data_seek(0);
-                        while($product = $balances->fetch_assoc()): 
-                            $balance = isset($product['current_balance']) ? $product['current_balance'] : 0;
-                            $threshold = isset($product['low_stock_threshold']) ? $product['low_stock_threshold'] : 10;
-                            
-                            // Get last movement
+                        <?php while($product = $balances->fetch_assoc()): 
+                            $balance = $product['current_balance'] ?? 0;
+                            $threshold = $product['low_stock_threshold'] ?? 10;
+                            if ($balance <= 0) { $status_class = 'stock-out'; $status_text = 'Out of Stock'; }
+                            elseif ($balance < $threshold) { $status_class = 'warning'; $status_text = 'Low Stock'; }
+                            else { $status_class = 'stock-in'; $status_text = 'In Stock'; }
+                            $item_no_display = $product['item_no'] ?? '';
+                            $description_display = $product['description'] ?? $product['name'] ?? '';
+                            if (empty($item_no_display) && isset($product['name']) && strpos($product['name'], ' - ') !== false) {
+                                $parts = explode(' - ', $product['name'], 2);
+                                $item_no_display = $parts[0];
+                                $description_display = $parts[1];
+                            }
                             $last_mov_sql = "SELECT reference, created_at FROM stock_movements WHERE product_id = ? ORDER BY created_at DESC LIMIT 1";
                             $last_stmt = $conn->prepare($last_mov_sql);
                             $last_stmt->bind_param("i", $product['id']);
                             $last_stmt->execute();
                             $last_result = $last_stmt->get_result();
                             $last_mov = $last_result->fetch_assoc();
-                            
-                            if ($balance <= 0) {
-                                $status_class = 'stock-out';
-                                $status_text = 'Out of Stock';
-                            } elseif ($balance < $threshold) {
-                                $status_class = 'warning';
-                                $status_text = 'Low Stock';
-                            } else {
-                                $status_class = 'stock-in';
-                                $status_text = 'In Stock';
-                            }
-                            
-                            $item_no_display = isset($product['item_no']) ? $product['item_no'] : '';
-                            $description_display = isset($product['description']) ? $product['description'] : (isset($product['name']) ? $product['name'] : '');
-                            
-                            // If no item_no, try to extract from name
-                            if (empty($item_no_display) && isset($product['name']) && strpos($product['name'], ' - ') !== false) {
-                                $parts = explode(' - ', $product['name'], 2);
-                                $item_no_display = $parts[0];
-                                $description_display = $parts[1];
-                            }
                         ?>
                         <tr>
                             <td><strong><?php echo htmlspecialchars($item_no_display ?: 'N/A'); ?></strong></td>
                             <td><?php echo htmlspecialchars($description_display ?: 'N/A'); ?></td>
-                            
-                            <!-- CATEGORY CELL -->
-                            <td>
-                                <?php 
-                                $category = isset($product['category']) ? trim($product['category']) : '';
-                                if (!empty($category)): 
-                                ?>
-                                    <span class="category-badge">
-                                        <i class="fas fa-tag"></i> <?php echo htmlspecialchars($category); ?>
-                                    </span>
-                                <?php else: ?>
-                                    <span class="text-muted">—</span>
-                                <?php endif; ?>
-                            </td>
-                            
-                            <td><?php echo isset($product['unit']) ? htmlspecialchars($product['unit']) : 'pcs'; ?></td>
+                            <td><?php if(!empty($product['category'])): ?><span class="category-badge"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($product['category']); ?></span><?php else: ?><span class="text-muted">—</span><?php endif; ?></td>
+                            <td><?php echo htmlspecialchars($product['unit'] ?? 'pcs'); ?></td>
                             <td class="stock-balance"><?php echo number_format($balance); ?></td>
                             <td><span class="type-badge <?php echo $status_class; ?>"><?php echo $status_text; ?></span></td>
-                            <td>
-                                <?php if ($last_mov): ?>
-                                    <span style="font-size: 11px; color: var(--text-secondary);">
-                                        <?php echo isset($last_mov['reference']) ? htmlspecialchars($last_mov['reference']) : 'N/A'; ?><br>
-                                        <small><?php echo isset($last_mov['created_at']) ? date('M d, Y H:i', strtotime($last_mov['created_at'])) : 'N/A'; ?></small>
-                                    </span>
-                                <?php else: ?>
-                                    <span style="color: var(--text-secondary); font-size: 11px;">No movements</span>
-                                <?php endif; ?>
-                            </td>
+                            <td><?php if ($last_mov): ?><span style="font-size: 11px;"><?php echo htmlspecialchars($last_mov['reference'] ?? 'N/A'); ?><br><small><?php echo date('M d, Y H:i', strtotime($last_mov['created_at'])); ?></small></span><?php else: ?><span class="text-muted">No movements</span><?php endif; ?></td>
                         </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
-                                <i class="fas fa-box-open" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
-                                No products found.
-                            </td>
-                        </tr>
+                        <tr><td colspan="7" style="text-align: center; padding: 40px;"><i class="fas fa-box-open" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>No products found.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -1964,7 +1903,7 @@ textarea.form-control {
     </div>
 </div>
 
-<!-- STOCK OUT MODAL - RECORD STOCK OUT -->
+<!-- STOCK OUT MODAL - RECORD STOCK OUT (WITH SITE QUICK SELECT DROPDOWN) -->
 <div id="stockOutModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1973,7 +1912,7 @@ textarea.form-control {
         </div>
         
         <form method="POST" action="" onsubmit="return validateStockOut()">
-            <div class="modal-body" style="max-height: calc(90vh - 180px);">
+            <div class="modal-body">
                 <input type="hidden" name="add_stock_out" value="1">
                 <input type="hidden" name="product_id" id="selectedProductId">
                 
@@ -1985,23 +1924,23 @@ textarea.form-control {
                         <div id="searchResults"></div>
                     </div>
                     
-                    <div id="selectedProductInfo" style="display: none; margin-bottom: 15px;">
-                        <div style="background: rgba(232, 67, 147, 0.08); padding: 10px 12px; border-radius: 8px; border-left: 4px solid #e84393;">
+                    <div id="selectedProductInfo" style="display: none; margin-bottom: 10px;">
+                        <div style="background: rgba(232, 67, 147, 0.08); padding: 8px 10px; border-radius: 6px; border-left: 3px solid #e84393;">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div style="flex: 1;">
-                                    <span style="font-size: 10px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Selected:</span>
-                                    <h4 id="selectedProductName" style="margin: 2px 0 0; font-size: 14px; font-weight: 600;"></h4>
-                                    <p id="selectedProductDetails" style="margin: 2px 0 0; font-size: 11px; color: var(--text-secondary);"></p>
+                                    <span style="font-size: 9px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Selected:</span>
+                                    <h4 id="selectedProductName" style="margin: 2px 0 0; font-size: 13px; font-weight: 600;"></h4>
+                                    <p id="selectedProductDetails" style="margin: 2px 0 0; font-size: 10px; color: var(--text-secondary);"></p>
                                 </div>
-                                <span class="availability-badge available" id="selectedStockBadge" style="padding: 3px 10px; font-size: 11px;">In Stock</span>
+                                <span class="availability-badge available" id="selectedStockBadge" style="padding: 3px 8px; font-size: 10px;">In Stock</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <hr style="margin: 10px 0 15px; border: 1px dashed var(--border-color); opacity: 0.5;">
+                <hr style="margin: 8px 0 12px; border: 1px dashed var(--border-color); opacity: 0.5;">
 
-                <!-- LOWER SECTION -->
+                <!-- LOWER SECTION - WITH SITE QUICK SELECT DROPDOWN -->
                 <div class="lower-section">
                     <div class="two-column">
                         <div class="form-group">
@@ -2018,13 +1957,46 @@ textarea.form-control {
                     <div id="quantityWarningContainer"></div>
                     
                     <div class="form-group">
+                        <label><i class="fas fa-map-marker-alt"></i> Site / Location</label>
+                        <div class="site-input-group">
+                            <input type="text" name="site_location" id="siteLocation" class="form-control" placeholder="Enter site/location where item will be deployed" autocomplete="off">
+                        </div>
+                    </div>
+                    
+                    <!-- QUICK SELECT DROPDOWN - DITO NILAGAY -->
+                    <?php if (!empty($sites_for_dropdown)): ?>
+                    <div class="form-group site-quick-select">
+                        <label><i class="fas fa-building"></i> Quick Select Site</label>
+                        <select id="quickSiteSelect" onchange="selectQuickSite()">
+                            <option value="">-- Select from existing sites --</option>
+                            <?php foreach ($sites_for_dropdown as $site): ?>
+                                <option value="<?php echo htmlspecialchars($site); ?>"><?php echo htmlspecialchars($site); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
+                            <i class="fas fa-info-circle"></i> Choose a site from the list or type a new one above
+                        </small>
+                    </div>
+                    <?php else: ?>
+                    <div class="form-group site-quick-select">
+                        <label><i class="fas fa-building"></i> Quick Select Site</label>
+                        <select id="quickSiteSelect" onchange="selectQuickSite()">
+                            <option value="">-- No sites available, add one in Site tab --</option>
+                        </select>
+                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
+                            <i class="fas fa-info-circle"></i> Go to <strong>Site</strong> tab to add locations
+                        </small>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="form-group">
                         <label><i class="fas fa-hashtag"></i> Reference</label>
                         <input type="text" name="reference" class="form-control" placeholder="e.g., SO-2024-001">
                     </div>
                     
                     <div class="form-group">
                         <label><i class="fas fa-sticky-note"></i> Notes</label>
-                        <textarea name="notes" class="form-control" rows="4" placeholder="Additional notes..."></textarea>
+                        <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
                     </div>
                 </div>
             </div>
@@ -2037,61 +2009,61 @@ textarea.form-control {
     </div>
 </div>
 
-<!-- VIEW STOCK OUT MODAL - WITH CATEGORY COLUMN -->
+<!-- VIEW STOCK OUT MODAL - WITH SITE LOCATION COLUMN -->
 <div id="viewStockOutModal" class="modal">
     <div class="modal-content large-modal">
         <div class="modal-header view-header">
-            <h2><i class="fas fa-history"></i> Stock Out History</h2>
+            <h2><i class="fas fa-history"></i> Pull-out History</h2>
             <button class="close-btn" onclick="closeViewStockOutModal()">&times;</button>
         </div>
         
         <div class="modal-body">
-            <!-- Date Range Picker -->
             <div class="date-range-picker">
                 <div class="date-range-item">
                     <label><i class="fas fa-calendar-alt"></i> From Date</label>
-                    <input type="date" id="dateFrom" value="<?php echo $date_from; ?>">
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="dateFromField" class="date-field" value="<?php echo date('m/d/Y', strtotime($date_from)); ?>" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('from')">
+                            <input type="hidden" id="dateFrom" name="dateFrom" value="<?php echo $date_from; ?>">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('from')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="fromCalendar"><div class="calendar-box"><div class="calendar-header"><div class="calendar-month-year" id="fromMonthYear"></div><div class="calendar-nav"><button type="button" class="calendar-nav-btn" onclick="navigateMonth('from', -1)">‹</button><button type="button" class="calendar-nav-btn" onclick="navigateMonth('from', 1)">›</button></div></div><div class="calendar-selectors"><select id="fromMonthSelect" class="calendar-select" onchange="changeMonthYear('from')"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select><select id="fromYearSelect" class="calendar-select" onchange="changeMonthYear('from')"></select></div><div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div><div class="calendar-days-grid" id="fromDaysGrid"></div><div class="calendar-footer"><button type="button" class="calendar-action-btn clear" onclick="clearDate('from')"><i class="fas fa-times"></i> Clear</button><button type="button" class="calendar-action-btn today" onclick="setToday('from')"><i class="fas fa-calendar-check"></i> Today</button></div></div></div>
+                    </div>
                 </div>
                 <div class="date-range-item">
                     <label><i class="fas fa-calendar-alt"></i> To Date</label>
-                    <input type="date" id="dateTo" value="<?php echo $date_to; ?>">
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="dateToField" class="date-field" value="<?php echo date('m/d/Y', strtotime($date_to)); ?>" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('to')">
+                            <input type="hidden" id="dateTo" name="dateTo" value="<?php echo $date_to; ?>">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('to')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="toCalendar"><div class="calendar-box"><div class="calendar-header"><div class="calendar-month-year" id="toMonthYear"></div><div class="calendar-nav"><button type="button" class="calendar-nav-btn" onclick="navigateMonth('to', -1)">‹</button><button type="button" class="calendar-nav-btn" onclick="navigateMonth('to', 1)">›</button></div></div><div class="calendar-selectors"><select id="toMonthSelect" class="calendar-select" onchange="changeMonthYear('to')"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select><select id="toYearSelect" class="calendar-select" onchange="changeMonthYear('to')"></select></div><div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div><div class="calendar-days-grid" id="toDaysGrid"></div><div class="calendar-footer"><button type="button" class="calendar-action-btn clear" onclick="clearDate('to')"><i class="fas fa-times"></i> Clear</button><button type="button" class="calendar-action-btn today" onclick="setToday('to')"><i class="fas fa-calendar-check"></i> Today</button></div></div></div>
+                    </div>
                 </div>
                 <button class="btn-filter" onclick="filterByDateRange()"><i class="fas fa-filter"></i> Apply Filter</button>
                 <button class="btn-filter" style="background: linear-gradient(135deg, #95a5a6, #7f8c8d);" onclick="resetDateRange()"><i class="fas fa-undo"></i> Reset</button>
             </div>
 
-            <!-- Search Bar -->
             <div class="search-bar">
                 <i class="fas fa-search"></i>
-                <input type="text" id="stockOutSearch" placeholder="Search by Item No, Description, Category, Reference..." onkeyup="searchStockOut()">
+                <input type="text" id="stockOutSearch" placeholder="Search by Item No, Description, Category, Site, Reference..." onkeyup="searchStockOut()">
             </div>
             
-            <!-- Table Container -->
             <div class="view-table-container">
                 <table class="view-table" id="stockOutTable">
                     <thead>
-                        <tr>
-                            <th>Item No</th>
-                            <th>Description</th>
-                            <th>Category</th>
-                            <th>Unit</th>
-                            <th>Date & Time</th>
-                            <th>Quantity</th>
-                            <th>Reference</th>
-                        </tr>
-                    </thead>
+                        <tr><th>Item No</th><th>Description</th><th>Category</th><th>Unit</th><th>Date & Time</th><th>Quantity</th><th>Site / Location</th><th>Reference</th> </thead>
                     <tbody id="stockOutTableBody">
                         <?php if ($all_stock_out && $all_stock_out->num_rows > 0): ?>
-                            <?php 
-                            $all_stock_out->data_seek(0);
-                            while($movement = $all_stock_out->fetch_assoc()): 
-                            ?>
+                            <?php while($movement = $all_stock_out->fetch_assoc()): ?>
                             <tr class="stock-out-row">
-                                <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong></td>
-                                <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?></td>
+                                <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong>
+                                                                
+                                
                                 
                                 <!-- CATEGORY CELL -->
-                                <td>
+                                
                                     <?php 
                                     $category = isset($movement['category']) ? trim($movement['category']) : '';
                                     if (!empty($category)): 
@@ -2102,30 +2074,41 @@ textarea.form-control {
                                     <?php else: ?>
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
-                                </td>
                                 
-                                <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?></td>
-                                <td><?php echo date('M d, Y h:i A', strtotime($movement['created_at'])); ?></td>
-                                <td class="stock-out">-<?php echo number_format($movement['quantity']); ?></td>
-                                <td>
+                                
+                                
+                                
+                                
+                                <td class="stock-out">-<?php echo number_format($movement['quantity']); ?>
+                                
+                                    <?php if (!empty($movement['site_location'])): ?>
+                                        <span class="site-badge"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($movement['site_location']); ?></span>
+                                    <?php else: ?>
+                                        <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                
+                                
                                     <span class="reference-tag reference-other">
                                         <i class="fas fa-tag"></i> 
                                         <?php echo htmlspecialchars($movement['reference'] ?: 'N/A'); ?>
                                     </span>
-                                </td>
-                            </tr>
+                                
+                            
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr>
-                                <td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                            
+
+
                                     <i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
                                     No stock out records found for the selected date range.
-                                </td>
-                            </tr>
+                                
+                            
+
                         <?php endif; ?>
                     </tbody>
-                </table>
-            </div>
+                
+
+
             
             <div class="view-count">
                 Total Records: <span id="stockOutCount"><?php echo $all_stock_out ? $all_stock_out->num_rows : 0; ?></span>
@@ -2153,6 +2136,297 @@ textarea.form-control {
 <?php endif; ?>
 
 <script>
+// Calendar state (adapted from employee.php)
+let activeCalendar = null;
+let calendarDates = {
+    main: { currentDate: new Date(), selectedDate: '<?php echo $selected_date; ?>' },
+    from: { currentDate: new Date(), selectedDate: '<?php echo $date_from; ?>' },
+    to: { currentDate: new Date(), selectedDate: '<?php echo $date_to; ?>' }
+};
+
+// Initialize year dropdowns
+function initializeYearSelects() {
+    const yearSelects = ['mainYearSelect', 'fromYearSelect', 'toYearSelect'];
+    const currentYear = new Date().getFullYear();
+    
+    yearSelects.forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.innerHTML = '';
+            for (let year = 2000; year <= 2030; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+        }
+    });
+}
+
+// Update calendar display
+function updateCalendar(calendarId) {
+    const date = calendarDates[calendarId].currentDate || new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    
+    const monthYearElement = document.getElementById(calendarId + 'MonthYear');
+    if (monthYearElement) {
+        monthYearElement.textContent = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    }
+    
+    const monthSelect = document.getElementById(calendarId + 'MonthSelect');
+    const yearSelect = document.getElementById(calendarId + 'YearSelect');
+    
+    if (monthSelect) monthSelect.value = month;
+    if (yearSelect) yearSelect.value = year;
+    
+    generateCalendarDays(calendarId);
+}
+
+// Generate calendar days
+function generateCalendarDays(calendarId) {
+    const date = calendarDates[calendarId].currentDate || new Date();
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysGrid = document.getElementById(calendarId + 'DaysGrid');
+    
+    if (!daysGrid) return;
+    
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const selectedDate = calendarDates[calendarId].selectedDate;
+    
+    let html = '';
+    
+    // Previous month days
+    const prevMonthDays = new Date(year, month, 0).getDate();
+    for (let i = firstDay - 1; i >= 0; i--) {
+        const day = prevMonthDays - i;
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        html += `<div class="calendar-day other-month" onclick="selectDate('${calendarId}', '${dateStr}')">${day}</div>`;
+    }
+    
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+        const isSelected = selectedDate === dateStr;
+        const isWeekend = new Date(year, month, day).getDay() === 0 || new Date(year, month, day).getDay() === 6;
+        
+        let classes = 'calendar-day';
+        if (isToday) classes += ' today';
+        if (isSelected) classes += ' selected';
+        if (isWeekend) classes += ' weekend';
+        
+        html += `<div class="${classes}" onclick="selectDate('${calendarId}', '${dateStr}')">${day}</div>`;
+    }
+    
+    // Next month days
+    const totalCells = 42;
+    const cellsUsed = firstDay + daysInMonth;
+    const nextMonthDays = totalCells - cellsUsed;
+    for (let day = 1; day <= nextMonthDays; day++) {
+        const dateStr = `${year}-${String(month + 2).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        html += `<div class="calendar-day other-month" onclick="selectDate('${calendarId}', '${dateStr}')">${day}</div>`;
+    }
+    
+    daysGrid.innerHTML = html;
+}
+
+// Toggle calendar
+function toggleCalendar(calendarId) {
+    const calendar = document.getElementById(calendarId + 'Calendar');
+    if (calendar) {
+        document.querySelectorAll('.calendar-wrapper').forEach(cal => {
+            if (cal.id !== calendarId + 'Calendar') {
+                cal.style.display = 'none';
+            }
+        });
+        
+        if (calendar.style.display === 'block') {
+            calendar.style.display = 'none';
+            activeCalendar = null;
+        } else {
+            updateCalendar(calendarId);
+            calendar.style.display = 'block';
+            activeCalendar = calendarId;
+        }
+    }
+}
+
+// Navigate months
+function navigateMonth(calendarId, direction) {
+    const date = calendarDates[calendarId].currentDate;
+    date.setMonth(date.getMonth() + direction);
+    updateCalendar(calendarId);
+}
+
+// Change month/year from selects
+function changeMonthYear(calendarId) {
+    const monthSelect = document.getElementById(calendarId + 'MonthSelect');
+    const yearSelect = document.getElementById(calendarId + 'YearSelect');
+    
+    if (monthSelect && yearSelect) {
+        const newMonth = parseInt(monthSelect.value);
+        const newYear = parseInt(yearSelect.value);
+        
+        calendarDates[calendarId].currentDate = new Date(newYear, newMonth, 1);
+        updateCalendar(calendarId);
+    }
+}
+
+// Select a date
+function selectDate(calendarId, dateStr) {
+    const date = new Date(dateStr);
+    const formattedDisplay = date.toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric'
+    });
+    
+    let fieldId = '';
+    let hiddenId = '';
+    
+    switch(calendarId) {
+        case 'main':
+            fieldId = 'datePickerField';
+            hiddenId = 'datePicker';
+            break;
+        case 'from':
+            fieldId = 'dateFromField';
+            hiddenId = 'dateFrom';
+            break;
+        case 'to':
+            fieldId = 'dateToField';
+            hiddenId = 'dateTo';
+            break;
+    }
+    
+    const field = document.getElementById(fieldId);
+    const hidden = document.getElementById(hiddenId);
+    
+    if (field) {
+        field.value = formattedDisplay;
+    }
+    
+    if (hidden) {
+        hidden.value = dateStr;
+    }
+    
+    calendarDates[calendarId].selectedDate = dateStr;
+    
+    const calendar = document.getElementById(calendarId + 'Calendar');
+    if (calendar) calendar.style.display = 'none';
+    activeCalendar = null;
+    
+    updateCalendar(calendarId);
+}
+
+// Clear date
+function clearDate(calendarId) {
+    let fieldId = '';
+    let hiddenId = '';
+    
+    switch(calendarId) {
+        case 'main':
+            fieldId = 'datePickerField';
+            hiddenId = 'datePicker';
+            break;
+        case 'from':
+            fieldId = 'dateFromField';
+            hiddenId = 'dateFrom';
+            break;
+        case 'to':
+            fieldId = 'dateToField';
+            hiddenId = 'dateTo';
+            break;
+    }
+    
+    const field = document.getElementById(fieldId);
+    const hidden = document.getElementById(hiddenId);
+    
+    if (field) field.value = '';
+    if (hidden) hidden.value = '';
+    
+    calendarDates[calendarId].selectedDate = null;
+    
+    const calendar = document.getElementById(calendarId + 'Calendar');
+    if (calendar) calendar.style.display = 'none';
+    activeCalendar = null;
+    
+    updateCalendar(calendarId);
+}
+
+// Set today's date
+function setToday(calendarId) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    
+    calendarDates[calendarId].currentDate = new Date(dateStr);
+    selectDate(calendarId, dateStr);
+}
+
+// Close calendar when clicking outside
+document.addEventListener('click', function(e) {
+    const isCalendarClick = e.target.closest('.calendar-wrapper') || e.target.closest('.date-input-group');
+    if (!isCalendarClick && activeCalendar) {
+        const calendar = document.getElementById(activeCalendar + 'Calendar');
+        if (calendar) calendar.style.display = 'none';
+        activeCalendar = null;
+    }
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeYearSelects();
+    
+    ['main', 'from', 'to'].forEach(calId => {
+        updateCalendar(calId);
+    });
+
+    // Set initial selected dates
+    const mainDate = '<?php echo $selected_date; ?>';
+    const fromDate = '<?php echo $date_from; ?>';
+    const toDate = '<?php echo $date_to; ?>';
+    
+    if (mainDate) {
+        calendarDates.main.selectedDate = mainDate;
+        const date = new Date(mainDate);
+        document.getElementById('datePickerField').value = date.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+        });
+    }
+    
+    if (fromDate) {
+        calendarDates.from.selectedDate = fromDate;
+        const date = new Date(fromDate);
+        document.getElementById('dateFromField').value = date.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+        });
+    }
+    
+    if (toDate) {
+        calendarDates.to.selectedDate = toDate;
+        const date = new Date(toDate);
+        document.getElementById('dateToField').value = date.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+        });
+    }
+});
+
 // Search items function for Record Stock Out
 function searchItems() {
     const searchTerm = document.getElementById('itemSearchInput').value.trim();
@@ -2177,7 +2451,7 @@ function searchItems() {
                     const stockText = stockValue > 0 ? 'Stock: ' + stockValue : 'Out of Stock';
                     
                     html += `
-                        <div onclick="selectProduct(${product.id}, '${product.name.replace(/'/g, "\\'")}', '${product.item_no || ''}', ${stockValue}, '${product.unit || 'pcs'}')">
+                        <div class="search-result-item" onclick="selectProduct(${product.id}, '${product.name.replace(/'/g, "\\'")}', '${product.item_no || ''}', ${stockValue}, '${product.unit || 'pcs'}')">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <strong>${product.item_no ? product.item_no + ' - ' : ''}${product.name}</strong>
@@ -2256,7 +2530,7 @@ function updateAvailableStock() {
         quantityInput.style.boxShadow = '0 0 0 4px rgba(214, 48, 49, 0.15)';
         
         container.innerHTML = `
-            <div id="quantityWarning">
+            <div class="warning-message">
                 <i class="fas fa-exclamation-circle"></i> ERROR: Insufficient stock! Available: ${available}
             </div>
         `;
@@ -2296,6 +2570,15 @@ function validateStockOut() {
     }
     
     return true;
+}
+
+// Quick Select Site function
+function selectQuickSite() {
+    const select = document.getElementById('quickSiteSelect');
+    const siteInput = document.getElementById('siteLocation');
+    if (select.value) {
+        siteInput.value = select.value;
+    }
 }
 
 // Filter by date range
@@ -2392,13 +2675,9 @@ function switchTab(tab) {
 
 // Date navigation
 function changeDate(days) {
-    const currentDate = new Date(document.getElementById('datePicker').value);
+    const currentDate = new Date(document.getElementById('datePicker').value || new Date());
     currentDate.setDate(currentDate.getDate() + days);
     window.location.href = 'stock_tracker.php?date=' + currentDate.toISOString().split('T')[0];
-}
-
-function goToDate() {
-    window.location.href = 'stock_tracker.php?date=' + document.getElementById('datePicker').value;
 }
 
 function goToToday() {
@@ -2415,7 +2694,11 @@ function openStockOutModal() {
 function openViewStockOutModal() {
     document.getElementById('viewStockOutModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
-    setTimeout(() => document.getElementById('stockOutSearch').focus(), 100);
+    setTimeout(() => {
+        document.getElementById('stockOutSearch').focus();
+        updateCalendar('from');
+        updateCalendar('to');
+    }, 100);
 }
 
 // Export functions
@@ -2442,12 +2725,12 @@ function exportDailyData() {
 
 function exportStockOutData() {
     const rows = document.querySelectorAll('#stockOutTableBody .stock-out-row');
-    let csv = 'Item No,Description,Category,Unit,Date & Time,Quantity,Reference\n';
+    let csv = 'Item No,Description,Category,Unit,Date & Time,Quantity,Site/Location,Reference\n';
     
     rows.forEach(row => {
         if (row.style.display !== 'none') {
             const cells = row.querySelectorAll('td');
-            csv += `"${cells[0]?.textContent.trim() || ''}","${cells[1]?.textContent.trim() || ''}","${cells[2]?.textContent.trim() || ''}","${cells[3]?.textContent.trim() || ''}","${cells[4]?.textContent.trim() || ''}","${cells[5]?.textContent.trim() || ''}","${cells[6]?.textContent.trim() || ''}"\n`;
+            csv += `"${cells[0]?.textContent.trim() || ''}","${cells[1]?.textContent.trim() || ''}","${cells[2]?.textContent.trim() || ''}","${cells[3]?.textContent.trim() || ''}","${cells[4]?.textContent.trim() || ''}","${cells[5]?.textContent.trim() || ''}","${cells[6]?.textContent.trim() || ''}","${cells[7]?.textContent.trim() || ''}"\n`;
         }
     });
     
@@ -2457,7 +2740,43 @@ function exportStockOutData() {
     a.download = 'stock_out_history_' + new Date().toISOString().split('T')[0] + '.csv';
     a.click();
     URL.revokeObjectURL(a.href);
-    alert('Stock Out data exported successfully!');
+    
+    showCustomNotification('Pull-out History exported successfully!', 'success');
+}
+
+function showCustomNotification(message, type = 'success') {
+    const existing = document.querySelector('.custom-notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.className = 'custom-notification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 99999;
+        padding: 15px 25px;
+        background: ${type === 'success' ? 'linear-gradient(135deg, #00b894, #75e6da)' : '#d63031'};
+        color: ${type === 'success' ? '#1a1c3c' : 'white'};
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+        animation: slideInRight 0.3s ease;
+        max-width: 400px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+    notification.innerHTML = `
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}" style="font-size: 20px;"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
 }
 
 // Close modal when clicking outside

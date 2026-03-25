@@ -440,7 +440,9 @@ if (ob_get_level() == 0) ob_start();
                 <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'stock_tracker.php' ? 'active' : ''; ?>">
                     <a href="stock_tracker.php"><i class="fas fa-chart-line"></i> STOCK MONITORING</a>
                 </li>
-              
+              <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'site.php' ? 'active' : ''; ?>">
+                    <a href="site.php"><i class="fas fa-chart-line"></i> Site</a>
+                </li>
                 <!-- New Profile Tab -->
                 <li class="nav-item <?php echo basename($_SERVER['PHP_SELF']) == 'profile.php' ? 'active' : ''; ?>">
                     <a href="profile.php"><i class="fas fa-user-circle"></i> PROFILE</a>

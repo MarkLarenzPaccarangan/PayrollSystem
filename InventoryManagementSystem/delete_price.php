@@ -39,15 +39,47 @@ if ($conn->connect_error) {
     exit;
 }
 
-// SIMPLE DELETE - direct lang para sigurado
-$sql = "DELETE FROM company_prices WHERE id = ?";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $price_id);
+// Start transaction
+$conn->begin_transaction();
 
-if ($stmt->execute()) {
+try {
+    // First, get the company_id before deleting
+    $get_company = $conn->query("SELECT company_id FROM company_prices WHERE id = $price_id");
+    if ($get_company->num_rows === 0) {
+        throw new Exception('Price record not found');
+    }
+    
+    $company_data = $get_company->fetch_assoc();
+    $company_id = $company_data['company_id'];
+    
+    // Delete the price record
+    $sql = "DELETE FROM company_prices WHERE id = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $price_id);
+    
+    if (!$stmt->execute()) {
+        throw new Exception('Failed to delete: ' . $conn->error);
+    }
+    
+    // Check if this company has any other prices
+    $check_other_prices = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE company_id = $company_id");
+    $other_prices_count = $check_other_prices->fetch_assoc()['count'];
+    
+    // If no other prices, delete the company (optional - you can remove this if you want to keep companies)
+    if ($other_prices_count == 0) {
+        $delete_company = $conn->query("DELETE FROM companies WHERE id = $company_id");
+        if (!$delete_company) {
+            // Log error but don't fail the transaction
+            error_log("Failed to delete orphaned company ID: $company_id");
+        }
+    }
+    
+    $conn->commit();
     echo json_encode(['success' => true, 'message' => 'Price deleted successfully']);
-} else {
-    echo json_encode(['success' => false, 'message' => 'Failed to delete: ' . $conn->error]);
+    
+} catch (Exception $e) {
+    $conn->rollback();
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
 $stmt->close();

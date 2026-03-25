@@ -286,7 +286,7 @@ require_once 'include/header.php';
 
 .search-wrapper i {
     position: absolute;
-    left: 12px;
+    left: 30px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-secondary);
@@ -320,14 +320,17 @@ require_once 'include/header.php';
     gap: 15px;
 }
 
-/* Table styles - FIXED CONTAINER */
-.table-wrapper {
-    overflow-x: auto;
+/* ===== CONTAINER DESIGN GAYA NG PURCHASE.PHP ===== */
+.page-container {
+    background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    background: var(--bg-primary);
-    min-height: 400px;
-    position: relative;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
 }
 
 .products-table {
@@ -337,20 +340,18 @@ require_once 'include/header.php';
 }
 
 .products-table th {
-    padding: 15px;
+    padding: 15px 10px;
     text-align: left;
     font-size: 12px;
     font-weight: 600;
     color: var(--text-secondary);
     border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
     background: var(--bg-secondary);
-    position: sticky;
-    top: 0;
-    z-index: 10;
 }
 
 .products-table td {
-    padding: 12px 15px;
+    padding: 12px 10px;
     border-bottom: 1px solid var(--border-color);
     color: var(--text-primary);
     font-size: 13px;
@@ -366,32 +367,27 @@ require_once 'include/header.php';
 }
 
 /* No results message */
-#noResultsMessage {
-    display: none;
+.no-results {
     text-align: center;
-    padding: 60px 20px;
+    padding: 40px;
     background: var(--bg-primary);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 80%;
-    max-width: 400px;
+    margin-top: 20px;
 }
 
-#noResultsMessage i {
+.no-results i {
     font-size: 48px;
     color: var(--text-secondary);
     margin-bottom: 15px;
 }
 
-#noResultsMessage h3 {
+.no-results h3 {
     color: var(--text-primary);
     margin-bottom: 10px;
 }
 
-#noResultsMessage p {
+.no-results p {
     color: var(--text-secondary);
 }
 
@@ -418,6 +414,39 @@ require_once 'include/header.php';
     font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
+}
+
+/* ===== EMPTY STATE - GAYA NG PURCHASE.PHP ===== */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--bg-primary);
+    border-radius: 12px;
+    border: 2px dashed var(--border-color);
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    font-size: 24px;
+    color: var(--text-primary);
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.empty-state p {
+    color: var(--text-primary); /* SAME COLOR AS H3 */
+    font-size: 16px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px;
+    font-weight: 500; /* Para medyo bold din */
 }
 
 /* Modal Styles */
@@ -660,22 +689,23 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Products Table - Fixed Container -->
-<div class="table-wrapper" id="tableWrapper">
-    <table class="products-table" id="productsTable">
-        <thead>
-            <tr>
-                <th>Item No</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Price</th>
-                <th>Quantity Stock</th>
-                <th>Unit</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="productsPageBody">
-            <?php if ($products && $products->num_rows > 0): ?>
+<!-- ===== PRODUCTS CONTAINER - MAY EMPTY STATE KUNG WALANG ITEMS ===== -->
+<div class="page-container" id="tableContainer">
+    <?php if ($products && $products->num_rows > 0): ?>
+        <!-- Products Table (kapag may laman) -->
+        <table class="products-table" id="productsTable">
+            <thead>
+                <tr>
+                    <th>Item No</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Price</th>
+                    <th>Quantity Stock</th>
+                    <th>Unit</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="productsPageBody">
                 <?php while($row = $products->fetch_assoc()): 
                     $quantity = $row['quantity'];
                     $unit = htmlspecialchars($row['unit'] ?? 'pcs');
@@ -708,7 +738,7 @@ require_once 'include/header.php';
                         $bgColor = '#d6303120';
                     } else if($quantity <= 5) {
                         $status = 'Critical';
-                        $statusColor = '#ff5e00';
+                        $statusColor = '#ff0000';
                         $bgColor = '#d6303120';
                     } else if($quantity <= 20) {
                         $status = 'Low Stock';
@@ -767,16 +797,23 @@ require_once 'include/header.php';
                         </td>
                     </tr>
                 <?php endwhile; ?>
-            <?php endif; ?>
-        </tbody>
-    </table>
-    
-    <!-- No Results Message -->
-    <div id="noResultsMessage">
-        <i class="fas fa-search"></i>
-        <h3>No Products Found</h3>
-        <p>No products match your search criteria. Try different keywords.</p>
-    </div>
+            </tbody>
+        </table>
+    <?php else: ?>
+        <!-- ===== EMPTY STATE - GAYA NG PURCHASE.PHP ===== -->
+        <div class="empty-state">
+            <i class="fas fa-store"></i>
+            <h3>No Items and products Found</h3>
+            <p>You need to purchased</p>
+        </div>
+    <?php endif; ?>
+</div>
+
+<!-- No Results Message (for search) - nasa labas ng container -->
+<div id="noResultsMessage" class="no-results" style="display: none;">
+    <i class="fas fa-search"></i>
+    <h3>No Products Found</h3>
+    <p>No products match your search criteria. Try different keywords.</p>
 </div>
 
 <!-- Add/Edit Modal -->
@@ -906,13 +943,12 @@ require_once 'include/header.php';
 <?php endif; ?>
 
 <script>
-// EXACT MATCH SEARCH FUNCTION - UPDATED
+// EXACT MATCH SEARCH FUNCTION
 function searchProducts() {
     const searchTerm = document.getElementById('productSearch').value.trim();
     const rows = document.querySelectorAll('#productsPageBody .product-row');
     let visibleCount = 0;
     
-    const tableWrapper = document.getElementById('tableWrapper');
     const noResultsMsg = document.getElementById('noResultsMessage');
     
     rows.forEach(row => {
