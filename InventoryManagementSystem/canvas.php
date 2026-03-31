@@ -65,7 +65,7 @@ if ($companies && $companies->num_rows > 0) {
     }   
 }
 
-// Build query based on filters and sort - WITH CATEGORY
+// Build query based on filters and sort - WITH CATEGORY AND UNIT
 $query = "
     SELECT ci.*, 
            cp.id as price_id,
@@ -76,7 +76,8 @@ $query = "
            c.name as company_name,
            c.contact_person,
            c.contact_number,
-           ci.category
+           ci.category,
+           ci.unit
     FROM canvas_items ci
     INNER JOIN company_prices cp ON ci.id = cp.item_id
     INNER JOIN companies c ON cp.company_id = c.id
@@ -199,28 +200,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
-// Handle POST request for adding new company price - WITH COMPANY DROPDOWN
+// Handle POST request for adding new company price - WITH UNIT
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_company_price') {
     $item_no = $conn->real_escape_string($_POST['item_no']);
     $description = $conn->real_escape_string($_POST['description']);
     $category = $conn->real_escape_string($_POST['category'] ?? '');
+    $unit = $conn->real_escape_string($_POST['unit'] ?? 'pcs');
     $company_id = intval($_POST['company_id']);
     $quantity = intval($_POST['quantity']);
     $price = floatval($_POST['price']);
     
-    // Check if item exists in canvas_items - WITH CATEGORY
+    // Check if item exists in canvas_items - WITH CATEGORY AND UNIT
     $check_item = $conn->query("SELECT id FROM canvas_items WHERE item_no = '$item_no'");
     if ($check_item->num_rows == 0) {
-        // Insert new canvas item with category
-        $insert_item = $conn->query("INSERT INTO canvas_items (item_no, description, category) VALUES ('$item_no', '$description', '$category')");
+        // Insert new canvas item with category and unit
+        $insert_item = $conn->query("INSERT INTO canvas_items (item_no, description, category, unit) VALUES ('$item_no', '$description', '$category', '$unit')");
         $item_id = $conn->insert_id;
     } else {
         $item = $check_item->fetch_assoc();
         $item_id = $item['id'];
         
-        // Update category if provided
-        if (!empty($category)) {
-            $conn->query("UPDATE canvas_items SET category = '$category', description = '$description' WHERE id = $item_id");
+        // Update category and unit if provided
+        $update_fields = [];
+        if (!empty($category)) $update_fields[] = "category = '$category'";
+        if (!empty($unit)) $update_fields[] = "unit = '$unit'";
+        if (!empty($description)) $update_fields[] = "description = '$description'";
+        
+        if (!empty($update_fields)) {
+            $conn->query("UPDATE canvas_items SET " . implode(", ", $update_fields) . " WHERE id = $item_id");
         }
     }
     
@@ -243,6 +250,34 @@ require_once 'include/header.php';
 ?>
 
 <style>
+
+ /* Date picker styles */
+.date-control input[type="date"] {
+    padding: 12px 15px;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.date-control input[type="date"]:focus {
+    border-color: #75e6da;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+}
+
+.date-control input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+}
+
+/* Style for empty date picker placeholder */
+.date-control input[type="date"]:invalid {
+    color: var(--text-secondary);
+}
     /* Canvas Page Specific Styles */
 .stats-grid {
     display: grid;
@@ -350,6 +385,17 @@ require_once 'include/header.php';
     font-size: 11px;
     font-weight: 600;
     background: linear-gradient(135deg, #667eea);
+    color: white;
+}
+
+/* Unit badge */
+.unit-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #6c5ce7);
     color: white;
 }
 
@@ -665,7 +711,7 @@ require_once 'include/header.php';
 .products-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 1400px;
+    min-width: 1500px;
 }
 
 .products-table th {
@@ -694,6 +740,7 @@ require_once 'include/header.php';
 /* Center all badges and inline elements */
 .products-table td .company-badge,
 .products-table td .category-badge,
+.products-table td .unit-badge,
 .products-table td .availability-badge,
 .products-table td .contact-person,
 .products-table td .contact-number {
@@ -790,7 +837,7 @@ require_once 'include/header.php';
     border: 1px solid var(--border-color);
     border-radius: 16px;
     padding: 20px;
-    margin-bottom: 25   px;
+    margin-bottom: 25px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
@@ -1136,6 +1183,15 @@ require_once 'include/header.php';
     padding: 8px 15px;
     border-radius: 20px;
     background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-weight: 600;
+}
+
+.view-detail-value.unit-badge-view {
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #6c5ce7, #75e6da);
     color: white;
     font-weight: 600;
 }
@@ -1957,6 +2013,15 @@ require_once 'include/header.php';
     font-weight: 600;
 }
 
+.detail-value.unit-badge-modal {
+    display: inline-block;
+    padding: 8px 15px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #6c5ce7, #75e6da);
+    color: white;
+    font-weight: 600;
+}
+
 .detail-value.price-highlight {
     color: #75e6da;
     font-weight: 700;
@@ -2611,7 +2676,7 @@ require_once 'include/header.php';
 
 <!-- REMOVED: Display Info section (Filter Results box) -->
 
-<!-- Main Table - WITH CATEGORY COLUMN - ALL TEXT CENTERED -->
+<!-- Main Table - WITH CATEGORY AND UNIT COLUMNS - ALL TEXT CENTERED -->
 <div class="table-wrapper">
     <?php if ($items && $items->num_rows > 0): ?>
         <table class="products-table" id="canvasTable">
@@ -2620,6 +2685,7 @@ require_once 'include/header.php';
                     <th>Item No</th>
                     <th>Description</th>
                     <th>Category</th>
+                    <th>Unit</th>
                     <th>Company</th>
                     <th>Contact Person</th>
                     <th>Contact Number</th>
@@ -2642,9 +2708,11 @@ require_once 'include/header.php';
                 ?>
                     <tr class="item-row" 
                         data-price-id="<?php echo $row['price_id']; ?>"
+                        data-item-id="<?php echo $row['id']; ?>"
                         data-item-no="<?php echo htmlspecialchars($row['item_no']); ?>" 
                         data-description="<?php echo htmlspecialchars($row['description']); ?>"
                         data-category="<?php echo htmlspecialchars($row['category'] ?? ''); ?>"
+                        data-unit="<?php echo htmlspecialchars($row['unit'] ?? 'pcs'); ?>"
                         data-company="<?php echo htmlspecialchars($row['company_name']); ?>"
                         data-company-id="<?php echo $row['company_id']; ?>"
                         data-contact="<?php echo htmlspecialchars($row['contact_person'] ?? ''); ?>"
@@ -2666,6 +2734,13 @@ require_once 'include/header.php';
                             <?php else: ?>
                                 <span class="text-muted">—</span>
                             <?php endif; ?>
+                        </td>
+                        
+                        <!-- Unit Column -->
+                        <td>
+                            <span class="unit-badge">
+                                <i class="fas fa-ruler"></i> <?php echo htmlspecialchars($row['unit'] ?? 'pcs'); ?>
+                            </span>
                         </td>
                         
                         <!-- Company Name with Color -->
@@ -2777,7 +2852,7 @@ require_once 'include/header.php';
 </div>
 <?php endif; ?>
 
-<!-- Add to Cart Modal -->
+<!-- Add to Cart Modal - WITH DATE PICKER -->
 <div id="cartModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -2786,6 +2861,18 @@ require_once 'include/header.php';
         </div>
         <div class="modal-body">
             <div class="item-details-grid" id="modalItemDetails"></div>
+            
+            <!-- DATE PICKER SECTION -->
+            <div class="quantity-section">
+                <h3><i class="fas fa-calendar-alt"></i> Select Delivery Date</h3>
+                <div class="date-control">
+                  <input type="date" id="deliveryDate" class="form-control" style="width: 100%;">
+                    <div class="form-hint">
+                        <i class="fas fa-info-circle"></i> Select the date when you need this item
+                    </div>
+                </div>
+            </div>
+            
             <div class="quantity-section">
                 <h3><i class="fas fa-cubes"></i> Select Quantity</h3>
                 <div class="quantity-control">
@@ -2973,10 +3060,10 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Add Item Modal - WITH COMPANY DROPDOWN -->
+<!-- Add Item Modal - WITH AUTO-DESCRIPTION -->
 <div id="addItemModal" class="modal">
     <div class="modal-content item-modal">
-        <div class="modal-header" style="background: linear-gradient(135deg,  #75e6da);">
+        <div class="modal-header" style="background: linear-gradient(135deg, #6c5ce7, #75e6da);">
             <h2><i class="fas fa-plus-circle"></i> Add Item with Price</h2>
             <span class="close-modal" onclick="closeAddItemModal()">&times;</span>
         </div>
@@ -2986,7 +3073,10 @@ require_once 'include/header.php';
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-hashtag"></i> Item No *</label>
-                        <input type="text" class="form-control" name="item_no" id="itemNo" placeholder="e.g., ITEM-001" required>
+                        <input type="text" class="form-control" name="item_no" id="itemNo" placeholder="e.g., ITEM-001" required autocomplete="off">
+                        <div class="form-hint">
+                            <i class="fas fa-info-circle"></i> Enter existing item number to auto-fill description
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-align-left"></i> Description *</label>
@@ -2994,7 +3084,38 @@ require_once 'include/header.php';
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label"><i class="fas fa-tags"></i> Category</label>
-                        <input type="text" class="form-control" name="category" id="category" placeholder="e.g., Electronics, Office Supplies, Furniture">
+                        <select class="form-control" name="category" id="category">
+                            <option value="">-- Select Category --</option>
+                            <option value="Consumables">Consumables</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Tools and Equipment">Tools and Equipment</option>
+                            <option value="Miscellaneous">Miscellaneous</option>
+                            <option value="Office Supplies">Office Supplies</option>
+                            <option value="Rent & Utilities Expenses">Rent & Utilities Expenses</option>
+                            <option value="Safe Expenses">Safe Expenses</option>
+                            <option value="Admin Payroll">Admin Payroll</option>
+                            <option value="InHouse Payroll Office">InHouse Payroll Office</option>
+                            <option value="Subcon Payroll - Electrical">Subcon Payroll - Electrical</option>
+                            <option value="Subcon Payroll - Auxiliary">Subcon Payroll - Auxiliary</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-ruler"></i> Unit *</label>
+                        <select class="form-control" name="unit" id="unit" required>
+                            <option value="">-- Select Unit --</option>
+                            <option value="pcs">Pieces (pcs)</option>
+                            <option value="pair">Pair (pair)</option>
+                            <option value="set">Set (set)</option>
+                            <option value="pack">Pack (pack)</option>
+                            <option value="box">Box (box)</option>
+                            <option value="dozen">Dozen (dozen)</option>
+                            <option value="roll">Roll (roll)</option>
+                            <option value="bundle">Bundle (bundle)</option>
+                            <option value="meter">Meter (m)</option>
+                            <option value="feet">Feet (ft)</option>
+                            <option value="kilogram">Kilogram (kg)</option>
+                            <option value="liter">Liter (l)</option>
+                        </select>
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label"><i class="fas fa-building"></i> Company Name *</label>
@@ -3045,7 +3166,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- View Details Modal - WITH CATEGORY -->
+<!-- View Details Modal - WITH CATEGORY AND UNIT -->
 <div id="viewModal" class="modal">
     <div class="modal-content view-modal">
         <div class="modal-header">
@@ -3061,7 +3182,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Edit Price Modal - WITH CATEGORY FIELD -->
+<!-- Edit Price Modal - WITH CATEGORY AND UNIT FIELD -->
 <div id="editModal" class="modal">
     <div class="modal-content edit-modal">
         <div class="modal-header">
@@ -3071,6 +3192,7 @@ require_once 'include/header.php';
         <div class="modal-body">
             <form id="editForm" method="POST" action="update_price.php">
                 <input type="hidden" name="price_id" id="editPriceId">
+                <input type="hidden" name="item_id" id="editItemId">
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label"><i class="fas fa-hashtag"></i> Item No *</label>
@@ -3080,10 +3202,40 @@ require_once 'include/header.php';
                         <label class="form-label"><i class="fas fa-align-left"></i> Description *</label>
                         <input type="text" class="form-control" name="description" id="editDescription" required>
                     </div>
-                    <!-- NEW CATEGORY FIELD IN EDIT -->
                     <div class="form-group full-width">
                         <label class="form-label"><i class="fas fa-tags"></i> Category</label>
-                        <input type="text" class="form-control" name="category" id="editCategory" placeholder="e.g., Electronics, Office Supplies, Furniture">
+                        <select class="form-control" name="category" id="editCategory">
+                            <option value="">-- Select Category --</option>
+                            <option value="Consumables">Consumables</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Tools and Equipment">Tools and Equipment</option>
+                            <option value="Miscellaneous">Miscellaneous</option>
+                            <option value="Office Supplies">Office Supplies</option>
+                            <option value="Rent & Utilities Expenses">Rent & Utilities Expenses</option>
+                            <option value="Safe Expenses">Safe Expenses</option>
+                            <option value="Admin Payroll">Admin Payroll</option>
+                            <option value="InHouse Payroll Office">InHouse Payroll Office</option>
+                            <option value="Subcon Payroll - Electrical">Subcon Payroll - Electrical</option>
+                            <option value="Subcon Payroll - Auxiliary">Subcon Payroll - Auxiliary</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-ruler"></i> Unit *</label>
+                        <select class="form-control" name="unit" id="editUnit" required>
+                            <option value="">-- Select Unit --</option>
+                            <option value="pcs">Pieces (pcs)</option>
+                            <option value="pair">Pair (pair)</option>
+                            <option value="set">Set (set)</option>
+                            <option value="pack">Pack (pack)</option>
+                            <option value="box">Box (box)</option>
+                            <option value="dozen">Dozen (dozen)</option>
+                            <option value="roll">Roll (roll)</option>
+                            <option value="bundle">Bundle (bundle)</option>
+                            <option value="meter">Meter (m)</option>
+                            <option value="feet">Feet (ft)</option>
+                            <option value="kilogram">Kilogram (kg)</option>
+                            <option value="liter">Liter (l)</option>
+                        </select>
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label"><i class="fas fa-building"></i> Company Name *</label>
@@ -3202,6 +3354,7 @@ require_once 'include/header.php';
                         <th>Item No</th>
                         <th>Description</th>
                         <th>Category</th>
+                        <th>Unit</th>
                         <th>Company</th>
                         <th>Contact Person</th>
                         <th>Contact Number</th>
@@ -3209,8 +3362,7 @@ require_once 'include/header.php';
                         <th>Price</th>
                         <th>Total Price</th>
                         <th>Availability</th>
-                    </tr>
-                </thead>
+                    </thead>
                 <tbody id="comparisonTableBody">
                     <!-- Will be populated by JavaScript -->
                 </tbody>
@@ -3233,6 +3385,7 @@ let currentCartItem = {
     itemNo: '',
     description: '',
     category: '',
+    unit: '',
     companyName: '',
     contactPerson: '',
     contactNumber: '',
@@ -3250,6 +3403,186 @@ let pendingDeleteId = null;
 let pendingDeleteCompany = null;
 let pendingDeleteItem = null;
 
+// ==================== AUTO-DESCRIPTION FUNCTION ====================
+// Debounce timer
+let debounceTimer;
+// Function to fetch item details when item number is entered
+function fetchItemDescription() {
+    const itemNoInput = document.getElementById('itemNo');
+    const descriptionInput = document.getElementById('description');
+    const categorySelect = document.getElementById('category');
+    const unitSelect = document.getElementById('unit');
+    const itemNo = itemNoInput.value.trim();
+    
+    console.log('Fetching item details for:', itemNo); // Debug log
+    
+    // If item number is empty, clear description and reset to default
+    if (itemNo === '') {
+        descriptionInput.value = '';
+        descriptionInput.style.borderColor = '';
+        descriptionInput.style.backgroundColor = '';
+        descriptionInput.placeholder = 'Item description';
+        
+        // Reset category to default (blank/"Select Category")
+        if (categorySelect) {
+            categorySelect.value = '';
+            categorySelect.style.borderColor = '';
+        }
+        
+        // Reset unit to default (blank/"Select Unit")
+        if (unitSelect) {
+            unitSelect.value = '';
+            unitSelect.style.borderColor = '';
+        }
+        return;
+    }
+    
+    // Show loading indicator
+    const originalPlaceholder = descriptionInput.placeholder;
+    descriptionInput.placeholder = 'Loading...';
+    descriptionInput.style.borderColor = '#f39c12';
+    
+    // Make AJAX request to fetch item details
+    fetch(`get_item_details.php?item_no=${encodeURIComponent(itemNo)}`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            
+            if (data.success && data.found) {
+                // ITEM EXISTS - Auto-fill description, category, and unit
+                if (data.description) {
+                    descriptionInput.value = data.description;
+                    descriptionInput.style.borderColor = '#75e6da';
+                    descriptionInput.style.backgroundColor = 'rgba(117, 230, 218, 0.1)';
+                }
+                
+                // Auto-fill category if found
+                if (data.category && categorySelect) {
+                    // Check if category exists in dropdown
+                    let categoryExists = false;
+                    for (let i = 0; i < categorySelect.options.length; i++) {
+                        if (categorySelect.options[i].value === data.category) {
+                            categorySelect.selectedIndex = i;
+                            categoryExists = true;
+                            break;
+                        }
+                    }
+                    // If category not in dropdown, add it
+                    if (!categoryExists && data.category) {
+                        const newOption = document.createElement('option');
+                        newOption.value = data.category;
+                        newOption.textContent = data.category;
+                        categorySelect.appendChild(newOption);
+                        categorySelect.value = data.category;
+                    }
+                    categorySelect.style.borderColor = '#75e6da';
+                }
+                
+                // Auto-fill unit if found
+                if (data.unit && unitSelect) {
+                    // Check if unit exists in dropdown
+                    let unitExists = false;
+                    for (let i = 0; i < unitSelect.options.length; i++) {
+                        if (unitSelect.options[i].value === data.unit) {
+                            unitSelect.selectedIndex = i;
+                            unitExists = true;
+                            break;
+                        }
+                    }
+                    // If unit not in dropdown, add it
+                    if (!unitExists && data.unit) {
+                        const newOption = document.createElement('option');
+                        newOption.value = data.unit;
+                        newOption.textContent = data.unit.charAt(0).toUpperCase() + data.unit.slice(1);
+                        unitSelect.appendChild(newOption);
+                        unitSelect.value = data.unit;
+                    }
+                    unitSelect.style.borderColor = '#75e6da';
+                }
+                
+                // Show notification that item exists
+                showNotification(`✓ Item "${itemNo}" found! Details auto-filled.`, 'success');
+            } else {
+                // ITEM DOES NOT EXIST - Clear and reset to manual entry
+                descriptionInput.value = '';
+                descriptionInput.style.borderColor = '';
+                descriptionInput.style.backgroundColor = '';
+                descriptionInput.placeholder = 'Enter description for new item';
+                
+                // Reset category to default (blank/"Select Category")
+                if (categorySelect) {
+                    categorySelect.value = '';
+                    categorySelect.style.borderColor = '';
+                }
+                
+                // Reset unit to default (blank/"Select Unit")
+                if (unitSelect) {
+                    unitSelect.value = '';
+                    unitSelect.style.borderColor = '';
+                }
+                
+                // Show notification that item is new
+                showNotification(`Item "${itemNo}" is new. Please enter details manually.`, 'info');
+            }
+            descriptionInput.placeholder = originalPlaceholder;
+        })
+        .catch(error => {
+            console.error('Error fetching item details:', error);
+            descriptionInput.placeholder = 'Error loading...';
+            descriptionInput.style.borderColor = '#e74c3c';
+            setTimeout(() => {
+                descriptionInput.placeholder = originalPlaceholder;
+                descriptionInput.style.borderColor = '';
+            }, 2000);
+        });
+}
+
+// Debounce function to avoid too many requests
+function debounceFetchDescription() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        fetchItemDescription();
+    }, 500); // Wait 500ms after user stops typing
+}
+
+
+// Function to setup auto-description on modal open
+function setupAutoDescription() {
+    const itemNoInput = document.getElementById('itemNo');
+    const categorySelect = document.getElementById('category');
+    const unitSelect = document.getElementById('unit');
+    const descriptionInput = document.getElementById('description');
+    
+    if (itemNoInput) {
+        // Remove existing listener to avoid duplicates
+        itemNoInput.removeEventListener('input', debounceFetchDescription);
+        // Add new listener
+        itemNoInput.addEventListener('input', debounceFetchDescription);
+    }
+    
+    // Reset all fields when modal opens
+    if (descriptionInput) {
+        descriptionInput.value = '';
+        descriptionInput.style.borderColor = '';
+        descriptionInput.style.backgroundColor = '';
+        descriptionInput.placeholder = 'Item description';
+    }
+    
+    // Reset category to default (blank/"Select Category")
+    if (categorySelect) {
+        categorySelect.value = '';
+        categorySelect.style.borderColor = '';
+    }
+    
+    // Reset unit to default (blank/"Select Unit")
+    if (unitSelect) {
+        unitSelect.value = '';
+        unitSelect.style.borderColor = '';
+    }
+}
 // ==================== MAIN PAGE FUNCTIONS ====================
 
 // Toggle Price Sort on Main Page
@@ -3520,6 +3853,7 @@ function collectAllItemsData() {
                 itemNo: row.getAttribute('data-item-no') || '',
                 description: row.getAttribute('data-description') || '',
                 category: row.getAttribute('data-category') || '',
+                unit: row.getAttribute('data-unit') || 'pcs',
                 company: row.getAttribute('data-company') || '',
                 contactPerson: row.getAttribute('data-contact') || '',
                 contactNumber: row.getAttribute('data-contact-number') || '',
@@ -3597,24 +3931,31 @@ function renderComparisonTable() {
         const total = item.quantity * item.price;
         html += `
             <tr>
-                <td><strong>${item.itemNo}</strong></td>
-                <td>${item.description}</td>
-                <td>
+                <td><strong>${escapeHtml(item.itemNo)}</strong>
+
+                                 <td><strong>${escapeHtml(item.itemNo)}</strong></td>
+                 <td>${escapeHtml(item.description)}</td>
+                 <td>
                     ${item.category ? 
                         `<span class="category-badge" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                            <i class="fas fa-tag"></i> ${item.category}
+                            <i class="fas fa-tag"></i> ${escapeHtml(item.category)}
                         </span>` : 
                         '<span class="text-muted">—</span>'
                     }
-                </td>
-                <td>
-                    <span class="company-badge" style="background: ${item.companyColor}">
-                        ${item.company}
+                 </td>
+                 <td>
+                    <span class="unit-badge" style="background: linear-gradient(135deg, #6c5ce7, #75e6da);">
+                        <i class="fas fa-ruler"></i> ${escapeHtml(item.unit)}
                     </span>
-                </td>
-                <td>${item.contactPerson || '—'}</td>
-                <td>${item.contactNumber || '—'}</td>
-                <td>${item.quantity.toLocaleString()}</td>
+                 </td>
+                 <td>
+                    <span class="company-badge" style="background: ${item.companyColor}">
+                        ${escapeHtml(item.company)}
+                    </span>
+                 </td>
+                 <td>${escapeHtml(item.contactPerson) || '—'}</td>
+                 <td>${escapeHtml(item.contactNumber) || '—'}</td>
+                 <td>${item.quantity.toLocaleString()}</td>
                 <td class="price-cell">₱${item.price.toFixed(2)}</td>
                 <td>
                     <span class="total-price-cell">
@@ -3627,7 +3968,7 @@ function renderComparisonTable() {
                         ${item.availability}
                     </span>
                 </td>
-            </tr>
+             </tr>
         `;
     });
     
@@ -3648,7 +3989,7 @@ function filterComparisonTable() {
         const itemNo = row.cells[0]?.textContent.trim().toLowerCase() || '';
         const description = row.cells[1]?.textContent.trim().toLowerCase() || '';
         const category = row.cells[2]?.textContent.trim().toLowerCase() || '';
-        const company = row.cells[3]?.textContent.trim().toLowerCase() || '';
+        const company = row.cells[4]?.textContent.trim().toLowerCase() || '';
         
         // If search is empty, show all rows
         if (searchTerm === '') {
@@ -3676,9 +4017,16 @@ function filterComparisonTable() {
     }
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // ==================== EXPORT FUNCTIONS ====================
 
-// Export to Excel function - OPTIMIZED FOR A4 LANDSCAPE PRINTING
+// Export to Excel function
 function exportToExcel() {
     const items = collectAllItemsData();
     
@@ -3692,7 +4040,6 @@ function exportToExcel() {
     let filteredItems = items;
     
     if (searchTerm !== '') {
-        // Search in multiple columns
         const searchTermLower = searchTerm.toLowerCase();
         filteredItems = items.filter(item => {
             return (item.itemNo && item.itemNo.toLowerCase().includes(searchTermLower)) ||
@@ -3716,22 +4063,20 @@ function exportToExcel() {
                 itemNo: item.itemNo,
                 description: item.description,
                 category: item.category,
+                unit: item.unit,
                 companies: []
             };
         }
         groupedItems[key].companies.push(item);
     });
     
-    // Convert to array at i-sort
+    // Convert to array and sort
     let itemsArray = Object.values(groupedItems);
     itemsArray.sort((a, b) => a.itemNo.localeCompare(b.itemNo, undefined, { numeric: true }));
     
     // Get UNIQUE companies
     const allCompanies = [...new Set(filteredItems.map(item => item.company))];
     allCompanies.sort();
-    
-    // MAXIMUM 8 COMPANIES PER ROW (optimized for A4 Landscape)
-    const MAX_COMPANIES_PER_ROW = 8;
     
     // Calculate totals per company
     const companyTotals = {};
@@ -3781,106 +4126,79 @@ function exportToExcel() {
     csvContent += "Project Name:,,,,,,,,,,,,,,Date Needed:,\n";
     csvContent += "\n";
     
-    // Split companies into rows of 8
-    for (let rowIndex = 0; rowIndex < allCompanies.length; rowIndex += MAX_COMPANIES_PER_ROW) {
-        const rowCompanies = allCompanies.slice(rowIndex, rowIndex + MAX_COMPANIES_PER_ROW);
-        const isLastRow = (rowIndex + MAX_COMPANIES_PER_ROW >= allCompanies.length);
+    // ===== TABLE HEADER =====
+    let headerRow1 = "Item No,Description,Category,Unit,Qty";
+    
+    // Add company headers
+    allCompanies.forEach(company => {
+        let displayName = company.length > 15 ? company.substring(0, 12) + '...' : company;
+        headerRow1 += ",," + displayName;
+    });
+    
+    headerRow1 += ",Lowest Total";
+    csvContent += headerRow1 + "\n";
+    
+    // Row 2: Sub headers (Price and Total)
+    let headerRow2 = ",,,,,Price,Total";
+    
+    // Add Price/Total subheaders for each company
+    allCompanies.forEach(() => {
+        headerRow2 += ",Price,Total";
+    });
+    
+    headerRow2 += ",";
+    csvContent += headerRow2 + "\n";
+    
+    // ===== DATA ROWS =====
+    let rowNumber = 1;
+    itemsArray.forEach(item => {
+        const qty = item.companies[0]?.quantity || 0;
+        const unit = item.unit || 'pcs';
         
-        // ===== TABLE HEADER =====
-        // Row 1: Main headers
-        let headerRow1 = "Item No,Description,Category,,,,,Qty,Unit";
+        let dataRow = `${rowNumber},${item.description},${item.category || ''},${unit},${qty}`;
         
-        // Add company headers for this row
-        rowCompanies.forEach(company => {
-            // Truncate long company names for better fit
-            let displayName = company.length > 15 ? company.substring(0, 12) + '...' : company;
-            headerRow1 += ",," + displayName;
-        });
-        
-        // Add Lowest Total column only for LAST row
-        if (isLastRow) {
-            headerRow1 += ",Lowest Total";
-        }
-        csvContent += headerRow1 + "\n";
-        
-        // Row 2: Sub headers (Price and Total)
-        let headerRow2 = ",,,,,,,,,Price,Total";
-        
-        // Add Price/Total subheaders for each company
-        rowCompanies.forEach(() => {
-            headerRow2 += ",Price,Total";
-        });
-        
-        if (isLastRow) {
-            headerRow2 += ",";
-        }
-        csvContent += headerRow2 + "\n";
-        
-        // ===== DATA ROWS =====
-        let rowNumber = 1;
-        itemsArray.forEach(item => {
-            const qty = item.companies[0]?.quantity || 0;
-            
-            let dataRow = `${rowNumber},${item.description},${item.category || ''}`;
-            dataRow += ",,,,,,";
-            dataRow += `${qty},pcs`;
-            
-            // Add prices for companies in this row
-            rowCompanies.forEach(company => {
-                const companyItem = item.companies.find(c => c.company === company);
-                if (companyItem) {
-                    const unitPrice = companyItem.price.toFixed(2);
-                    const total = (companyItem.quantity * companyItem.price).toFixed(2);
-                    dataRow += `,${unitPrice},${total}`;
-                } else {
-                    dataRow += ",,";
-                }
-            });
-            
-            // Add lowest total for LAST row only with formula format
-            if (isLastRow) {
-                dataRow += `,=${item.lowestTotal.toFixed(2)}`;
+        // Add prices for companies
+        allCompanies.forEach(company => {
+            const companyItem = item.companies.find(c => c.company === company);
+            if (companyItem) {
+                const unitPrice = companyItem.price.toFixed(2);
+                const total = (companyItem.quantity * companyItem.price).toFixed(2);
+                dataRow += `,${unitPrice},${total}`;
+            } else {
+                dataRow += ",,";
             }
-            
-            csvContent += dataRow + "\n";
-            rowNumber++;
         });
         
-        // ===== EMPTY ROWS (for consistent layout) =====
-        const emptyRowsNeeded = Math.max(0, 20 - itemsArray.length);
-        for (let i = 0; i < emptyRowsNeeded; i++) {
-            let emptyRow = `${itemsArray.length + i + 1},,,,,,,,,,`;
-            
-            rowCompanies.forEach(() => {
-                emptyRow += ",";
-            });
-            
-            if (isLastRow) {
-                emptyRow += ",";
-            }
-            
-            csvContent += emptyRow + "\n";
-        }
+        // Add lowest total
+        dataRow += `,=${item.lowestTotal.toFixed(2)}`;
         
-        // ===== TOTALS ROW =====
-        let totalRow = "TOTAL,,,,,,,,,,";
+        csvContent += dataRow + "\n";
+        rowNumber++;
+    });
+    
+    // ===== EMPTY ROWS =====
+    const emptyRowsNeeded = Math.max(0, 20 - itemsArray.length);
+    for (let i = 0; i < emptyRowsNeeded; i++) {
+        let emptyRow = `${itemsArray.length + i + 1},,,,,,`;
         
-        rowCompanies.forEach(company => {
-            const total = companyTotals[company] || 0;
-            totalRow += `,=${total.toFixed(2)}`;
+        allCompanies.forEach(() => {
+            emptyRow += ",";
         });
         
-        if (isLastRow) {
-            totalRow += `,=${grandTotal.toFixed(2)}`;
-        }
-        
-        csvContent += totalRow + "\n";
-        
-        // Add separator between company rows (kung hindi last row)
-        if (!isLastRow) {
-            csvContent += "\n\n";
-        }
+        emptyRow += ",";
+        csvContent += emptyRow + "\n";
     }
+    
+    // ===== TOTALS ROW =====
+    let totalRow = "TOTAL,,,,,,";
+    
+    allCompanies.forEach(company => {
+        const total = companyTotals[company] || 0;
+        totalRow += `,=${total.toFixed(2)}`;
+    });
+    
+    totalRow += `,=${grandTotal.toFixed(2)}`;
+    csvContent += totalRow + "\n";
     
     // ===== FOOTER SECTION =====
     csvContent += "\n";
@@ -3892,12 +4210,6 @@ function exportToExcel() {
     csvContent += "\n";
     csvContent += "Noted By:,Engr. Louisito De Guzman\n";
     csvContent += "Date:," + dateTimeStr + "\n";
-    
-    // Add page break indicators for multi-page support
-    if (allCompanies.length > MAX_COMPANIES_PER_ROW) {
-        csvContent += "\n\n\n";
-        csvContent += "=== Page 2 ===\n";
-    }
     
     // Create and download file
     const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -3914,10 +4226,10 @@ function exportToExcel() {
     link.click();
     document.body.removeChild(link);
     
-    showNotification(`✅ Exported to ${filename} (A4 Landscape optimized)`, 'success');
+    showNotification(`✅ Exported to ${filename}`, 'success');
 }
 
-// Print Comparison function - GROUP BY ITEM NUMBER - WITH CENTERED TEXT
+// Print Comparison function
 function printComparison() {
     const items = collectAllItemsData();
     
@@ -3970,6 +4282,7 @@ function printComparison() {
                     itemNo: item.itemNo,
                     description: item.description,
                     category: item.category,
+                    unit: item.unit,
                     companies: []
                 };
             }
@@ -3981,27 +4294,9 @@ function printComparison() {
         });
     });
     
-    // Get UNIQUE companies lang
+    // Get UNIQUE companies
     const allCompanies = [...new Set(filteredItems.map(item => item.company))];
     allCompanies.sort();
-    
-    // MAXIMUM 10 COMPANIES PER TABLE
-    const MAX_COMPANIES_PER_TABLE = 10;
-    const companyTables = [];
-    
-    // Hatiin ang companies sa tables (maximum 10 per table)
-    for (let i = 0; i < allCompanies.length; i += MAX_COMPANIES_PER_TABLE) {
-        companyTables.push({
-            name: `Supplier Group ${Math.floor(i/MAX_COMPANIES_PER_TABLE) + 1}`,
-            companies: allCompanies.slice(i, i + MAX_COMPANIES_PER_TABLE)
-        });
-    }
-    
-    // Kung walang companies, mag-error
-    if (companyTables.length === 0) {
-        showNotification('No companies to display', 'error');
-        return;
-    }
     
     // Calculate totals per company
     const companyTotals = {};
@@ -4049,7 +4344,7 @@ function printComparison() {
     // Create print window
     const printWindow = window.open('', '_blank');
     
-    // Start HTML - WITH CENTERED TEXT STYLES
+    // Start HTML
     let html = `
     <!DOCTYPE html>
     <html>
@@ -4156,7 +4451,7 @@ function printComparison() {
                 text-align: center; 
             }
             td { 
-                text-align: center; /* CENTER ALL TEXT IN ROWS */
+                text-align: center;
             }
             .item-no-cell { 
                 text-align: center; 
@@ -4166,11 +4461,11 @@ function printComparison() {
                 text-align: center; 
             }
             .price-cell { 
-                text-align: center; /* Changed from right to center */
+                text-align: center;
                 padding-right: 0;
             }
             .formula-cell { 
-                text-align: center; /* Changed from right to center */
+                text-align: center;
                 padding-right: 0;
                 color: #006100;
                 font-family: 'Courier New', monospace;
@@ -4178,16 +4473,6 @@ function printComparison() {
             .total-row { 
                 font-weight: 600; 
                 background-color: #e8f0f8;
-            }
-            .company-section {
-                margin-top: 15px;
-                border-top: 2px solid #000;
-                padding-top: 10px;
-            }
-            .company-section-title {
-                font-weight: bold;
-                font-size: 10pt;
-                margin-bottom: 5px;
             }
             .signature-section { 
                 margin-top: 30px; 
@@ -4255,130 +4540,109 @@ function printComparison() {
                 <span class="project-value">${projectName}</span>
                 <span class="date-needed-label">Date Needed:</span>
                 <span class="date-needed-value"></span>
-            </div>`;
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Item No</th>
+                        <th rowspan="2">Description</th>
+                        <th rowspan="2">Category</th>
+                        <th rowspan="2">Unit</th>
+                        <th rowspan="2">Qty.</th>`;
         
-        // Create tables for EACH company group
-        companyTables.forEach((table, tableIndex) => {
-            const companiesInTable = table.companies;
-            const isLastTable = tableIndex === companyTables.length - 1;
-            
-            html += `
-            <div class="company-section">
-                <div class="company-section-title">${table.name} (${companiesInTable.length} companies)</div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th rowspan="2" width="5%">Item No</th>
-                            <th rowspan="2" width="20%">Description</th>
-                            <th rowspan="2" width="10%">Category</th>
-                            <th rowspan="2" width="5%">Qty.</th>
-                            <th rowspan="2" width="5%">Unit</th>`;
-            
-            // Add headers for companies ONLY
-            companiesInTable.forEach(company => {
-                html += `<th colspan="2" width="${Math.floor(60 / companiesInTable.length)}%">${company}</th>`;
-            });
-            
-            // Add lowest total column ONLY for last table
-            if (isLastTable) {
-                html += `<th rowspan="2" width="8%">Lowest<br>Total</th>`;
-            }
-            
-            html += `</tr>
-                    <tr>`;
-            
-            // Add price/total subheaders for companies ONLY
-            companiesInTable.forEach(() => {
-                html += `<th width="5%">Price</th><th width="5%">Total</th>`;
-            });
-            
-            html += `</tr>
+        // Add headers for companies
+        allCompanies.forEach(company => {
+            html += `<th colspan="2">${company}</th>`;
+        });
+        
+        html += `<th rowspan="2">Lowest<br>Total</th>
+                     </tr>
+                     <tr>`;
+        
+        // Add price/total subheaders for companies
+        allCompanies.forEach(() => {
+            html += `<th>Price</th><th>Total</th>`;
+        });
+        
+        html += `</tr>
                 </thead>
                 <tbody>`;
+        
+        // Add data rows
+        pageGroups.forEach((group, index) => {
+            const rowNumber = startRow + index;
+            const qty = group.companies[0]?.quantity || 0;
+            const unit = group.unit || 'pcs';
             
-            // Add data rows
-            pageGroups.forEach((group, index) => {
-                const rowNumber = startRow + index;
-                const qty = group.companies[0]?.quantity || 0;
-                
-                html += `<tr>
-                    <td class="item-no-cell">${group.itemNo}</td>
-                    <td>${group.description}</td>
-                    <td>${group.category || ''}</td>
-                    <td class="qty-cell">${qty.toLocaleString()}</td>
-                    <td class="unit-cell">pcs</td>`;
-                
-                // Add prices for companies ONLY
-                companiesInTable.forEach(company => {
-                    const companyItem = group.companies.find(c => c.company === company);
-                    if (companyItem) {
-                        const unitPrice = companyItem.price.toFixed(2);
-                        const total = (companyItem.quantity * companyItem.price).toFixed(2);
-                        html += `<td class="price-cell">${unitPrice}</td>
-                                 <td class="formula-cell">=${total}</td>`;
-                    } else {
-                        html += `<td class="price-cell"></td>
-                                 <td class="formula-cell"></td>`;
-                    }
-                });
-                
-                // Add lowest total for LAST table
-                if (isLastTable) {
-                    if (group.companies.length > 0) {
-                        const lowestPriceItem = group.companies.reduce((prev, curr) => 
-                            (curr.price < prev.price) ? curr : prev, group.companies[0]);
-                        const lowestTotal = (lowestPriceItem.quantity * lowestPriceItem.price).toFixed(2);
-                        html += `<td class="formula-cell">=${lowestTotal}</td>`;
-                    } else {
-                        html += `<td class="formula-cell"></td>`;
-                    }
-                }
-                
-                html += `</tr>`;
-            });
+            html += `<tr>
+                <td class="item-no-cell">${group.itemNo}</td>
+                <td>${group.description}</td>
+                <td>${group.category || ''}</td>
+                <td class="unit-cell">${unit}</td>
+                <td class="qty-cell">${qty.toLocaleString()}</td>`;
             
-            // Add empty rows
-            const remainingRows = ROWS_PER_PAGE - pageGroups.length;
-            for (let i = 0; i < remainingRows; i++) {
-                const emptyRowNumber = startRow + pageGroups.length + i;
-                html += `<tr>
-                    <td class="item-no-cell">${emptyRowNumber}</td>
-                    <td></td>
-                    <td></td>
-                    <td class="qty-cell"></td>
-                    <td class="unit-cell"></td>`;
-                
-                companiesInTable.forEach(() => {
+            // Add prices for companies
+            allCompanies.forEach(company => {
+                const companyItem = group.companies.find(c => c.company === company);
+                if (companyItem) {
+                    const unitPrice = companyItem.price.toFixed(2);
+                    const total = (companyItem.quantity * companyItem.price).toFixed(2);
+                    html += `<td class="price-cell">${unitPrice}</td>
+                             <td class="formula-cell">=${total}</td>`;
+                } else {
                     html += `<td class="price-cell"></td>
                              <td class="formula-cell"></td>`;
-                });
-                
-                if (isLastTable) {
-                    html += `<td class="formula-cell"></td>`;
                 }
-                
-                html += `</tr>`;
-            }
-            
-            // Add totals row
-            html += `<tr class="total-row">
-                <td colspan="5" style="text-align: right;"><strong>TOTAL:</strong></td>`;
-            
-            companiesInTable.forEach(company => {
-                const total = companyTotals[company] || 0;
-                html += `<td class="price-cell"></td>
-                         <td class="formula-cell"><strong>=${total.toFixed(2)}</strong></td>`;
             });
             
-            if (isLastTable) {
-                html += `<td class="formula-cell"><strong>=${grandTotal.toFixed(2)}</strong></td>`;
+            // Add lowest total
+            if (group.companies.length > 0) {
+                const lowestPriceItem = group.companies.reduce((prev, curr) => 
+                    (curr.price < prev.price) ? curr : prev, group.companies[0]);
+                const lowestTotal = (lowestPriceItem.quantity * lowestPriceItem.price).toFixed(2);
+                html += `<td class="formula-cell">=${lowestTotal}</td>`;
+            } else {
+                html += `<td class="formula-cell"></td>`;
             }
             
-            html += `</tr>
-                    </tbody>
-                </table>
-            </div>`;
+            html += `</tr>`;
         });
+        
+        // Add empty rows
+        const remainingRows = ROWS_PER_PAGE - pageGroups.length;
+        for (let i = 0; i < remainingRows; i++) {
+            const emptyRowNumber = startRow + pageGroups.length + i;
+            html += `<tr>
+                <td class="item-no-cell">${emptyRowNumber}</td>
+                <td></td>
+                <td></td>
+                <td class="unit-cell"></td>
+                <td class="qty-cell"></td>`;
+            
+            allCompanies.forEach(() => {
+                html += `<td class="price-cell"></td>
+                         <td class="formula-cell"></td>`;
+            });
+            
+            html += `<td class="formula-cell"></td>
+                 </tr>`;
+        }
+        
+        // Add totals row
+        html += `<tr class="total-row">
+            <td colspan="5" style="text-align: right;"><strong>TOTAL:</strong></td>`;
+        
+        allCompanies.forEach(company => {
+            const total = companyTotals[company] || 0;
+            html += `<td class="price-cell"></td>
+                     <td class="formula-cell"><strong>=${total.toFixed(2)}</strong></td>`;
+        });
+        
+        html += `<td class="formula-cell"><strong>=${grandTotal.toFixed(2)}</strong></td>
+             </tr>
+            </tbody>
+          </table>`;
         
         // Add note and signature
         html += `
@@ -4430,15 +4694,6 @@ function printComparison() {
     printWindow.document.close();
 }
 
-// Helper function to get current date
-function getCurrentDate() {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day} 00:00:00`;
-}
-
 // ==================== CART MODAL FUNCTIONS ====================
 
 // Open Cart Modal
@@ -4450,6 +4705,7 @@ function openCartModal(button) {
         itemNo: row.getAttribute('data-item-no'),
         description: row.getAttribute('data-description'),
         category: row.getAttribute('data-category') || '',
+        unit: row.getAttribute('data-unit') || 'pcs',
         companyName: row.getAttribute('data-company'),
         contactPerson: row.getAttribute('data-contact'),
         contactNumber: row.getAttribute('data-contact-number'),
@@ -4472,6 +4728,12 @@ function openCartModal(button) {
             <span class="detail-label">Category</span>
             <span class="detail-value ${currentCartItem.category ? 'category-badge-modal' : ''}" ${currentCartItem.category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>
                 ${currentCartItem.category || '—'}
+            </span>
+        </div>
+        <div class="detail-item">
+            <span class="detail-label">Unit</span>
+            <span class="detail-value unit-badge-modal" style="background: linear-gradient(135deg, #6c5ce7, #75e6da); color: white;">
+                ${currentCartItem.unit}
             </span>
         </div>
         <div class="detail-item">
@@ -4501,6 +4763,7 @@ function openCartModal(button) {
     document.getElementById('cartQuantity').value = 1;
     document.getElementById('cartQuantity').max = currentCartItem.availableQuantity;
     
+    document.getElementById('deliveryDate').value = '';
     updateQuantityButtons();
     updateTotalPrice();
     
@@ -4564,6 +4827,12 @@ function updateTotalPrice() {
 // Add to cart
 function addToCart() {
     const quantity = parseInt(document.getElementById('cartQuantity').value);
+    const deliveryDate = document.getElementById('deliveryDate').value;
+    
+    if (!deliveryDate) {
+        showNotification('Please select a delivery date!', 'error');
+        return;
+    }
     
     if (quantity > currentCartItem.availableQuantity) {
         showNotification('Cannot add more than available stock!', 'error');
@@ -4580,13 +4849,15 @@ function addToCart() {
         item_no: currentCartItem.itemNo,
         description: currentCartItem.description,
         category: currentCartItem.category,
+        unit: currentCartItem.unit,
         company_name: currentCartItem.companyName,
         contact_person: currentCartItem.contactPerson,
         contact_number: currentCartItem.contactNumber,
         quantity: quantity,
         price: currentCartItem.price,
         total: quantity * currentCartItem.price,
-        company_color: currentCartItem.companyColor
+        company_color: currentCartItem.companyColor,
+        delivery_date: deliveryDate
     };
     
     fetch('process_purchase.php', {
@@ -4600,10 +4871,12 @@ function addToCart() {
     .then(data => {
         if (data.success) {
             showNotification(`
-                <strong>✅ Item added to Purchase List!</strong><br>
+                ✅ Item added to Purchase List!<br>
                 Item: ${currentCartItem.itemNo} - ${currentCartItem.description}<br>
                 Company: ${currentCartItem.companyName}<br>
                 Quantity: ${quantity}<br>
+                Unit: ${currentCartItem.unit}<br>
+                Delivery Date: ${deliveryDate}<br>
                 <small style="color: #75e6da;">✓ Redirecting to purchase.php...</small>
             `, 'success');
             
@@ -4640,6 +4913,7 @@ function viewCompanyPrice(priceId) {
     const itemNo = row.getAttribute('data-item-no');
     const description = row.getAttribute('data-description');
     const category = row.getAttribute('data-category') || '';
+    const unit = row.getAttribute('data-unit') || 'pcs';
     const company = row.getAttribute('data-company');
     const contactPerson = row.getAttribute('data-contact');
     const contactNumber = row.getAttribute('data-contact-number');
@@ -4660,6 +4934,10 @@ function viewCompanyPrice(priceId) {
         <div class="view-detail-item">
             <span class="view-detail-label">Category</span>
             <span class="view-detail-value ${category ? 'category-badge-view' : ''}" ${category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>${category || '—'}</span>
+        </div>
+        <div class="view-detail-item">
+            <span class="view-detail-label">Unit</span>
+            <span class="view-detail-value unit-badge-view" style="background: linear-gradient(135deg, #6c5ce7, #75e6da); color: white;">${unit}</span>
         </div>
         <div class="view-detail-item full-width">
             <span class="view-detail-label">Company</span>
@@ -4721,16 +4999,20 @@ function editCompanyPrice(priceId) {
     const itemNo = row.getAttribute('data-item-no');
     const description = row.getAttribute('data-description');
     const category = row.getAttribute('data-category') || '';
+    const unit = row.getAttribute('data-unit') || 'pcs';
     const company = row.getAttribute('data-company');
     const contactPerson = row.getAttribute('data-contact');
     const contactNumber = row.getAttribute('data-contact-number');
     const quantity = parseInt(row.getAttribute('data-quantity'));
     const price = parseFloat(row.getAttribute('data-price'));
+    const itemId = row.getAttribute('data-item-id') || '';
     
     document.getElementById('editPriceId').value = priceId;
+    document.getElementById('editItemId').value = itemId;
     document.getElementById('editItemNo').value = itemNo;
     document.getElementById('editDescription').value = description;
     document.getElementById('editCategory').value = category;
+    document.getElementById('editUnit').value = unit;
     document.getElementById('editCompanyName').value = company;
     document.getElementById('editContactPerson').value = contactPerson || '';
     document.getElementById('editContactNumber').value = contactNumber || '';
@@ -5032,6 +5314,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (comparisonSearch) {
         comparisonSearch.addEventListener('keyup', filterComparisonTable);
     }
+    
+    // Setup auto-description if modal is already open
+    setupAutoDescription();
 });
 </script>
 

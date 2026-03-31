@@ -91,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_purchase'])) {
 }
 
 // IMPORTANT: Get purchases - ONLY pending and processing (hindi kasama ang completed) - WITH CATEGORY
+// Sa purchase.php, hanapin ang query at i-update:
 $purchases = $conn->query("SELECT p.*, ci.category FROM purchases p LEFT JOIN canvas_items ci ON p.item_no = ci.item_no WHERE p.status IN ('pending', 'processing') ORDER BY p.purchase_date DESC");
 
 // Get purchase statistics
@@ -104,6 +105,23 @@ require_once 'include/header.php';
 ?>
 
 <style>
+
+    /* Delivery Date Badge */
+.delivery-date-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    background: rgba(52, 152, 219, 0.15);
+    color: #3498db;
+    white-space: nowrap;
+}
+
+.delivery-date-badge i {
+    margin-right: 4px;
+    font-size: 10px;
+}
 /* Purchase Page Specific Styles */
 .stats-grid {
     display: grid;
@@ -860,21 +878,21 @@ require_once 'include/header.php';
 <!-- Purchases Table - ONLY PENDING AND PROCESSING - WITH CATEGORY COLUMN -->
 <div class="table-wrapper">
     <table class="products-table" id="purchasesTable">
-        <thead>
-            <tr>
-                <th>Item No</th>
-                <th>Description</th>
-                <th>Category</th> <!-- NEW CATEGORY COLUMN -->
-                <th>Company</th>
-                <th>Contact Person</th>
-                <th>Qty</th>
-                <th>Price/Unit</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
+    <thead>
+    <tr>
+        <th>Item No</th>
+        <th>Description</th>
+        <th>Category</th>
+        <th>Company</th>
+        <th>Contact Person</th>
+        <th>Qty</th>
+        <th>Price/Unit</th>
+        <th>Total</th>
+        <th>Delivery Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+</thead>
         <tbody id="purchasesPageBody">
             <?php if ($purchases && $purchases->num_rows > 0): ?>
                 <?php while($purchase = $purchases->fetch_assoc()): 
@@ -883,31 +901,39 @@ require_once 'include/header.php';
                                    ($purchase['status'] == 'processing' ? 'status-processing' : 'status-cancelled'));
                 ?>
                     <tr data-purchase-id="<?php echo $purchase['id']; ?>" class="purchase-row">
-                        <td><?php echo htmlspecialchars($purchase['item_no'] ?? 'N/A'); ?></td>
-                        <td><?php echo htmlspecialchars($purchase['description'] ?? 'N/A'); ?></td>
-                        
-                        <!-- NEW CATEGORY CELL -->
-                        <td>
-                            <?php if (!empty($purchase['category'])): ?>
-                                <span class="category-badge">
-                                    <i class="fas fa-tag"></i> <?php echo htmlspecialchars($purchase['category']); ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="text-muted">—</span>
-                            <?php endif; ?>
-                        </td>
-                        
-                        <td>
-                            <span class="company-badge" style="background: <?php echo $purchase['company_color'] ?? '#6c5ce7'; ?>">
-                                <?php echo htmlspecialchars($purchase['company_name'] ?? 'N/A'); ?>
-                            </span>
-                        </td>
-                        <td><?php echo htmlspecialchars($purchase['contact_person'] ?? 'N/A'); ?></td>
-                        <td><?php echo number_format($purchase['quantity_purchased'] ?? 0); ?></td>
-                        <td class="price-cell">₱<?php echo number_format($purchase['price_per_unit'] ?? 0, 2); ?></td>
-                        <td class="price-cell">₱<?php echo number_format($purchase['total_amount'], 2); ?></td>
-                        <td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($purchase['status']); ?></span></td>
-                        <td><?php echo date('M d, Y', strtotime($purchase['purchase_date'])); ?></td>
+      <td><?php echo htmlspecialchars($purchase['item_no'] ?? 'N/A'); ?></td>
+<td><?php echo htmlspecialchars($purchase['description'] ?? 'N/A'); ?></td>
+<td>
+    <?php if (!empty($purchase['category'])): ?>
+        <span class="category-badge">
+            <i class="fas fa-tag"></i> <?php echo htmlspecialchars($purchase['category']); ?>
+        </span>
+    <?php else: ?>
+        <span class="text-muted">—</span>
+    <?php endif; ?>
+</td>
+<td>
+    <span class="company-badge" style="background: <?php echo $purchase['company_color'] ?? '#6c5ce7'; ?>">
+        <?php echo htmlspecialchars($purchase['company_name'] ?? 'N/A'); ?>
+    </span>
+</td>
+<td><?php echo htmlspecialchars($purchase['contact_person'] ?? 'N/A'); ?></td>
+<td><?php echo number_format($purchase['quantity_purchased'] ?? 0); ?></td>
+<td class="price-cell">₱<?php echo number_format($purchase['price_per_unit'] ?? 0, 2); ?></td>
+<td class="price-cell">₱<?php echo number_format($purchase['total_amount'], 2); ?></td>
+<td class="price-cell">
+    <?php 
+    $deliveryDate = $purchase['delivery_date'] ?? '';
+    if (!empty($deliveryDate)):
+    ?>
+        <span class="delivery-date-badge">
+            <i class="fas fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($deliveryDate)); ?>
+        </span>
+    <?php else: ?>
+        <span class="text-muted">—</span>
+    <?php endif; ?>
+</td>
+<td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($purchase['status']); ?></span></td>
                         <td class="actions-cell">
                             <button class="action-btn view" onclick="viewPurchase(<?php echo $purchase['id']; ?>)" title="View Details">
                                 <i class="fas fa-eye"></i>
@@ -1131,6 +1157,7 @@ function closeOrderNowModal() {
 if (event.target == document.getElementById('orderNowModal')) {
     closeOrderNowModal();
 }
+// Update the processOrderNow function in purchase.php
 function processOrderNow() {
     if (!currentOrderId || !currentOrderBtn) {
         closeOrderNowModal();
@@ -1158,7 +1185,7 @@ function processOrderNow() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            // Remove the row from table (since it's now completed)
+            // Remove the row from table
             const row = btn.closest('tr');
             if (row) {
                 row.style.animation = 'fadeOut 0.3s ease';
@@ -1168,12 +1195,12 @@ function processOrderNow() {
                     // Check if table is empty
                     const tbody = document.getElementById('purchasesPageBody');
                     if (tbody.children.length === 0) {
-                        location.reload(); // Reload to show empty state
+                        location.reload();
                     }
                 }, 300);
             }
             
-            // Show success notification
+            // Show success notification with more details
             showNotification(`
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-check-circle" style="font-size: 24px;"></i>
@@ -1187,9 +1214,9 @@ function processOrderNow() {
                 </div>
             `, 'success');
             
-            // REDIRECT TO STOCK TRACKER
+            // CRITICAL: Redirect to stock_tracker.php with the correct date
             setTimeout(() => {
-                window.location.href = 'stock_tracker.php?date=' + data.date + '&purchased=success&movement=' + data.movement_id;
+                window.location.href = data.redirect_url;
             }, 2000);
         } else {
             alert('Error: ' + data.message);

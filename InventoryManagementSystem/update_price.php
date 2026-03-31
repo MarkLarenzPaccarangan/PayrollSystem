@@ -1,5 +1,5 @@
 <?php
-// update_price.php
+// update_price.php - WITHOUT PRODUCT SYNC (Products should NOT be updated from canvas edits)
 require_once 'config.php';
 requireLogin();
 
@@ -16,6 +16,7 @@ $price_id = isset($_POST['price_id']) ? $_POST['price_id'] : null;
 $item_no = isset($_POST['item_no']) ? trim($_POST['item_no']) : null;
 $description = isset($_POST['description']) ? trim($_POST['description']) : null;
 $category = isset($_POST['category']) ? trim($_POST['category']) : '';
+$unit = isset($_POST['unit']) ? trim($_POST['unit']) : 'pcs';  // NEW: Get unit
 $company_name = isset($_POST['company_name']) ? trim($_POST['company_name']) : null;
 $contact_person = isset($_POST['contact_person']) ? trim($_POST['contact_person']) : '';
 $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
@@ -45,7 +46,7 @@ $conn->begin_transaction();
 
 try {
     // Get current company price data
-    $get_price = $conn->query("SELECT cp.*, ci.item_no, ci.description, ci.category, c.name as company_name 
+    $get_price = $conn->query("SELECT cp.*, ci.item_no, ci.description, ci.category, ci.unit, c.name as company_name 
                                FROM company_prices cp
                                INNER JOIN canvas_items ci ON cp.item_id = ci.id
                                INNER JOIN companies c ON cp.company_id = c.id
@@ -59,7 +60,7 @@ try {
     $item_id = $price_data['item_id'];
     $company_id = $price_data['company_id'];
     
-    // ===== FIXED: Handle company properly to prevent duplicates =====
+    // ===== HANDLE COMPANY =====
     // Check if company exists (case-insensitive)
     $check_company = $conn->query("SELECT id, contact_person, contact_number FROM companies WHERE LOWER(name) = LOWER('" . $conn->real_escape_string($company_name) . "')");
     
@@ -81,7 +82,6 @@ try {
         
         // Update contact info only if provided and different
         if (!empty($contact_person) || !empty($contact_number)) {
-            // Only update if values are different from existing
             $needs_update = false;
             $update_fields = [];
             
@@ -105,16 +105,17 @@ try {
         }
     }
     
-    // ===== FIXED: Handle item properly =====
+    // ===== HANDLE ITEM WITH UNIT =====
     // Check if item exists (case-insensitive for item_no)
-    $check_item = $conn->query("SELECT id, description, category FROM canvas_items WHERE item_no = '" . $conn->real_escape_string($item_no) . "'");
+    $check_item = $conn->query("SELECT id, description, category, unit FROM canvas_items WHERE item_no = '" . $conn->real_escape_string($item_no) . "'");
     
     if ($check_item->num_rows == 0) {
-        // Item doesn't exist - create new one
-        $insert_item = $conn->query("INSERT INTO canvas_items (item_no, description, category) 
+        // Item doesn't exist - create new one with unit
+        $insert_item = $conn->query("INSERT INTO canvas_items (item_no, description, category, unit) 
                                      VALUES ('" . $conn->real_escape_string($item_no) . "', 
                                              '" . $conn->real_escape_string($description) . "', 
-                                             '" . $conn->real_escape_string($category) . "')");
+                                             '" . $conn->real_escape_string($category) . "',
+                                             '" . $conn->real_escape_string($unit) . "')");
         if (!$insert_item) {
             throw new Exception('Failed to create item: ' . $conn->error);
         }
@@ -138,6 +139,12 @@ try {
             $needs_update = true;
         }
         
+        // NEW: Update unit if changed
+        if (($item['unit'] ?? 'pcs') != $unit) {
+            $update_fields[] = "unit = '" . $conn->real_escape_string($unit) . "'";
+            $needs_update = true;
+        }
+        
         if ($needs_update) {
             $update_sql = "UPDATE canvas_items SET " . implode(', ', $update_fields) . " WHERE id = $new_item_id";
             $update_item = $conn->query($update_sql);
@@ -147,7 +154,7 @@ try {
         }
     }
     
-    // ===== FIXED: Handle company price update =====
+    // ===== HANDLE COMPANY PRICE UPDATE =====
     if ($new_company_id != $company_id || $new_item_id != $item_id) {
         // Company or item changed - check if new combination already exists
         $check_existing = $conn->query("SELECT id FROM company_prices 
@@ -199,7 +206,12 @@ try {
         }
     }
     
-    // ===== OPTIONAL: Clean up orphaned companies =====
+    // ===== REMOVED: PRODUCT SYNC SECTION =====
+    // Products should NOT be updated from canvas edits.
+    // Products are only updated when purchases are confirmed in purchase.php
+    // This prevents the issue where editing item 01 to 02 in canvas also changes home.php
+    
+    // ===== CLEAN UP ORPHANED COMPANIES =====
     // If we changed company and the old company has no other prices, delete it
     if ($new_company_id != $company_id) {
         $check_old_company = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE company_id = $company_id");
@@ -211,7 +223,7 @@ try {
     }
     
     $conn->commit();
-    echo json_encode(['success' => true, 'message' => 'Price updated successfully']);
+    echo json_encode(['success' => true, 'message' => 'Price updated successfully (products table not affected)']);
     
 } catch (Exception $e) {
     $conn->rollback();

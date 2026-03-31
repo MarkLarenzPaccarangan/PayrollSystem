@@ -363,6 +363,7 @@ require_once 'include/header.php';
 <?php endif; ?>
 
 <style>
+
 /* Color Palette Variables - Matching home.css */
 :root {
     --teal-primary: #75e6da;

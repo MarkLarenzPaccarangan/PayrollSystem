@@ -1,3 +1,4 @@
+
 <?php
 // process_purchase.php - From Canvas (Sets status to PENDING only - NO STOCK UPDATE)
 require_once 'config.php';
@@ -53,6 +54,9 @@ $customer_name = $conn->real_escape_string($input['customer_name'] ?? 'Walk-in C
 $payment_method = $conn->real_escape_string($input['payment_method'] ?? 'cash');
 $payment_status = $conn->real_escape_string($input['payment_status'] ?? 'pending'); // Change to 'pending'
 
+// NEW: Get delivery date
+$delivery_date = isset($input['delivery_date']) ? $conn->real_escape_string($input['delivery_date']) : date('Y-m-d');
+
 // Generate unique purchase number
 $purchase_number = 'PUR-' . date('YmdHis') . '-' . rand(1000, 9999);
 
@@ -106,18 +110,20 @@ try {
     // These will happen when user clicks "Order Now" in purchase.php
     
     // Insert purchase with PENDING status only - NO stock updates yet
+    // UPDATED: Added delivery_date column
+      // Insert purchase with PENDING status only - NO stock updates yet
+    // FIXED: purchase_date will use the delivery_date instead of NOW()
     $purchase_sql = "INSERT INTO purchases (
         purchase_number, customer_name, item_no, description, 
         company_name, contact_person, contact_number,
         price_id, product_id, quantity_purchased, price_per_unit, total_amount,
         available_before, available_after, company_color,
-        payment_method, payment_status, status, purchase_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())";
-    // REMOVED: stock_movement_id because no movement yet
+        payment_method, payment_status, status, purchase_date, delivery_date
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)";
     
     $purchase_stmt = $conn->prepare($purchase_sql);
     $purchase_stmt->bind_param(
-        "ssssssssiisddssss",
+        "ssssssssiisddssssss",  // Added one more 's' for purchase_date
         $purchase_number,
         $customer_name,
         $item_no,
@@ -134,7 +140,9 @@ try {
         $current_stock,    // available_after (SAME because stock not deducted yet)
         $company_color,
         $payment_method,
-        $payment_status
+        $payment_status,
+        $delivery_date,    // purchase_date - gamitin ang delivery_date
+        $delivery_date     // delivery_date
     );
     
     if (!$purchase_stmt->execute()) {
@@ -154,6 +162,7 @@ try {
         'description' => $description,
         'unit' => $unit,
         'date' => date('Y-m-d H:i:s'),
+        'delivery_date' => $delivery_date,  // NEW: Return delivery date
         'status' => 'pending',
         'stock_not_deducted' => true, // Important: stock not deducted yet
         'redirect' => 'purchase.php' // Redirect to purchase.php (pending list)
@@ -168,3 +177,4 @@ try {
 
 $conn->close();
 ?>
+
