@@ -26,7 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $status = isset($_POST['status']) ? trim($_POST['status']) : ''; // AM Status
     $pm_status = isset($_POST['pm_status']) ? trim($_POST['pm_status']) : ''; // PM Status
     $night_status = isset($_POST['night_status']) ? trim($_POST['night_status']) : ''; // Night Status
-    $site = isset($_POST['site']) ? trim($_POST['site']) : '';
+    $remarks = isset($_POST['remarks']) ? trim($_POST['remarks']) : '';
     $attendance_id = isset($_POST['attendance_id']) ? intval($_POST['attendance_id']) : 0;
     
     // Get leave type - standalone, can be set regardless of status
@@ -40,6 +40,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (empty($workday_type)) {
         $workday_type = NULL;
     }
+    
+    // Site assignment fields
+    $site_assignment_am = isset($_POST['site_assignment_am']) ? trim($_POST['site_assignment_am']) : NULL;
+    $site_assignment_pm = isset($_POST['site_assignment_pm']) ? trim($_POST['site_assignment_pm']) : NULL;
+    $site_assignment_night = isset($_POST['site_assignment_night']) ? trim($_POST['site_assignment_night']) : NULL;
+    
+    // If empty, set to NULL
+    if (empty($site_assignment_am)) $site_assignment_am = NULL;
+    if (empty($site_assignment_pm)) $site_assignment_pm = NULL;
+    if (empty($site_assignment_night)) $site_assignment_night = NULL;
     
     // Time fields – set to NULL only if empty, but keep '00:00:00' as valid (midnight)
     $time_in_am = (!empty($_POST['time_in_am'])) ? trim($_POST['time_in_am']) : NULL;
@@ -100,24 +110,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $night_hours = calculateHours($time_in_night, $time_out_night);
     $total_hours = $am_hours + $pm_hours + $night_hours;
     
-    // If AM is Absent, set AM time fields to NULL
-    if ($status === 'Absent') {
-        $time_in_am = $time_out_am = NULL;
-    }
+  // If AM is Absent, set AM time fields to NULL only
+if ($status === 'Absent') {
+    $time_in_am = $time_out_am = NULL;
+    // DO NOT clear site_assignment_am - keep it for Absent records
+}
+    // If PM is Absent, set PM time fields to NULL only
+if ($pm_status === 'Absent') {
+    $time_in_pm = $time_out_pm = NULL;
+    // DO NOT clear site_assignment_pm - keep it for Absent records
+}
     
-    // If PM is Absent, set PM time fields to NULL
-    if ($pm_status === 'Absent') {
-        $time_in_pm = $time_out_pm = NULL;
-    }
-    
-    // If Night is Absent, set Night time fields to NULL
-    if ($night_status === 'Absent') {
-        $time_in_night = $time_out_night = NULL;
-    }
+    // If Night is Absent, set Night time fields to NULL only
+if ($night_status === 'Absent') {
+    $time_in_night = $time_out_night = NULL;
+    // DO NOT clear site_assignment_night - keep it for Absent records
+}
     
     // If AM status is Present but no times, set to No Record
     if ($status === 'Present' && !$time_in_am && !$time_out_am) {
         $status = 'No Record';
+        $site_assignment_am = NULL; // Clear site assignment if no valid times
     }
     if ($status === 'Present' && ($time_in_am || $time_out_am)) {
         // Keep as Present - valid times exist
@@ -126,6 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Similarly for PM
     if ($pm_status === 'Present' && !$time_in_pm && !$time_out_pm) {
         $pm_status = 'No Record';
+        $site_assignment_pm = NULL;
     }
     if ($pm_status === 'Present' && ($time_in_pm || $time_out_pm)) {
         // Keep as Present
@@ -134,6 +148,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Similarly for Night
     if ($night_status === 'Present' && !$time_in_night && !$time_out_night) {
         $night_status = 'No Record';
+        $site_assignment_night = NULL;
     }
     if ($night_status === 'Present' && ($time_in_night || $time_out_night)) {
         // Keep as Present
@@ -148,6 +163,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     error_log("- Night Status: " . $night_status);
     error_log("- Leave Type: " . ($leave_type ? $leave_type : 'NULL'));
     error_log("- Workday Type: " . ($workday_type ? $workday_type : 'NULL'));
+    error_log("- Site Assignment AM: " . ($site_assignment_am ? $site_assignment_am : 'NULL'));
+    error_log("- Site Assignment PM: " . ($site_assignment_pm ? $site_assignment_pm : 'NULL'));
+    error_log("- Site Assignment Night: " . ($site_assignment_night ? $site_assignment_night : 'NULL'));
     
     // Validate required fields
     if (empty($employee_id) || empty($date)) {
@@ -218,8 +236,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $workday_check = $conn->query("SHOW COLUMNS FROM attendance LIKE 'workday_type'");
             $has_workday_column = $workday_check && $workday_check->num_rows > 0;
             
-            if ($has_night_columns && $has_workday_column) {
-                // Update with night session columns and workday type
+            $site_check_am = $conn->query("SHOW COLUMNS FROM attendance LIKE 'site_assignment_am'");
+            $has_site_am = $site_check_am && $site_check_am->num_rows > 0;
+            
+            $site_check_pm = $conn->query("SHOW COLUMNS FROM attendance LIKE 'site_assignment_pm'");
+            $has_site_pm = $site_check_pm && $site_check_pm->num_rows > 0;
+            
+            $site_check_night = $conn->query("SHOW COLUMNS FROM attendance LIKE 'site_assignment_night'");
+            $has_site_night = $site_check_night && $site_check_night->num_rows > 0;
+            
+            if ($has_night_columns && $has_workday_column && $has_site_am && $has_site_pm && $has_site_night) {
+                // Update with night session columns, workday type, and site assignments
                 $update_sql = "UPDATE attendance SET 
                               employee_id = ?,
                               date = ?,
@@ -232,9 +259,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                               time_out_pm = ?,
                               time_in_night = ?,
                               time_out_night = ?,
-                              site = ?,
+                              remarks = ?,
                               leave_type = ?,
                               workday_type = ?,
+                              site_assignment_am = ?,
+                              site_assignment_pm = ?,
+                              site_assignment_night = ?,
                               total_hours = ?,
                               updated_at = CURRENT_TIMESTAMP
                               WHERE id = ?";
@@ -246,7 +276,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     throw new Exception("Update prepare failed: " . $conn->error);
                 }
                 
-                $update_stmt->bind_param("isssssssssssssdi", 
+                $update_stmt->bind_param("issssssssssssssssdi", 
                     $employee_id,
                     $date,
                     $status,
@@ -258,9 +288,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $time_out_pm,
                     $time_in_night,
                     $time_out_night,
-                    $site, 
+                    $remarks, 
                     $leave_type, 
-                    $workday_type, 
+                    $workday_type,
+                    $site_assignment_am,
+                    $site_assignment_pm,
+                    $site_assignment_night,
                     $total_hours,
                     $attendance_id
                 );
@@ -274,7 +307,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 
                 $update_stmt->close();
             } else {
-                $_SESSION['error'] = "Database needs to be updated. Please add workday_type column.";
+                $_SESSION['error'] = "Database needs to be updated. Please add required columns.";
                 header("Location: attendance.php?date=" . urlencode($date));
                 exit;
             }
@@ -289,8 +322,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $workday_check = $conn->query("SHOW COLUMNS FROM attendance LIKE 'workday_type'");
             $has_workday_column = $workday_check && $workday_check->num_rows > 0;
             
-            if ($has_night_columns && $has_workday_column) {
-                // Insert with night session columns and workday type
+            $site_check_am = $conn->query("SHOW COLUMNS FROM attendance LIKE 'site_assignment_am'");
+            $has_site_am = $site_check_am && $site_check_am->num_rows > 0;
+            
+            $site_check_pm = $conn->query("SHOW COLUMNS FROM attendance LIKE 'site_assignment_pm'");
+            $has_site_pm = $site_check_pm && $site_check_pm->num_rows > 0;
+            
+            $site_check_night = $conn->query("SHOW COLUMNS FROM attendance LIKE 'site_assignment_night'");
+            $has_site_night = $site_check_night && $site_check_night->num_rows > 0;
+            
+            if ($has_night_columns && $has_workday_column && $has_site_am && $has_site_pm && $has_site_night) {
+                // Insert with night session columns, workday type, and site assignments
                 $insert_sql = "INSERT INTO attendance (
                               employee_id, 
                               date, 
@@ -303,12 +345,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                               time_out_pm,
                               time_in_night,
                               time_out_night,
-                              site, 
+                              remarks, 
                               leave_type,
                               workday_type,
+                              site_assignment_am,
+                              site_assignment_pm,
+                              site_assignment_night,
                               total_hours,
                               created_at
-                              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
+                              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)";
                 
                 error_log("Insert SQL: " . $insert_sql);
                 
@@ -317,7 +362,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     throw new Exception("Insert prepare failed: " . $conn->error);
                 }
                 
-                $insert_stmt->bind_param("isssssssssssssd", 
+                $insert_stmt->bind_param("issssssssssssssssd", 
                     $employee_id, 
                     $date, 
                     $status,
@@ -329,9 +374,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $time_out_pm,
                     $time_in_night,
                     $time_out_night,
-                    $site, 
+                    $remarks, 
                     $leave_type,
                     $workday_type,
+                    $site_assignment_am,
+                    $site_assignment_pm,
+                    $site_assignment_night,
                     $total_hours
                 );
                 
@@ -345,7 +393,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 
                 $insert_stmt->close();
             } else {
-                $_SESSION['error'] = "Database needs to be updated. Please add workday_type column.";
+                $_SESSION['error'] = "Database needs to be updated. Please add required columns.";
                 header("Location: attendance.php?date=" . urlencode($date));
                 exit;
             }

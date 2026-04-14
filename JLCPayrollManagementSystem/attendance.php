@@ -71,7 +71,7 @@ $sql = "SELECT
             a.time_out_pm,
             a.time_in_night,
             a.time_out_night,
-            a.site,
+            a.remarks,
             a.leave_type,
             a.workday_type
         FROM employees e
@@ -231,6 +231,29 @@ function formatTimeForDownload($time) {
     <link rel="stylesheet" href="./assets/css/attendance1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+/* Site Assignment Styles */
+.site-assignment-container {
+    transition: all 0.3s ease;
+}
+
+.site-assignment-container .site-assignment-select {
+    transition: all 0.3s;
+}
+
+.site-assignment-container .site-assignment-select:hover {
+    border-color: #75e6da;
+}
+
+.site-assignment-container .site-assignment-select:focus {
+    border-color: #75e6da;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+}
+
+.site-assignment-container .site-assignment-select.error {
+    border-color: #e74c3c;
+    background-color: #fef5f5;
+}
         /* Keep all your existing CSS styles exactly as they are - no changes needed */
         .content-wrapper {
             min-height: calc(100vh - var(--header-height) - 40px);
@@ -3550,406 +3573,404 @@ include("./includes/header.php");
             <div class="payroll-table-container" style="min-width: 2000px;">
                 <table class="payroll-table" style="width: 100%; table-layout: fixed;">
                     <thead>
-                        <tr>
-                            <th style="width: 210px;"><i class="fas fa-user"></i> Employee</th>
-                            <th style="width: 140px;"><i class="fas fa-calendar"></i> Date</th>
-                            <th style="width: 140px;"><i class="fas fa-sun"></i> AM Status</th>
-                            <th style="width: 90px;"><i class="fas fa-sun"></i> AM In</th>
-                            <th style="width: 100px;"><i class="fas fa-sun"></i> AM Out</th>
-                            <th style="width: 140px;"><i class="fas fa-moon"></i> PM Status</th>
-                            <th style="width: 155px;"><i class="fas fa-clock"></i> PM/Night In</th>
-                            <th style="width: 155px;"><i class="fas fa-clock"></i> PM/Night Out</th>
-                            <th style="width: 150px;"><i class="fas fa-star"></i> Night Status</th>
-                            <th style="width: 120px;"><i class="fas fa-umbrella-beach"></i> Leave</th>
-                            <th style="width: 150px;"><i class="fas fa-calendar-day"></i> Workday Type</th>
-                            <th style="width: 150px;"><i class="fas fa-clock"></i> Total Hours</th>
-                            <th style="width: 110px;"><i class="fas fa-location-dot"></i> Site</th>
-                            <th style="width: 120px;"><i class="fas fa-cogs"></i> Actions</th>
-                        </tr>
-                    </thead>
+    <tr>
+        <th><i class="fas fa-user"></i> Employee</th>
+        <th><i class="fas fa-calendar"></i> Date</th>
+        <th><i class="fas fa-sun"></i> AM Status</th>
+        <th><i class="fas fa-sun"></i> AM In</th>
+        <th><i class="fas fa-sun"></i> AM Out</th>
+        <th><i class="fas fa-moon"></i> PM Status</th>
+        <th><i class="fas fa-clock"></i> PM/Night In</th>
+        <th><i class="fas fa-clock"></i> PM/Night Out</th>
+        <th><i class="fas fa-star"></i> Night Status</th>
+        <th><i class="fas fa-umbrella-beach"></i> Leave</th>
+        <th><i class="fas fa-calendar-day"></i> Workday Type</th>
+        <th><i class="fas fa-clock"></i> Total Hours</th>
+        <th><i class="fas fa-comment"></i> Remarks</th>
+        <th><i class="fas fa-cogs"></i> Actions</th>
+    </tr>
+</thead>
                     <tbody>
-                    <?php if($result && $result->num_rows > 0): ?>
-                        <?php while($row = $result->fetch_assoc()): ?>
-                            <?php
-                            // Handle NULL values
-                            $row['middle_name'] = $row['middle_name'] ?? '';
-                            $row['time_in_am'] = $row['time_in_am'] ?? '';
-                            $row['time_out_am'] = $row['time_out_am'] ?? '';
-                            $row['time_in_pm'] = $row['time_in_pm'] ?? '';
-                            $row['time_out_pm'] = $row['time_out_pm'] ?? '';
-                            $row['time_in_night'] = $row['time_in_night'] ?? '';
-                            $row['time_out_night'] = $row['time_out_night'] ?? '';
-                            $row['site'] = $row['site'] ?? '';
-                            $row['status'] = $row['status'] ?? 'No Record';
-                            $row['pm_status'] = $row['pm_status'] ?? 'No Record';
-                            $row['night_status'] = $row['night_status'] ?? 'No Record';
-                            $row['leave_type'] = $row['leave_type'] ?? '';
-                            $row['workday_type'] = $row['workday_type'] ?? '';
-                            $row['position'] = $row['position'] ?? 'N/A';
-                            
-                            // Display times
-                            $time_in_am_display = "-";
-                            $time_out_am_display = "-";
-                            $time_in_pm_display = "-";
-                            $time_out_pm_display = "-";
-                            $time_in_night_display = "-";
-                            $time_out_night_display = "-";
+<?php if($result && $result->num_rows > 0): ?>
+    <?php while($row = $result->fetch_assoc()): ?>
+        <?php
+        // Handle NULL values
+        $row['middle_name'] = $row['middle_name'] ?? '';
+        $row['time_in_am'] = $row['time_in_am'] ?? '';
+        $row['time_out_am'] = $row['time_out_am'] ?? '';
+        $row['time_in_pm'] = $row['time_in_pm'] ?? '';
+        $row['time_out_pm'] = $row['time_out_pm'] ?? '';
+        $row['time_in_night'] = $row['time_in_night'] ?? '';
+        $row['time_out_night'] = $row['time_out_night'] ?? '';
+        $row['remarks'] = $row['remarks'] ?? '';
+        $row['status'] = $row['status'] ?? 'No Record';
+        $row['pm_status'] = $row['pm_status'] ?? 'No Record';
+        $row['night_status'] = $row['night_status'] ?? 'No Record';
+        $row['leave_type'] = $row['leave_type'] ?? '';
+        $row['workday_type'] = $row['workday_type'] ?? '';
+        $row['position'] = $row['position'] ?? 'N/A';
+        
+        // Display times
+        $time_in_am_display = "-";
+        $time_out_am_display = "-";
+        $time_in_pm_display = "-";
+        $time_out_pm_display = "-";
+        $time_in_night_display = "-";
+        $time_out_night_display = "-";
 
- // For AM times - FIXED to handle 00:00:00 properly
-if (!empty($row['time_in_am'])) {
-    if ($row['time_in_am'] == '00:00:00') {
-        $time_in_am_display = '12:00 AM';
-    } else {
-        $time_in_am = strtotime($row['time_in_am']);
-        $time_in_am_display = date('h:i A', $time_in_am);
-    }
-} else {
-    $time_in_am_display = '-';
-}
+        // For AM times - FIXED to handle 00:00:00 properly
+        if (!empty($row['time_in_am'])) {
+            if ($row['time_in_am'] == '00:00:00') {
+                $time_in_am_display = '12:00 AM';
+            } else {
+                $time_in_am = strtotime($row['time_in_am']);
+                $time_in_am_display = date('h:i A', $time_in_am);
+            }
+        } else {
+            $time_in_am_display = '-';
+        }
 
-if (!empty($row['time_out_am'])) {
-    if ($row['time_out_am'] == '00:00:00') {
-        $time_out_am_display = '12:00 AM';
-    } else {
-        $time_out_am = strtotime($row['time_out_am']);
-        $time_out_am_display = date('h:i A', $time_out_am);
-    }
-} else {
-    $time_out_am_display = '-';
-}
+        if (!empty($row['time_out_am'])) {
+            if ($row['time_out_am'] == '00:00:00') {
+                $time_out_am_display = '12:00 AM';
+            } else {
+                $time_out_am = strtotime($row['time_out_am']);
+                $time_out_am_display = date('h:i A', $time_out_am);
+            }
+        } else {
+            $time_out_am_display = '-';
+        }
 
-// For PM times - FIXED to handle 00:00:00 properly
-if (!empty($row['time_in_pm'])) {
-    if ($row['time_in_pm'] == '00:00:00') {
-        $time_in_pm_display = '12:00 AM';
-    } else {
-        $time_in_pm = strtotime($row['time_in_pm']);
-        $time_in_pm_display = date('h:i A', $time_in_pm);
-    }
-} else {
-    $time_in_pm_display = '-';
-}
+        // For PM times - FIXED to handle 00:00:00 properly
+        if (!empty($row['time_in_pm'])) {
+            if ($row['time_in_pm'] == '00:00:00') {
+                $time_in_pm_display = '12:00 AM';
+            } else {
+                $time_in_pm = strtotime($row['time_in_pm']);
+                $time_in_pm_display = date('h:i A', $time_in_pm);
+            }
+        } else {
+            $time_in_pm_display = '-';
+        }
 
-if (!empty($row['time_out_pm'])) {
-    if ($row['time_out_pm'] == '00:00:00') {
-        $time_out_pm_display = '12:00 AM';
-    } else {
-        $time_out_pm = strtotime($row['time_out_pm']);
-        $time_out_pm_display = date('h:i A', $time_out_pm);
-    }
-} else {
-    $time_out_pm_display = '-';
-}
+        if (!empty($row['time_out_pm'])) {
+            if ($row['time_out_pm'] == '00:00:00') {
+                $time_out_pm_display = '12:00 AM';
+            } else {
+                $time_out_pm = strtotime($row['time_out_pm']);
+                $time_out_pm_display = date('h:i A', $time_out_pm);
+            }
+        } else {
+            $time_out_pm_display = '-';
+        }
 
-// For Night times - FIXED to handle 00:00:00 properly
-if (!empty($row['time_in_night'])) {
-    if ($row['time_in_night'] == '00:00:00') {
-        $time_in_night_display = '12:00 AM';
-    } else {
-        $time_in_night = strtotime($row['time_in_night']);
-        $time_in_night_display = date('h:i A', $time_in_night);
-    }
-} else {
-    $time_in_night_display = '-';
-}
+        // For Night times - FIXED to handle 00:00:00 properly
+        if (!empty($row['time_in_night'])) {
+            if ($row['time_in_night'] == '00:00:00') {
+                $time_in_night_display = '12:00 AM';
+            } else {
+                $time_in_night = strtotime($row['time_in_night']);
+                $time_in_night_display = date('h:i A', $time_in_night);
+            }
+        } else {
+            $time_in_night_display = '-';
+        }
 
-if (!empty($row['time_out_night'])) {
-    if ($row['time_out_night'] == '00:00:00') {
-        $time_out_night_display = '12:00 AM';
-    } else {
-        $time_out_night = strtotime($row['time_out_night']);
-        $time_out_night_display = date('h:i A', $time_out_night);
-    }
-} else {
-    $time_out_night_display = '-';
-}
-                            
-                            // Determine status classes - INDEPENDENT SESSIONS
-                            $am_status_class = 'status-no-record';
-                            $am_status_text = 'No Record';
-                            $pm_status_class = 'status-no-record';
-                            $pm_status_text = 'No Record';
-                            $night_status_class = 'status-no-record';
-                            $night_status_text = 'No Record';
+        if (!empty($row['time_out_night'])) {
+            if ($row['time_out_night'] == '00:00:00') {
+                $time_out_night_display = '12:00 AM';
+            } else {
+                $time_out_night = strtotime($row['time_out_night']);
+                $time_out_night_display = date('h:i A', $time_out_night);
+            }
+        } else {
+            $time_out_night_display = '-';
+        }
+        
+        // Determine status classes - INDEPENDENT SESSIONS
+        $am_status_class = 'status-no-record';
+        $am_status_text = 'No Record';
+        $pm_status_class = 'status-no-record';
+        $pm_status_text = 'No Record';
+        $night_status_class = 'status-no-record';
+        $night_status_text = 'No Record';
 
-                            $has_record = !empty($row['date']);
+        $has_record = !empty($row['date']);
 
-                            if (!$has_record) {
-                                // No record at all - all "No Record"
-                                $am_status_class = 'status-no-record';
-                                $am_status_text = 'No Record';
-                                $pm_status_class = 'status-no-record';
-                                $pm_status_text = 'No Record';
-                                $night_status_class = 'status-no-record';
-                                $night_status_text = 'No Record';
-                            } else {
-                                // Check if there are ANY time records for each session
-                                $has_am_time = (!empty($row['time_in_am']) && $row['time_in_am'] != '00:00:00') || 
-                                               (!empty($row['time_out_am']) && $row['time_out_am'] != '00:00:00');
-                                $has_pm_time = (!empty($row['time_in_pm']) && $row['time_in_pm'] != '00:00:00') || 
-                                               (!empty($row['time_out_pm']) && $row['time_out_pm'] != '00:00:00');
-                                $has_night_time = (!empty($row['time_in_night']) && $row['time_in_night'] != '00:00:00') || 
-                                                  (!empty($row['time_out_night']) && $row['time_out_night'] != '00:00:00');
-                                
-                                // AM STATUS - use status field
-                                if (!empty($row['status'])) {
-                                    if ($row['status'] == 'Present') {
-                                        $am_status_class = 'status-present';
-                                        $am_status_text = 'Present';
-                                    } elseif ($row['status'] == 'Absent') {
-                                        $am_status_class = 'status-absent';
-                                        $am_status_text = 'Absent';
-                                    } elseif ($row['status'] == 'On Leave') {
-                                        $am_status_class = 'status-leave';
-                                        $am_status_text = 'On Leave';
-                                    }
-                                } else {
-                                    // No status set - determine based on times
-                                    if ($has_am_time) {
-                                        $am_status_class = 'status-present';
-                                        $am_status_text = 'Present';
-                                    } else {
-                                        $am_status_class = 'status-no-record';
-                                        $am_status_text = 'No Record';
-                                    }
-                                }
-                                
-                                // PM STATUS - use pm_status field
-                                if (!empty($row['pm_status'])) {
-                                    if ($row['pm_status'] == 'Present') {
-                                        $pm_status_class = 'status-present';
-                                        $pm_status_text = 'Present';
-                                    } elseif ($row['pm_status'] == 'Absent') {
-                                        $pm_status_class = 'status-absent';
-                                        $pm_status_text = 'Absent';
-                                    } elseif ($row['pm_status'] == 'On Leave') {
-                                        $pm_status_class = 'status-leave';
-                                        $pm_status_text = 'On Leave';
-                                    }
-                                } else {
-                                    // No pm_status set - determine based on times
-                                    if ($has_pm_time) {
-                                        $pm_status_class = 'status-present';
-                                        $pm_status_text = 'Present';
-                                    } else {
-                                        $pm_status_class = 'status-no-record';
-                                        $pm_status_text = 'No Record';
-                                    }
-                                }
-                                
-                                // NIGHT STATUS - use night_status field
-                                if (!empty($row['night_status'])) {
-                                    if ($row['night_status'] == 'Present') {
-                                        $night_status_class = 'status-present';
-                                        $night_status_text = 'Present';
-                                    } elseif ($row['night_status'] == 'Absent') {
-                                        $night_status_class = 'status-absent';
-                                        $night_status_text = 'Absent';
-                                    } elseif ($row['night_status'] == 'On Leave') {
-                                        $night_status_class = 'status-leave';
-                                        $night_status_text = 'On Leave';
-                                    }
-                                } else {
-                                    // No night_status set - determine based on times
-                                    if ($has_night_time) {
-                                        $night_status_class = 'status-present';
-                                        $night_status_text = 'Present';
-                                    } else {
-                                        $night_status_class = 'status-no-record';
-                                        $night_status_text = 'No Record';
-                                    }
-                                }
-                            }
-                            
-                            // Calculate hours with night session
-                            $total_hours = calculateTotalHours(
-                                $row['time_in_am'], $row['time_out_am'], 
-                                $row['time_in_pm'], $row['time_out_pm'],
-                                $row['time_in_night'], $row['time_out_night']
-                            );
-                            ?>
-                            <tr>
-                                <td data-label="Employee" style="padding: 8px 5px;">
-                                    <div class="payroll-info" style="font-size: 0.8rem;">
-                                        <div><strong>Name:</strong> <?= htmlspecialchars(
-                                            $row['first_name'] . " " . 
-                                            (!empty($row['middle_name']) ? $row['middle_name'] . " " : "") . 
-                                            $row['last_name']
-                                        ) ?></div>
-                                        <div><strong>ID:</strong> <?= $row['employee_id'] ?></div>
-                                        <div><strong>Position:</strong> <?= htmlspecialchars($row['position']) ?></div>
-                                    </div>
-                                </td>
-                                <td data-label="Date" style="text-align: center; padding: 8px 5px;">
-                                    <div style="font-size: 0.9rem; font-weight: 500;">
-                                        <?php 
-                                        if (!empty($row['date'])) {
-                                            $date_obj = strtotime($row['date']);
-                                            echo date('F j, Y', $date_obj);
-                                        } else {
-                                            echo '-';
-                                        }
-                                        ?>
-                                    </div>
-                                    <div style="font-size: 0.8rem; color: #666; font-style: italic;">
-                                        <?= !empty($row['date']) ? date('l', strtotime($row['date'])) : '-' ?>
-                                    </div>
-                                </td>
-                                <td data-label="AM Status" style="text-align: center; padding: 8px 5px;">
-                                    <span class="<?= $am_status_class ?>" style="font-size: 0.7rem; padding: 2px 5px;">
-                                        <?= $am_status_text ?>
-                                    </span>
-                                </td>
-                                <td data-label="AM In" style="text-align: center; padding: 8px 5px;">
-                                    <span style="font-size: 0.8rem;"><?= $time_in_am_display ?></span>
-                                </td>
-                                <td data-label="AM Out" style="text-align: center; padding: 8px 5px;">
-                                    <span style="font-size: 0.8rem;"><?= $time_out_am_display ?></span>
-                                </td>
-                                <td data-label="PM Status" style="text-align: center; padding: 8px 5px;">
-                                    <span class="<?= $pm_status_class ?>" style="font-size: 0.7rem; padding: 2px 5px;">
-                                        <?= $pm_status_text ?>
-                                    </span>
-                                </td>
-                                <td data-label="PM/Night In" style="text-align: left; padding: 8px 5px;">
-                                    <div style="display: flex; flex-direction: column; gap: 3px;">
-                                        <?php if ($time_in_pm_display != '-'): ?>
-                                        <div style="font-size: 0.8rem;">
-                                            <span style="font-weight: 600; color: #f39c12;">PM:</span>
-                                            <span><?= $time_in_pm_display ?></span>
-                                        </div>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($time_in_night_display != '-'): ?>
-                                        <div style="font-size: 0.8rem;">
-                                            <span style="font-weight: 600; color: #9b59b6;">Night:</span>
-                                            <span><?= $time_in_night_display ?></span>
-                                        </div>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($time_in_pm_display == '-' && $time_in_night_display == '-'): ?>
-                                            <span style="color:#adb5bd; font-size: 0.8rem;">-</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td data-label="PM/Night Out" style="text-align: left; padding: 8px 5px;">
-                                    <div style="display: flex; flex-direction: column; gap: 3px;">
-                                        <?php if ($time_out_pm_display != '-'): ?>
-                                        <div style="font-size: 0.8rem;">
-                                            <span style="font-weight: 600; color: #f39c12;">PM:</span>
-                                            <span><?= $time_out_pm_display ?></span>
-                                        </div>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($time_out_night_display != '-'): ?>
-                                        <div style="font-size: 0.8rem;">
-                                            <span style="font-weight: 600; color: #9b59b6;">Night:</span>
-                                            <span><?= $time_out_night_display ?></span>
-                                        </div>
-                                        <?php endif; ?>
-                                        
-                                        <?php if ($time_out_pm_display == '-' && $time_out_night_display == '-'): ?>
-                                            <span style="color:#adb5bd; font-size: 0.8rem;">-</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                                <td data-label="Night Status" style="text-align: center; padding: 8px 5px;">
-                                    <span class="<?= $night_status_class ?>" style="font-size: 0.7rem; padding: 2px 5px;">
-                                        <?= $night_status_text ?>
-                                    </span>
-                                </td>
-                                <td data-label="Leave Type" style="text-align: center; padding: 8px 5px;">
-                                    <?php if (!empty($row['leave_type'])): ?>
-                                        <?php
-                                        $leave_class = '';
-                                        if (strpos(strtolower($row['leave_type']), 'sick') !== false) {
-                                            $leave_class = 'sick';
-                                        } elseif (strpos(strtolower($row['leave_type']), 'vacation') !== false) {
-                                            $leave_class = 'vacation';
-                                        } elseif (strpos(strtolower($row['leave_type']), 'emergency') !== false) {
-                                            $leave_class = 'emergency';
-                                        }
-                                        ?>
-                                        <span class="leave-type-badge <?= $leave_class ?>"><?= htmlspecialchars($row['leave_type']) ?></span>
-                                    <?php else: ?>
-                                        <span style="font-size: 0.7rem; color: #adb5bd;">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td data-label="Workday Type" style="text-align: center; padding: 8px 5px;">
-                                    <?php if (!empty($row['workday_type'])): ?>
-                                        <span class="workday-type-badge"><?= htmlspecialchars($row['workday_type']) ?></span>
-                                    <?php else: ?>
-                                        <span style="font-size: 0.7rem; color: #adb5bd;">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td data-label="Total Hrs" style="text-align: center; padding: 8px 5px;">
-                                    <?php if ($total_hours != '0.00'): ?>
-                                        <span style="font-size: 0.8rem; font-weight: 600; color: #28a745;">
-                                            <?= $total_hours ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span style="color:#adb5bd; font-size: 0.8rem;">-</span>
-                                    <?php endif; ?>
-                                </td>
-                              <td data-label="Site" style="text-align: center; padding: 8px 5px;">
-    <span style="font-size: 0.7rem; background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px; display: inline-block;">
-        <?= !empty($row['site']) ? htmlspecialchars($row['site']) : '-' ?>
-    </span>
-</td>
-                                <td data-label="Actions" style="text-align: center; padding: 8px 5px;">
-                                    <div class="action-buttons" style="display: flex; gap: 3px; justify-content: center;">
-                                        <button type="button" class="btn-view" style="padding: 4px 6px; font-size: 0.7rem;" 
-                                                onclick="viewAttendance(<?= $row['employee_id'] ?>, '<?= $selected_date ?>', '<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>')"
-                                                title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        
-                                        <button type="button" class="btn-edit" style="padding: 4px 6px; font-size: 0.7rem;" 
-                                                onclick="editAttendance(<?= $row['employee_id'] ?>, '<?= $selected_date ?>', '<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>')"
-                                                title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        
-                                        <?php
-                                        $download_month = date('m', strtotime($selected_date));
-                                        $download_year = date('Y', strtotime($selected_date));
-                                        ?>
-                                        <a href="download_monthly_attendance.php?employee_id=<?= $row['employee_id'] ?>&month=<?= $download_month ?>&year=<?= $download_year ?>" 
-                                           class="btn-download" style="padding: 4px 6px; font-size: 0.7rem;" 
-                                           title="Download Monthly Attendance">
-                                            <i class="fas fa-download"></i>
-                                        </a>
-                                        
-                                        <?php if (!empty($row['date'])): ?>
-                                        <button type="button" class="btn-delete" style="padding: 4px 6px; font-size: 0.7rem;" 
-                                                onclick="confirmDelete(<?= $row['employee_id'] ?>, '<?= $selected_date ?>', '<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>')"
-                                                title="Delete">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                        <?php endif; ?>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="14" style="text-align: center; padding: 30px;">
-                                <div class="empty-state">
-                                    <?php if ($employee_filter_id > 0): ?>
-                                        <i class="fas fa-user-clock" style="font-size: 2rem;"></i>
-                                        <p>No attendance records found for <strong><?= htmlspecialchars($selected_employee_name) ?></strong> on <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
-                                    <?php elseif (!empty($search)): ?>
-                                        <i class="fas fa-search" style="font-size: 2rem;"></i>
-                                        <p>No employees found matching <strong>'<?= htmlspecialchars($search) ?>'</strong> for <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
-                                    <?php else: ?>
-                                        <i class="fas fa-calendar-times" style="font-size: 2rem;"></i>
-                                        <p>No attendance records found for <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
-                                    <?php endif; ?>
-                                </div>
-                            </td>
-                        </tr>
+        if (!$has_record) {
+            // No record at all - all "No Record"
+            $am_status_class = 'status-no-record';
+            $am_status_text = 'No Record';
+            $pm_status_class = 'status-no-record';
+            $pm_status_text = 'No Record';
+            $night_status_class = 'status-no-record';
+            $night_status_text = 'No Record';
+        } else {
+            // Check if there are ANY time records for each session
+            $has_am_time = (!empty($row['time_in_am']) && $row['time_in_am'] != '00:00:00') || 
+                           (!empty($row['time_out_am']) && $row['time_out_am'] != '00:00:00');
+            $has_pm_time = (!empty($row['time_in_pm']) && $row['time_in_pm'] != '00:00:00') || 
+                           (!empty($row['time_out_pm']) && $row['time_out_pm'] != '00:00:00');
+            $has_night_time = (!empty($row['time_in_night']) && $row['time_in_night'] != '00:00:00') || 
+                              (!empty($row['time_out_night']) && $row['time_out_night'] != '00:00:00');
+            
+            // AM STATUS - use status field
+            if (!empty($row['status'])) {
+                if ($row['status'] == 'Present') {
+                    $am_status_class = 'status-present';
+                    $am_status_text = 'Present';
+                } elseif ($row['status'] == 'Absent') {
+                    $am_status_class = 'status-absent';
+                    $am_status_text = 'Absent';
+                } elseif ($row['status'] == 'On Leave') {
+                    $am_status_class = 'status-leave';
+                    $am_status_text = 'On Leave';
+                }
+            } else {
+                // No status set - determine based on times
+                if ($has_am_time) {
+                    $am_status_class = 'status-present';
+                    $am_status_text = 'Present';
+                } else {
+                    $am_status_class = 'status-no-record';
+                    $am_status_text = 'No Record';
+                }
+            }
+            
+            // PM STATUS - use pm_status field
+            if (!empty($row['pm_status'])) {
+                if ($row['pm_status'] == 'Present') {
+                    $pm_status_class = 'status-present';
+                    $pm_status_text = 'Present';
+                } elseif ($row['pm_status'] == 'Absent') {
+                    $pm_status_class = 'status-absent';
+                    $pm_status_text = 'Absent';
+                } elseif ($row['pm_status'] == 'On Leave') {
+                    $pm_status_class = 'status-leave';
+                    $pm_status_text = 'On Leave';
+                }
+            } else {
+                // No pm_status set - determine based on times
+                if ($has_pm_time) {
+                    $pm_status_class = 'status-present';
+                    $pm_status_text = 'Present';
+                } else {
+                    $pm_status_class = 'status-no-record';
+                    $pm_status_text = 'No Record';
+                }
+            }
+            
+            // NIGHT STATUS - use night_status field
+            if (!empty($row['night_status'])) {
+                if ($row['night_status'] == 'Present') {
+                    $night_status_class = 'status-present';
+                    $night_status_text = 'Present';
+                } elseif ($row['night_status'] == 'Absent') {
+                    $night_status_class = 'status-absent';
+                    $night_status_text = 'Absent';
+                } elseif ($row['night_status'] == 'On Leave') {
+                    $night_status_class = 'status-leave';
+                    $night_status_text = 'On Leave';
+                }
+            } else {
+                // No night_status set - determine based on times
+                if ($has_night_time) {
+                    $night_status_class = 'status-present';
+                    $night_status_text = 'Present';
+                } else {
+                    $night_status_class = 'status-no-record';
+                    $night_status_text = 'No Record';
+                }
+            }
+        }
+        
+        // Calculate hours with night session
+        $total_hours = calculateTotalHours(
+            $row['time_in_am'], $row['time_out_am'], 
+            $row['time_in_pm'], $row['time_out_pm'],
+            $row['time_in_night'], $row['time_out_night']
+        );
+        ?>
+        <tr>
+            <td data-label="Employee" style="padding: 8px 5px;">
+                <div class="payroll-info" style="font-size: 0.8rem;">
+                    <div><strong>Name:</strong> <?= htmlspecialchars(
+                        $row['first_name'] . " " . 
+                        (!empty($row['middle_name']) ? $row['middle_name'] . " " : "") . 
+                        $row['last_name']
+                    ) ?></div>
+                    <div><strong>ID:</strong> <?= $row['employee_id'] ?></div>
+                    <div><strong>Position:</strong> <?= htmlspecialchars($row['position']) ?></div>
+                </div>
+            </td>
+            <td data-label="Date" style="text-align: center; padding: 8px 5px;">
+                <div style="font-size: 0.9rem; font-weight: 500;">
+                    <?php 
+                    if (!empty($row['date'])) {
+                        $date_obj = strtotime($row['date']);
+                        echo date('F j, Y', $date_obj);
+                    } else {
+                        echo '-';
+                    }
+                    ?>
+                </div>
+                <div style="font-size: 0.8rem; color: #666; font-style: italic;">
+                    <?= !empty($row['date']) ? date('l', strtotime($row['date'])) : '-' ?>
+                </div>
+            </td>
+            <td data-label="AM Status" style="text-align: center; padding: 8px 5px;">
+                <span class="<?= $am_status_class ?>" style="font-size: 0.7rem; padding: 2px 5px;">
+                    <?= $am_status_text ?>
+                </span>
+            </td>
+            <td data-label="AM In" style="text-align: center; padding: 8px 5px;">
+                <span style="font-size: 0.8rem;"><?= $time_in_am_display ?></span>
+            </td>
+            <td data-label="AM Out" style="text-align: center; padding: 8px 5px;">
+                <span style="font-size: 0.8rem;"><?= $time_out_am_display ?></span>
+            </td>
+            <td data-label="PM Status" style="text-align: center; padding: 8px 5px;">
+                <span class="<?= $pm_status_class ?>" style="font-size: 0.7rem; padding: 2px 5px;">
+                    <?= $pm_status_text ?>
+                </span>
+            </td>
+            <td data-label="PM/Night In" style="text-align: left; padding: 8px 5px;">
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                    <?php if ($time_in_pm_display != '-'): ?>
+                    <div style="font-size: 0.8rem;">
+                        <span style="font-weight: 600; color: #f39c12;">PM:</span>
+                        <span><?= $time_in_pm_display ?></span>
+                    </div>
                     <?php endif; ?>
-                    </tbody>
+                    
+                    <?php if ($time_in_night_display != '-'): ?>
+                    <div style="font-size: 0.8rem;">
+                        <span style="font-weight: 600; color: #9b59b6;">Night:</span>
+                        <span><?= $time_in_night_display ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($time_in_pm_display == '-' && $time_in_night_display == '-'): ?>
+                        <span style="color:#adb5bd; font-size: 0.8rem;">-</span>
+                    <?php endif; ?>
+                </div>
+            </td>
+            <td data-label="PM/Night Out" style="text-align: left; padding: 8px 5px;">
+                <div style="display: flex; flex-direction: column; gap: 3px;">
+                    <?php if ($time_out_pm_display != '-'): ?>
+                    <div style="font-size: 0.8rem;">
+                        <span style="font-weight: 600; color: #f39c12;">PM:</span>
+                        <span><?= $time_out_pm_display ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($time_out_night_display != '-'): ?>
+                    <div style="font-size: 0.8rem;">
+                        <span style="font-weight: 600; color: #9b59b6;">Night:</span>
+                        <span><?= $time_out_night_display ?></span>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <?php if ($time_out_pm_display == '-' && $time_out_night_display == '-'): ?>
+                        <span style="color:#adb5bd; font-size: 0.8rem;">-</span>
+                    <?php endif; ?>
+                </div>
+            </td>
+            <td data-label="Night Status" style="text-align: center; padding: 8px 5px;">
+                <span class="<?= $night_status_class ?>" style="font-size: 0.7rem; padding: 2px 5px;">
+                    <?= $night_status_text ?>
+                </span>
+            </td>
+            <td data-label="Leave Type" style="text-align: center; padding: 8px 5px;">
+                <?php if (!empty($row['leave_type'])): ?>
+                    <?php
+                    $leave_class = '';
+                    if (strpos(strtolower($row['leave_type']), 'sick') !== false) {
+                        $leave_class = 'sick';
+                    } elseif (strpos(strtolower($row['leave_type']), 'vacation') !== false) {
+                        $leave_class = 'vacation';
+                    } elseif (strpos(strtolower($row['leave_type']), 'emergency') !== false) {
+                        $leave_class = 'emergency';
+                    }
+                    ?>
+                    <span class="leave-type-badge <?= $leave_class ?>"><?= htmlspecialchars($row['leave_type']) ?></span>
+                <?php else: ?>
+                    <span style="font-size: 0.7rem; color: #adb5bd;">-</span>
+                <?php endif; ?>
+            </td>
+            <td data-label="Workday Type" style="text-align: center; padding: 8px 5px;">
+                <?php if (!empty($row['workday_type'])): ?>
+                    <span class="workday-type-badge"><?= htmlspecialchars($row['workday_type']) ?></span>
+                <?php else: ?>
+                    <span style="font-size: 0.7rem; color: #adb5bd;">-</span>
+                <?php endif; ?>
+            </td>
+            <td data-label="Total Hrs" style="text-align: center; padding: 8px 5px;">
+                <?php if ($total_hours != '0.00'): ?>
+                    <span style="font-size: 0.8rem; font-weight: 600; color: #28a745;">
+                        <?= $total_hours ?>
+                    </span>
+                <?php else: ?>
+                    <span style="color:#adb5bd; font-size: 0.8rem;">-</span>
+                <?php endif; ?>
+            </td>
+            <td data-label="Remarks" style="text-align: center; padding: 8px 5px;">
+                <span style="font-size: 0.7rem;"><?= !empty($row['remarks']) ? htmlspecialchars(substr($row['remarks'], 0, 10)) . (strlen($row['remarks']) > 10 ? '...' : '') : '-' ?></span>
+            </td>
+            <td data-label="Actions" style="text-align: center; padding: 8px 5px;">
+                <div class="action-buttons" style="display: flex; gap: 3px; justify-content: center;">
+                    <button type="button" class="btn-view" style="padding: 4px 6px; font-size: 0.7rem;" 
+                            onclick="viewAttendance(<?= $row['employee_id'] ?>, '<?= $selected_date ?>', '<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>')"
+                            title="View Details">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    
+                    <button type="button" class="btn-edit" style="padding: 4px 6px; font-size: 0.7rem;" 
+                            onclick="editAttendance(<?= $row['employee_id'] ?>, '<?= $selected_date ?>', '<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>')"
+                            title="Edit">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    
+                    <?php
+                    $download_month = date('m', strtotime($selected_date));
+                    $download_year = date('Y', strtotime($selected_date));
+                    ?>
+                    <a href="download_monthly_attendance.php?employee_id=<?= $row['employee_id'] ?>&month=<?= $download_month ?>&year=<?= $download_year ?>" 
+                       class="btn-download" style="padding: 4px 6px; font-size: 0.7rem;" 
+                       title="Download Monthly Attendance">
+                        <i class="fas fa-download"></i>
+                    </a>
+                    
+                    <?php if (!empty($row['date'])): ?>
+                    <button type="button" class="btn-delete" style="padding: 4px 6px; font-size: 0.7rem;" 
+                            onclick="confirmDelete(<?= $row['employee_id'] ?>, '<?= $selected_date ?>', '<?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>')"
+                            title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <?php endif; ?>
+                </div>
+            </td>
+        </tr>
+    <?php endwhile; ?>
+<?php else: ?>
+    <tr>
+        <td colspan="14" style="text-align: center; padding: 30px;">
+            <div class="empty-state">
+                <?php if ($employee_filter_id > 0): ?>
+                    <i class="fas fa-user-clock" style="font-size: 2rem;"></i>
+                    <p>No attendance records found for <strong><?= htmlspecialchars($selected_employee_name) ?></strong> on <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
+                <?php elseif (!empty($search)): ?>
+                    <i class="fas fa-search" style="font-size: 2rem;"></i>
+                    <p>No employees found matching <strong>'<?= htmlspecialchars($search) ?>'</strong> for <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
+                <?php else: ?>
+                    <i class="fas fa-calendar-times" style="font-size: 2rem;"></i>
+                    <p>No attendance records found for <?= date('F j, Y', strtotime($selected_date)) ?>.</p>
+                <?php endif; ?>
+            </div>
+        </td>
+    </tr>
+<?php endif; ?>
+</tbody>
                 </table>
             </div>
         </div>
@@ -4023,9 +4044,9 @@ if (!empty($row['time_out_night'])) {
                             </select>
                             
                             <!-- SELECTED EMPLOYEE CARD -->
-                            <div class="selected-employee-card" id="selectedEmployeeCard" style="display: none;">
+                            <div class="selected-employee-card" id="selectedEmployeeCard" style="background: #f8f9fa; border-color: #75e6da;">
                                 <div class="selected-employee-info">
-                                    <div class="selected-employee-avatar">
+                                  <div class="selected-employee-avatar" style="background: linear-gradient(135deg, #75e6da, #5fd9c9);">
                                         <i class="fas fa-user-circle"></i>
                                     </div>
                                     <div class="selected-employee-details">
@@ -4179,249 +4200,291 @@ if (!empty($row['time_out_night'])) {
                             </small>
                         </div>
                         
-                        <!-- AM Time Section - With #75e6da left border -->
-                        <div class="time-section">
-                            <div class="time-section-header">
-                                <i class="fas fa-sun"></i>
-                                <h4>Morning Session</h4>
-                            </div>
-                            
-                            <!-- AM Status - Without On Leave option -->
-                            <div class="am-status-container">
-                                <label class="am-status-label"><i class="fas fa-sun"></i> AM Status</label>
-                                <div class="status-options">
-                                    <div class="status-option">
-                                        <input type="radio" id="statusPresent" name="status" value="Present" class="status-radio">
-                                        <label for="statusPresent" class="status-label">
-                                            <span class="status-dot present"></span>
-                                            <span>Present</span>
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="status-option">
-                                        <input type="radio" id="statusAbsent" name="status" value="Absent" class="status-radio">
-                                        <label for="statusAbsent" class="status-label">
-                                            <span class="status-dot absent"></span>
-                                            <span>Absent</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="time-input-row">
-                                <!-- AM Time In -->
-                                <div class="time-input-group">
-                                    <div class="time-input-label">
-                                        <i class="fas fa-sign-in-alt"></i>
-                                        <span>Time In</span>
-                                    </div>
-                                    <div class="time-input-controls">
-                                        <div class="time-display-box empty" id="timeInAmDisplay">
-                                            <div class="time-display-content">
-                                                <i class="far fa-clock"></i> --:-- AM
-                                            </div>
-                                        </div>
-                                        <input type="hidden" id="timeInAm" name="time_in_am">
-                                        <button type="button" class="time-set-btn" onclick="openTimeModal('time_in_am')" id="timeInAmBtn">
-                                            <i class="fas fa-clock"></i> Set AM
-                                        </button>
-                                    </div>
-                                    <div class="field-error-message" id="timeInAmError" style="display: none;">
-                                        <i class="fas fa-exclamation-circle"></i> AM Time In is required when Present is selected
-                                    </div>
-                                </div>
-                                
-                                <!-- AM Time Out -->
-                                <div class="time-input-group">
-                                    <div class="time-input-label">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                        <span>Time Out</span>
-                                    </div>
-                                    <div class="time-input-controls">
-                                        <div class="time-display-box empty" id="timeOutAmDisplay">
-                                            <div class="time-display-content">
-                                                <i class="far fa-clock"></i> --:-- AM
-                                            </div>
-                                        </div>
-                                        <input type="hidden" id="timeOutAm" name="time_out_am">
-                                        <button type="button" class="time-set-btn" onclick="openTimeModal('time_out_am')" id="timeOutAmBtn">
-                                            <i class="fas fa-clock"></i> Set AM
-                                        </button>
-                                    </div>
-                                    <div class="field-error-message" id="timeOutAmError" style="display: none;">
-                                        <i class="fas fa-exclamation-circle"></i> AM Time Out is required when Present is selected
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- AM Total Hours -->
-                            <div class="am-total-hours" id="amTotalHours">
-                                <i class="fas fa-clock"></i> AM Total: <span id="amHoursValue">0.00</span> hrs
-                            </div>
-                        </div>
-                        
+                     <!-- AM Time Section - With #75e6da left border -->
+<div class="time-section">
+    <div class="time-section-header">
+        <i class="fas fa-sun"></i>
+        <h4>Morning Session</h4>
+    </div>
+    
+    <!-- AM Status - Without On Leave option -->
+    <div class="am-status-container">
+        <label class="am-status-label"><i class="fas fa-sun"></i> AM Status</label>
+        <div class="status-options">
+            <div class="status-option">
+                <input type="radio" id="statusPresent" name="status" value="Present" class="status-radio">
+                <label for="statusPresent" class="status-label">
+                    <span class="status-dot present"></span>
+                    <span>Present</span>
+                </label>
+            </div>
+            
+            <div class="status-option">
+                <input type="radio" id="statusAbsent" name="status" value="Absent" class="status-radio">
+                <label for="statusAbsent" class="status-label">
+                    <span class="status-dot absent"></span>
+                    <span>Absent</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="time-input-row">
+        <!-- AM Time In -->
+        <div class="time-input-group">
+            <div class="time-input-label">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Time In</span>
+            </div>
+            <div class="time-input-controls">
+                <div class="time-display-box empty" id="timeInAmDisplay">
+                    <div class="time-display-content">
+                        <i class="far fa-clock"></i> --:-- AM
+                    </div>
+                </div>
+                <input type="hidden" id="timeInAm" name="time_in_am">
+                <button type="button" class="time-set-btn" onclick="openTimeModal('time_in_am')" id="timeInAmBtn">
+                    <i class="fas fa-clock"></i> Set AM
+                </button>
+            </div>
+            <div class="field-error-message" id="timeInAmError" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> AM Time In is required when Present is selected
+            </div>
+        </div>
+        
+        <!-- AM Time Out -->
+        <div class="time-input-group">
+            <div class="time-input-label">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Time Out</span>
+            </div>
+            <div class="time-input-controls">
+                <div class="time-display-box empty" id="timeOutAmDisplay">
+                    <div class="time-display-content">
+                        <i class="far fa-clock"></i> --:-- AM
+                    </div>
+                </div>
+                <input type="hidden" id="timeOutAm" name="time_out_am">
+                <button type="button" class="time-set-btn" onclick="openTimeModal('time_out_am')" id="timeOutAmBtn">
+                    <i class="fas fa-clock"></i> Set AM
+                </button>
+            </div>
+            <div class="field-error-message" id="timeOutAmError" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> AM Time Out is required when Present is selected
+            </div>
+        </div>
+    </div>
+    
+<!-- AM Site Assignment -->
+<div class="site-assignment-container" id="amSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
+    <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
+        <i class="fas fa-building"></i> Site Assignment (AM) <span style="color: #e74c3c;" class="required-star">*</span>
+    </label>
+    <div class="site-assignment-controls">
+        <select id="siteAssignmentAm" name="site_assignment_am" class="site-assignment-select" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.9rem; background: white;">
+            <option value="">-- Select Site --</option>
+            <!-- Sites will be loaded dynamically via JavaScript -->
+        </select>
+    </div>
+    <div class="field-error-message" id="amSiteError" style="display: none; margin-top: 5px;">
+        <i class="fas fa-exclamation-circle"></i> Site Assignment is required when Present is selected
+    </div>
+</div>
+    <!-- AM Total Hours -->
+    <div class="am-total-hours" id="amTotalHours">
+        <i class="fas fa-clock"></i> AM Total: <span id="amHoursValue">0.00</span> hrs
+    </div>
+</div>
                         <!-- PM Time Section - With #75e6da left border -->
-                        <div class="time-section">
-                            <div class="time-section-header">
-                                <i class="fas fa-moon"></i>
-                                <h4>Afternoon Session</h4>
-                            </div>
-                            
-                            <!-- PM Status - Without On Leave option -->
-                            <div class="pm-status-container">
-                                <label class="pm-status-label"><i class="fas fa-moon"></i> PM Status</label>
-                                <div class="status-options">
-                                    <div class="status-option">
-                                        <input type="radio" id="pmStatusPresent" name="pm_status" value="Present" class="status-radio">
-                                        <label for="pmStatusPresent" class="status-label">
-                                            <span class="status-dot present"></span>
-                                            <span>Present</span>
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="status-option">
-                                        <input type="radio" id="pmStatusAbsent" name="pm_status" value="Absent" class="status-radio">
-                                        <label for="pmStatusAbsent" class="status-label">
-                                            <span class="status-dot absent"></span>
-                                            <span>Absent</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="time-input-row">
-                                <!-- PM Time In -->
-                                <div class="time-input-group">
-                                    <div class="time-input-label">
-                                        <i class="fas fa-sign-in-alt"></i>
-                                        <span>Time In</span>
-                                    </div>
-                                    <div class="time-input-controls">
-                                        <div class="time-display-box empty" id="timeInPmDisplay">
-                                            <div class="time-display-content">
-                                                <i class="far fa-clock"></i> --:-- PM
-                                            </div>
-                                        </div>
-                                        <input type="hidden" id="timeInPm" name="time_in_pm">
-                                        <button type="button" class="time-set-btn" onclick="openTimeModal('time_in_pm')" id="timeInPmBtn">
-                                            <i class="fas fa-clock"></i> Set PM
-                                        </button>
-                                    </div>
-                                    <div class="field-error-message" id="timeInPmError" style="display: none;">
-                                        <i class="fas fa-exclamation-circle"></i> PM Time In is required when Present is selected
-                                    </div>
-                                </div>
-                                
-                                <!-- PM Time Out -->
-                                <div class="time-input-group">
-                                    <div class="time-input-label">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                        <span>Time Out</span>
-                                    </div>
-                                    <div class="time-input-controls">
-                                        <div class="time-display-box empty" id="timeOutPmDisplay">
-                                            <div class="time-display-content">
-                                                <i class="far fa-clock"></i> --:-- PM
-                                            </div>
-                                        </div>
-                                        <input type="hidden" id="timeOutPm" name="time_out_pm">
-                                        <button type="button" class="time-set-btn" onclick="openTimeModal('time_out_pm')" id="timeOutPmBtn">
-                                            <i class="fas fa-clock"></i> Set PM
-                                        </button>
-                                    </div>
-                                    <div class="field-error-message" id="timeOutPmError" style="display: none;">
-                                        <i class="fas fa-exclamation-circle"></i> PM Time Out is required when Present is selected
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- PM Total Hours -->
-                            <div class="pm-total-hours" id="pmTotalHours">
-                                <i class="fas fa-clock"></i> PM Total: <span id="pmHoursValue">0.00</span> hrs
-                            </div>
-                        </div>
-                        
+<div class="time-section">
+    <div class="time-section-header">
+        <i class="fas fa-moon"></i>
+        <h4>Afternoon Session</h4>
+    </div>
+    
+    <!-- PM Status - Without On Leave option -->
+    <div class="pm-status-container">
+        <label class="pm-status-label"><i class="fas fa-moon"></i> PM Status</label>
+        <div class="status-options">
+            <div class="status-option">
+                <input type="radio" id="pmStatusPresent" name="pm_status" value="Present" class="status-radio">
+                <label for="pmStatusPresent" class="status-label">
+                    <span class="status-dot present"></span>
+                    <span>Present</span>
+                </label>
+            </div>
+            
+            <div class="status-option">
+                <input type="radio" id="pmStatusAbsent" name="pm_status" value="Absent" class="status-radio">
+                <label for="pmStatusAbsent" class="status-label">
+                    <span class="status-dot absent"></span>
+                    <span>Absent</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="time-input-row">
+        <!-- PM Time In -->
+        <div class="time-input-group">
+            <div class="time-input-label">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Time In</span>
+            </div>
+            <div class="time-input-controls">
+                <div class="time-display-box empty" id="timeInPmDisplay">
+                    <div class="time-display-content">
+                        <i class="far fa-clock"></i> --:-- PM
+                    </div>
+                </div>
+                <input type="hidden" id="timeInPm" name="time_in_pm">
+                <button type="button" class="time-set-btn" onclick="openTimeModal('time_in_pm')" id="timeInPmBtn">
+                    <i class="fas fa-clock"></i> Set PM
+                </button>
+            </div>
+            <div class="field-error-message" id="timeInPmError" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> PM Time In is required when Present is selected
+            </div>
+        </div>
+        
+        <!-- PM Time Out -->
+        <div class="time-input-group">
+            <div class="time-input-label">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Time Out</span>
+            </div>
+            <div class="time-input-controls">
+                <div class="time-display-box empty" id="timeOutPmDisplay">
+                    <div class="time-display-content">
+                        <i class="far fa-clock"></i> --:-- PM
+                    </div>
+                </div>
+                <input type="hidden" id="timeOutPm" name="time_out_pm">
+                <button type="button" class="time-set-btn" onclick="openTimeModal('time_out_pm')" id="timeOutPmBtn">
+                    <i class="fas fa-clock"></i> Set PM
+                </button>
+            </div>
+            <div class="field-error-message" id="timeOutPmError" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> PM Time Out is required when Present is selected
+            </div>
+        </div>
+    </div>
+    
+<!-- PM Site Assignment -->
+<div class="site-assignment-container" id="pmSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
+    <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
+        <i class="fas fa-building"></i> Site Assignment (PM) <span style="color: #e74c3c;" class="required-star">*</span>
+    </label>
+    <div class="site-assignment-controls">
+        <select id="siteAssignmentPm" name="site_assignment_pm" class="site-assignment-select" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.9rem; background: white;">
+            <option value="">-- Select Site --</option>
+            <!-- Sites will be loaded dynamically via JavaScript -->
+        </select>
+    </div>
+    <div class="field-error-message" id="pmSiteError" style="display: none; margin-top: 5px;">
+        <i class="fas fa-exclamation-circle"></i> Site Assignment is required when Present is selected
+    </div>
+</div>
+    <!-- PM Total Hours -->
+    <div class="pm-total-hours" id="pmTotalHours">
+        <i class="fas fa-clock"></i> PM Total: <span id="pmHoursValue">0.00</span> hrs
+    </div>
+</div>
                         <!-- Night Time Section - With #75e6da left border -->
-                        <div class="time-section">
-                            <div class="time-section-header">
-                                <i class="fas fa-star"></i>
-                                <h4>Night Session <span>(Optional)</span></h4>
-                            </div>
-                            
-                            <!-- Night Status - Without On Leave option -->
-                            <div class="pm-status-container">
-                                <label class="pm-status-label"><i class="fas fa-star"></i> Night Status</label>
-                                <div class="status-options">
-                                    <div class="status-option">
-                                        <input type="radio" id="nightStatusPresent" name="night_status" value="Present" class="status-radio">
-                                        <label for="nightStatusPresent" class="status-label">
-                                            <span class="status-dot present"></span>
-                                            <span>Present</span>
-                                        </label>
-                                    </div>
-                                    
-                                    <div class="status-option">
-                                        <input type="radio" id="nightStatusAbsent" name="night_status" value="Absent" class="status-radio">
-                                        <label for="nightStatusAbsent" class="status-label">
-                                            <span class="status-dot absent"></span>
-                                            <span>Absent</span>
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="time-input-row">
-                                <!-- Night Time In -->
-                                <div class="time-input-group">
-                                    <div class="time-input-label">
-                                        <i class="fas fa-sign-in-alt"></i>
-                                        <span>Time In</span>
-                                    </div>
-                                    <div class="time-input-controls">
-                                        <div class="time-display-box empty" id="timeInNightDisplay">
-                                            <div class="time-display-content">
-                                                <i class="far fa-clock"></i> --:-- --
-                                            </div>
-                                        </div>
-                                        <input type="hidden" id="timeInNight" name="time_in_night">
-                                        <button type="button" class="time-set-btn" onclick="openTimeModal('time_in_night')" id="timeInNightBtn">
-                                            <i class="fas fa-clock"></i> Set Night
-                                        </button>
-                                    </div>
-                                    <div class="field-error-message" id="timeInNightError" style="display: none;">
-                                        <i class="fas fa-exclamation-circle"></i> Night Time In is required when Present is selected
-                                    </div>
-                                </div>
-                                
-                                <!-- Night Time Out -->
-                                <div class="time-input-group">
-                                    <div class="time-input-label">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                        <span>Time Out</span>
-                                    </div>
-                                    <div class="time-input-controls">
-                                        <div class="time-display-box empty" id="timeOutNightDisplay">
-                                            <div class="time-display-content">
-                                                <i class="far fa-clock"></i> --:-- --
-                                            </div>
-                                        </div>
-                                        <input type="hidden" id="timeOutNight" name="time_out_night">
-                                        <button type="button" class="time-set-btn" onclick="openTimeModal('time_out_night')" id="timeOutNightBtn">
-                                            <i class="fas fa-clock"></i> Set Night
-                                        </button>
-                                    </div>
-                                    <div class="field-error-message" id="timeOutNightError" style="display: none;">
-                                        <i class="fas fa-exclamation-circle"></i> Night Time Out is required when Present is selected
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Night Total Hours -->
-                            <div class="pm-total-hours" id="nightTotalHours">
-                                <i class="fas fa-clock"></i> Night Total: <span id="nightHoursValue">0.00</span> hrs
-                            </div>
-                        </div>
-                        
+<div class="time-section">
+    <div class="time-section-header">
+        <i class="fas fa-star"></i>
+        <h4>Night Session <span>(Optional)</span></h4>
+    </div>
+    
+    <!-- Night Status - Without On Leave option -->
+    <div class="pm-status-container">
+        <label class="pm-status-label"><i class="fas fa-star"></i> Night Status</label>
+        <div class="status-options">
+            <div class="status-option">
+                <input type="radio" id="nightStatusPresent" name="night_status" value="Present" class="status-radio">
+                <label for="nightStatusPresent" class="status-label">
+                    <span class="status-dot present"></span>
+                    <span>Present</span>
+                </label>
+            </div>
+            
+            <div class="status-option">
+                <input type="radio" id="nightStatusAbsent" name="night_status" value="Absent" class="status-radio">
+                <label for="nightStatusAbsent" class="status-label">
+                    <span class="status-dot absent"></span>
+                    <span>Absent</span>
+                </label>
+            </div>
+        </div>
+    </div>
+    
+    <div class="time-input-row">
+        <!-- Night Time In -->
+        <div class="time-input-group">
+            <div class="time-input-label">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>Time In</span>
+            </div>
+            <div class="time-input-controls">
+                <div class="time-display-box empty" id="timeInNightDisplay">
+                    <div class="time-display-content">
+                        <i class="far fa-clock"></i> --:-- --
+                    </div>
+                </div>
+                <input type="hidden" id="timeInNight" name="time_in_night">
+                <button type="button" class="time-set-btn" onclick="openTimeModal('time_in_night')" id="timeInNightBtn">
+                    <i class="fas fa-clock"></i> Set Night
+                </button>
+            </div>
+            <div class="field-error-message" id="timeInNightError" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> Night Time In is required when Present is selected
+            </div>
+        </div>
+        
+        <!-- Night Time Out -->
+        <div class="time-input-group">
+            <div class="time-input-label">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Time Out</span>
+            </div>
+            <div class="time-input-controls">
+                <div class="time-display-box empty" id="timeOutNightDisplay">
+                    <div class="time-display-content">
+                        <i class="far fa-clock"></i> --:-- --
+                    </div>
+                </div>
+                <input type="hidden" id="timeOutNight" name="time_out_night">
+                <button type="button" class="time-set-btn" onclick="openTimeModal('time_out_night')" id="timeOutNightBtn">
+                    <i class="fas fa-clock"></i> Set Night
+                </button>
+            </div>
+            <div class="field-error-message" id="timeOutNightError" style="display: none;">
+                <i class="fas fa-exclamation-circle"></i> Night Time Out is required when Present is selected
+            </div>
+        </div>
+    </div>
+    
+<!-- Night Site Assignment -->
+<div class="site-assignment-container" id="nightSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
+    <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
+        <i class="fas fa-building"></i> Site Assignment (Night) <span style="color: #e74c3c;" class="required-star">*</span>
+    </label>
+    <div class="site-assignment-controls">
+        <select id="siteAssignmentNight" name="site_assignment_night" class="site-assignment-select" style="width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.9rem; background: white;">
+            <option value="">-- Select Site --</option>
+            <!-- Sites will be loaded dynamically via JavaScript -->
+        </select>
+    </div>
+    <div class="field-error-message" id="nightSiteError" style="display: none; margin-top: 5px;">
+        <i class="fas fa-exclamation-circle"></i> Site Assignment is required when Present is selected
+    </div>
+</div>
+    <!-- Night Total Hours -->
+    <div class="pm-total-hours" id="nightTotalHours">
+        <i class="fas fa-clock"></i> Night Total: <span id="nightHoursValue">0.00</span> hrs
+    </div>
+</div>
                         <!-- Total Hours for the Day -->
                         <div class="total-hours-container">
                             <div class="total-hours-header">
@@ -4448,38 +4511,11 @@ if (!empty($row['time_out_night'])) {
                             </div>
                         </div>
                         
-<!-- Site Dropdown - Dynamically loaded from site_monitoring table -->
-<div class="form-group">
-    <label class="form-label"><i class="fas fa-location-dot"></i> Site (Optional)</label>
-    <select name="site" id="site" class="filter-input" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95rem;">
-        <option value="">-- Select Site --</option>
-        <?php
-        // Fetch sites from site_monitoring table (same table used in home.php)
-        $sites_sql = "SELECT id, site_name FROM site_monitoring WHERE is_active = 1 OR is_active IS NULL ORDER BY site_name";
-        $sites_result = $conn->query($sites_sql);
-        if ($sites_result && $sites_result->num_rows > 0) {
-            while ($site_row = $sites_result->fetch_assoc()) {
-                $site_name = htmlspecialchars($site_row['site_name']);
-                echo '<option value="' . $site_name . '">' . $site_name . '</option>';
-            }
-        } else {
-            // Fallback options if no sites in database
-            echo '<option value="Main Office">Main Office</option>';
-            echo '<option value="Branch A">Branch A</option>';
-            echo '<option value="Branch B">Branch B</option>';
-        }
-        ?>
-    </select>
-    <small style="display: block; margin-top: 5px; color: #666; font-size: 0.8rem;">
-        <i class="fas fa-info-circle"></i> Sites are managed in Employee Tracking
-    </small>
-</div>
-
-<!-- Remarks Field - ADD THIS BACK -->
-<div class="form-group">
-    <label class="form-label"><i class="fas fa-comment"></i> Remarks (Optional)</label>
-    <textarea name="remarks" id="remarks" class="form-control" rows="3" placeholder="Add any remarks or notes..." style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 0.95rem; font-family: inherit;"></textarea>
-</div>
+                        <!-- Remarks -->
+                        <div class="form-group">
+                            <label class="form-label"><i class="fas fa-comment"></i> Remarks (Optional)</label>
+                            <textarea name="remarks" id="remarks" class="form-control" rows="3" placeholder="Add any remarks or notes..."></textarea>
+                        </div>
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -4543,15 +4579,36 @@ if (!empty($row['time_out_night'])) {
                         </div>
                     </div>
                     
-                    <!-- Workday Type Display -->
-                    <div id="viewWorkdayContainer" style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 12px; border: 1px solid #bbdefb; display: none;">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <span class="status-dot" style="width: 12px; height: 12px; background-color: #1976d2;"></span>
-                            <span style="font-weight: 600; color: #1976d2;">Workday Type</span>
-                            <span id="viewWorkdayType" style="background: #bbdefb; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; color: #1976d2;"></span>
-                        </div>
-                    </div>
-                    
+                 <!-- Workday Type Display -->
+<div id="viewWorkdayContainer" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 1px solid #f8f9fa; display: none;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <span class="status-dot" style="width: 12px; height: 12px; background-color: #75e6da;"></span>
+        <span style="font-weight: 600; color: #060606;">Workday Type</span>
+        <span id="viewWorkdayType" style="background: #f8f9fa; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; color: #1976d2;"></span>
+    </div>
+</div>
+
+<!-- Site Assignment Display - NEW -->
+<div id="viewSiteAssignmentContainer" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #f8f9fa); border-radius: 12px; border: 1px solid #f8f9fa; display: none;">
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+        <i class="fas fa-building" style="color: #75e6da;"></i>
+        <span style="font-weight: 600; color: #060606;">Site Assignments</span>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div id="viewAmSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
+            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">AM:</span>
+            <span id="viewAmSiteValue">--</span>
+        </div>
+        <div id="viewPmSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
+            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">PM:</span>
+            <span id="viewPmSiteValue">--</span>
+        </div>
+        <div id="viewNightSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
+            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">Night:</span>
+            <span id="viewNightSiteValue">--</span>
+        </div>
+    </div>
+</div>
                     <!-- AM Time Section -->
                     <div class="time-section">
                         <div class="time-section-header">
@@ -4606,7 +4663,7 @@ if (!empty($row['time_out_night'])) {
                             <h4>Afternoon & Night Sessions</h4>
                         </div>
                         
-                        <div class="pm-status-container" style="border-left-color: #f39c12;">
+                        <div class="pm-status-container" style="border-left-color: #75e6da;">
                             <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="status-dot present" id="viewPmStatusDot" style="display: none;"></span>
@@ -4626,7 +4683,7 @@ if (!empty($row['time_out_night'])) {
                         <!-- PM Times -->
                         <div style="margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i class="fas fa-sun" style="color: #f39c12;"></i>
+                                <i class="fas fa-sun" style="color: #75e6da;"></i>
                                 <span style="font-weight: 600;">Afternoon Session</span>
                             </div>
                             <div class="time-input-row">
@@ -4655,7 +4712,7 @@ if (!empty($row['time_out_night'])) {
                         <!-- Night Times -->
                         <div>
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i class="fas fa-moon" style="color: #9b59b6;"></i>
+                                <i class="fas fa-moon" style="color: #75e6da;"></i>
                                 <span style="font-weight: 600;">Night Session</span>
                             </div>
                             <div class="time-input-row">
@@ -4708,11 +4765,11 @@ if (!empty($row['time_out_night'])) {
                         </div>
                     </div>
                     
-<!-- Site Display -->
-<div class="form-group">
-    <label class="form-label"><i class="fas fa-location-dot"></i> Site</label>
-    <div class="date-display" id="viewSite" style="padding: 12px 15px; background: #f8f9fa; border-radius: 8px;">--</div>
-</div>
+                    <!-- Remarks -->
+                    <div class="form-group">
+                        <label class="form-label"><i class="fas fa-comment"></i> Remarks</label>
+                        <div class="date-display" id="viewRemarks" style="padding: 12px 15px; background: #f8f9fa; border-radius: 8px; min-height: 60px;">--</div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeViewAttendanceModal()">
@@ -4957,6 +5014,27 @@ if (!empty($row['time_out_night'])) {
                                 </div>
                             </div>
                             
+                            <!-- NEW: SITE Dropdown - Add this after Employee -->
+<!-- ============================================ -->
+<div style="flex: 1.5; min-width: 250px;">
+    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fas fa-building" style="margin-right: 8px; color: #75e6da;"></i> SITE
+    </label>
+    <div class="site-select-wrapper">
+        <select id="reportSiteId" class="filter-input" style="height: 45px; padding: 0 15px;">
+            <option value="0">All Sites</option>
+            <?php 
+            $sites_dropdown = $conn->query("SELECT id, site_name FROM site_monitoring ORDER BY site_name");
+            if ($sites_dropdown && $sites_dropdown->num_rows > 0) {
+                while($site = $sites_dropdown->fetch_assoc()) {
+                    echo '<option value="' . $site['id'] . '">' . htmlspecialchars($site['site_name']) . '</option>';
+                }
+            }
+            ?>
+        </select>
+    </div>
+</div>
+
                             <!-- GENERATE Button -->
                             <div style="flex: 0.8; min-width: 120px;">
                                 <button class="btn-preview" onclick="loadReportData()" style="height: 45px;">
@@ -5024,40 +5102,137 @@ let toCurrentDate = new Date('<?= $selected_date ?>');
 let fromSelectedDate = '<?= $selected_date ?>';
 let toSelectedDate = '<?= $selected_date ?>';
 
-// Function to load sites from database
-function loadSitesDropdown() {
-    fetch('get_sites.php')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.sites) {
-                const siteSelect = document.getElementById('site');
-                if (siteSelect) {
-                    // Clear existing options except the first one
-                    while (siteSelect.options.length > 1) {
-                        siteSelect.remove(1);
-                    }
-                    
-                    // Add new options
-                    data.sites.forEach(site => {
-                        const option = document.createElement('option');
-                        option.value = site.name;
-                        option.textContent = site.name;
-                        siteSelect.appendChild(option);
-                    });
-                }
-            }
-        })
-        .catch(error => console.error('Error loading sites:', error));
-}
+// ============================================
+// SITE ASSIGNMENT FUNCTIONS
+// ============================================
 
-// Call this when opening the modal
-function openAddAttendanceModal() {
-    // ... existing code ...
+// Reset site assignment for a specific session
+function resetSiteAssignment(session) {
+    if (session === 'am') {
+        const amSite = document.getElementById('siteAssignmentAm');
+        if (amSite) amSite.value = '';
+        const amSiteError = document.getElementById('amSiteError');
+        if (amSiteError) amSiteError.style.display = 'none';
+        const amSelect = document.getElementById('siteAssignmentAm');
+        if (amSelect) {
+            amSelect.classList.remove('error');
+            amSelect.style.borderColor = '#e0e0e0';
+        }
+    } else if (session === 'pm') {
+        const pmSite = document.getElementById('siteAssignmentPm');
+        if (pmSite) pmSite.value = '';
+        const pmSiteError = document.getElementById('pmSiteError');
+        if (pmSiteError) pmSiteError.style.display = 'none';
+        const pmSelect = document.getElementById('siteAssignmentPm');
+        if (pmSelect) {
+            pmSelect.classList.remove('error');
+            pmSelect.style.borderColor = '#e0e0e0';
+        }
+    } else if (session === 'night') {
+        const nightSite = document.getElementById('siteAssignmentNight');
+        if (nightSite) nightSite.value = '';
+        const nightSiteError = document.getElementById('nightSiteError');
+        if (nightSiteError) nightSiteError.style.display = 'none';
+        const nightSelect = document.getElementById('siteAssignmentNight');
+        if (nightSelect) {
+            nightSelect.classList.remove('error');
+            nightSelect.style.borderColor = '#e0e0e0';
+        }
+    }
+}
+// Disable/enable site assignment for a session
+function disableSiteAssignment(session, disabled) {
+    if (session === 'am') {
+        const amSite = document.getElementById('siteAssignmentAm');
+        if (amSite) {
+            amSite.disabled = disabled;
+            if (disabled) {
+                amSite.style.backgroundColor = '#f0f0f0';
+                amSite.style.cursor = 'not-allowed';
+            } else {
+                amSite.style.backgroundColor = 'white';
+                amSite.style.cursor = 'pointer';
+            }
+        }
+    } else if (session === 'pm') {
+        const pmSite = document.getElementById('siteAssignmentPm');
+        if (pmSite) {
+            pmSite.disabled = disabled;
+            if (disabled) {
+                pmSite.style.backgroundColor = '#f0f0f0';
+                pmSite.style.cursor = 'not-allowed';
+            } else {
+                pmSite.style.backgroundColor = 'white';
+                pmSite.style.cursor = 'pointer';
+            }
+        }
+    } else if (session === 'night') {
+        const nightSite = document.getElementById('siteAssignmentNight');
+        if (nightSite) {
+            nightSite.disabled = disabled;
+            if (disabled) {
+                nightSite.style.backgroundColor = '#f0f0f0';
+                nightSite.style.cursor = 'not-allowed';
+            } else {
+                nightSite.style.backgroundColor = 'white';
+                nightSite.style.cursor = 'pointer';
+            }
+        }
+    }
+}
+// Validate site assignment for a specific session - ALWAYS REQUIRED
+function validateSiteAssignment(session) {
+    let siteValue = '';
+    let errorElement = null;
+    let selectElement = null;
     
-    // Load fresh sites list
-    loadSitesDropdown();
+    if (session === 'am') {
+        siteValue = document.getElementById('siteAssignmentAm')?.value || '';
+        errorElement = document.getElementById('amSiteError');
+        selectElement = document.getElementById('siteAssignmentAm');
+    } else if (session === 'pm') {
+        siteValue = document.getElementById('siteAssignmentPm')?.value || '';
+        errorElement = document.getElementById('pmSiteError');
+        selectElement = document.getElementById('siteAssignmentPm');
+    } else if (session === 'night') {
+        siteValue = document.getElementById('siteAssignmentNight')?.value || '';
+        errorElement = document.getElementById('nightSiteError');
+        selectElement = document.getElementById('siteAssignmentNight');
+    }
     
-    // ... rest of existing code ...
+    // Site Assignment is required ONLY for this session
+    if (!siteValue || siteValue === '') {
+        if (errorElement) {
+            errorElement.style.display = 'flex';
+            errorElement.innerHTML = '<i class="fas fa-exclamation-circle"></i> Site Assignment is required';
+        }
+        if (selectElement) {
+            selectElement.classList.add('error');
+            selectElement.style.borderColor = '#e74c3c';
+        }
+        return false;
+    } else {
+        if (errorElement) errorElement.style.display = 'none';
+        if (selectElement) {
+            selectElement.classList.remove('error');
+            selectElement.style.borderColor = '#75e6da';
+        }
+        return true;
+    }
+}
+// Clear validation errors for site assignment
+function clearSiteAssignmentErrors() {
+    const errors = ['amSiteError', 'pmSiteError', 'nightSiteError'];
+    errors.forEach(id => {
+        const error = document.getElementById(id);
+        if (error) error.style.display = 'none';
+    });
+    
+    const selects = ['siteAssignmentAm', 'siteAssignmentPm', 'siteAssignmentNight'];
+    selects.forEach(id => {
+        const select = document.getElementById(id);
+        if (select) select.classList.remove('error');
+    });
 }
 
 // ============================================
@@ -5401,11 +5576,11 @@ function closeReportModal() {
     }
 }
 
-// Load Report Data Function
 function loadReportData() {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
     const employeeId = document.getElementById('reportEmployeeId').value;
+    const siteId = document.getElementById('reportSiteId').value;  // NEW: Get site filter
     
     if (!dateFrom || !dateTo) {
         alert('Please select both From and To dates');
@@ -5420,12 +5595,12 @@ function loadReportData() {
         </div>
     `;
     
-    // Update download link
+    // Update download link with site filter
     const downloadLink = document.getElementById('downloadExcelLink');
-    downloadLink.href = `download_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}`;
+    downloadLink.href = `download_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}&site_id=${siteId}`;
     
-    // AJAX call to get report data
-    fetch(`get_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}`)
+    // AJAX call with site filter
+    fetch(`get_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}&site_id=${siteId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -5498,7 +5673,7 @@ function displayReportPreview(data) {
                             <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Leave</th>
                             <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Workday Type</th>
                             <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Total Hrs</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Site</th>
+                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Remarks</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -5557,7 +5732,7 @@ function displayReportPreview(data) {
                     <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${record.leave_type || '-'}</td>
                     <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px;">${record.workday_type || '-'}</span></td>
                     <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><strong style="color: #27ae60;">${record.total_hours || '0.00'}</strong></td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">${record.site || '-'}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">${record.remarks || '-'}</td>
                 </tr>
             `;
         });
@@ -5806,6 +5981,9 @@ function resetTimeFields(session) {
         
         document.getElementById('timeInAmError').style.display = 'none';
         document.getElementById('timeOutAmError').style.display = 'none';
+        
+        // Reset site assignment for AM
+        resetSiteAssignment('am');
     }
     
     if (session === 'pm' || !session) {
@@ -5841,6 +6019,9 @@ function resetTimeFields(session) {
         
         document.getElementById('timeInPmError').style.display = 'none';
         document.getElementById('timeOutPmError').style.display = 'none';
+        
+        // Reset site assignment for PM
+        resetSiteAssignment('pm');
     }
     
     if (session === 'night' || !session) {
@@ -5876,11 +6057,13 @@ function resetTimeFields(session) {
         
         document.getElementById('timeInNightError').style.display = 'none';
         document.getElementById('timeOutNightError').style.display = 'none';
+        
+        // Reset site assignment for Night
+        resetSiteAssignment('night');
     }
     
     updateTotalHours();
 }
-
 function clearValidationHighlights() {
     const timeFields = ['timeInAmDisplay', 'timeOutAmDisplay', 'timeInPmDisplay', 'timeOutPmDisplay', 'timeInNightDisplay', 'timeOutNightDisplay'];
     timeFields.forEach(id => {
@@ -5928,10 +6111,6 @@ function showNotification(message, type = 'info', target = 'notificationArea') {
         }
     }, 5000);
 }
-
-// ============================================
-// LEAVE TYPE AND WORKDAY HANDLING 
-// ============================================
 document.addEventListener('DOMContentLoaded', function() {
     const statusAbsent = document.getElementById('statusAbsent');
     const statusPresent = document.getElementById('statusPresent');
@@ -5940,23 +6119,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const nightStatusPresent = document.getElementById('nightStatusPresent');
     const nightStatusAbsent = document.getElementById('nightStatusAbsent');
     
-    // Workday Type is now standalone - no radio button
-    
-    if (statusAbsent) {
-        statusAbsent.addEventListener('change', function() {
-            if (this.checked) {
-                disableTimeInputs('am', true);
-                resetTimeFields('am');
-                // Don't reset PM and Night - keep them as is
-                clearValidationHighlights();
-            }
-        });
-    }
+  if (statusAbsent) {
+    statusAbsent.addEventListener('change', function() {
+        if (this.checked) {
+            disableTimeInputs('am', true);
+            resetTimeFields('am');
+            // Site assignment remains enabled - do NOT disable or reset
+            clearValidationHighlights();
+        }
+    });
+}
     
     if (statusPresent) {
         statusPresent.addEventListener('change', function() {
             if (this.checked) {
                 disableTimeInputs('am', false);
+                disableSiteAssignment('am', false);
                 clearValidationHighlights();
             }
         });
@@ -5966,42 +6144,45 @@ document.addEventListener('DOMContentLoaded', function() {
         pmStatusPresent.addEventListener('change', function() {
             if (this.checked) {
                 disableTimeInputs('pm', false);
+                disableSiteAssignment('pm', false);
                 clearValidationHighlights();
             }
         });
     }
     
-    if (pmStatusAbsent) {
-        pmStatusAbsent.addEventListener('change', function() {
-            if (this.checked) {
-                disableTimeInputs('pm', true);
-                resetTimeFields('pm');
-                clearValidationHighlights();
-            }
-        });
-    }
+  if (pmStatusAbsent) {
+    pmStatusAbsent.addEventListener('change', function() {
+        if (this.checked) {
+            disableTimeInputs('pm', true);
+            resetTimeFields('pm');
+            // Site assignment remains enabled - do NOT disable or reset
+            clearValidationHighlights();
+        }
+    });
+}
     
     if (nightStatusPresent) {
         nightStatusPresent.addEventListener('change', function() {
             if (this.checked) {
                 disableTimeInputs('night', false);
+                disableSiteAssignment('night', false);
                 clearValidationHighlights();
             }
         });
     }
     
-    if (nightStatusAbsent) {
-        nightStatusAbsent.addEventListener('change', function() {
-            if (this.checked) {
-                disableTimeInputs('night', true);
-                resetTimeFields('night');
-                clearValidationHighlights();
-            }
-        });
-    }
+ if (nightStatusAbsent) {
+    nightStatusAbsent.addEventListener('change', function() {
+        if (this.checked) {
+            disableTimeInputs('night', true);
+            resetTimeFields('night');
+            // ✅ HUWAG i-disable ang site assignment - dapat pwedeng pumili ng site kahit Absent
+            // ✅ HUWAG i-reset ang site assignment - dapat manatili ang napiling site
+            clearValidationHighlights();
+        }
+    });
+}
 });
-
-// ============================================
 // MAIN DATE FILTER CALENDAR FUNCTIONS
 // ============================================
 function toggleMainCalendar() {
@@ -6820,7 +7001,7 @@ function viewAttendance(employeeId, date, employeeName) {
         });
         document.getElementById('viewDate').textContent = formattedDate;
         
-        document.getElementById('viewSite').textContent = '--';
+        document.getElementById('viewRemarks').textContent = '--';
         
         // Reset displays
         document.getElementById('viewAmStatus').textContent = '--';
@@ -6861,6 +7042,75 @@ function viewAttendance(employeeId, date, employeeName) {
     }
 }
 
+// ============================================
+// LOAD SITES FROM DATABASE FOR DROPDOWNS
+// ============================================
+// LOAD SITES FROM DATABASE FOR DROPDOWNS
+// ============================================
+async function loadSites() {
+    try {
+        const response = await fetch('get_sites.php');
+        const data = await response.json();
+        
+        if (data.success && data.sites && data.sites.length > 0) {
+            // Populate AM Site dropdown
+            const amSiteSelect = document.getElementById('siteAssignmentAm');
+            const pmSiteSelect = document.getElementById('siteAssignmentPm');
+            const nightSiteSelect = document.getElementById('siteAssignmentNight');
+            
+            if (amSiteSelect) {
+                amSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
+                data.sites.forEach(site => {
+                    const option = document.createElement('option');
+                    option.value = site.site_name;
+                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
+                    amSiteSelect.appendChild(option);
+                });
+            }
+            
+            if (pmSiteSelect) {
+                pmSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
+                data.sites.forEach(site => {
+                    const option = document.createElement('option');
+                    option.value = site.site_name;
+                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
+                    pmSiteSelect.appendChild(option);
+                });
+            }
+            
+            if (nightSiteSelect) {
+                nightSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
+                data.sites.forEach(site => {
+                    const option = document.createElement('option');
+                    option.value = site.site_name;
+                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
+                    nightSiteSelect.appendChild(option);
+                });
+            }
+            
+            console.log('Sites loaded successfully:', data.sites.length);
+        } else {
+            console.warn('No sites found in database');
+        }
+    } catch (error) {
+        console.error('Error loading sites:', error);
+    }
+}
+
+// Call loadSites when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadSites();
+    // ... rest of your existing DOMContentLoaded code ...
+});
+// Call loadSites when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadSites();
+    // ... rest of your existing DOMContentLoaded code ...
+});
+
+
+
+
 async function fetchViewAttendanceData(employeeId, date) {
     try {
         const response = await fetch(`get_attendance.php?employee_id=${employeeId}&date=${date}`);
@@ -6884,6 +7134,50 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewWorkdayType').textContent = data.workday_type || '';
             } else {
                 document.getElementById('viewWorkdayContainer').style.display = 'none';
+            }
+            
+            // ============================================
+            // SITE ASSIGNMENT DISPLAY - NEW
+            // ============================================
+            const siteContainer = document.getElementById('viewSiteAssignmentContainer');
+            if (siteContainer) {
+                // Check if any site assignment exists
+                const hasAmSite = data.site_assignment_am && data.site_assignment_am !== '';
+                const hasPmSite = data.site_assignment_pm && data.site_assignment_pm !== '';
+                const hasNightSite = data.site_assignment_night && data.site_assignment_night !== '';
+                
+                if (hasAmSite || hasPmSite || hasNightSite) {
+                    siteContainer.style.display = 'block';
+                    
+                    // Display AM Site
+                    const amSiteValue = document.getElementById('viewAmSiteValue');
+                    if (amSiteValue) {
+                        amSiteValue.textContent = data.site_assignment_am && data.site_assignment_am !== '' ? data.site_assignment_am : '--';
+                    }
+                    
+                    // Display PM Site
+                    const pmSiteValue = document.getElementById('viewPmSiteValue');
+                    if (pmSiteValue) {
+                        pmSiteValue.textContent = data.site_assignment_pm && data.site_assignment_pm !== '' ? data.site_assignment_pm : '--';
+                    }
+                    
+                    // Display Night Site
+                    const nightSiteValue = document.getElementById('viewNightSiteValue');
+                    if (nightSiteValue) {
+                        nightSiteValue.textContent = data.site_assignment_night && data.site_assignment_night !== '' ? data.site_assignment_night : '--';
+                    }
+                    
+                    // Show/hide individual rows based on whether site exists
+                    const amRow = document.getElementById('viewAmSite');
+                    const pmRow = document.getElementById('viewPmSite');
+                    const nightRow = document.getElementById('viewNightSite');
+                    
+                    if (amRow) amRow.style.display = hasAmSite ? 'flex' : 'none';
+                    if (pmRow) pmRow.style.display = hasPmSite ? 'flex' : 'none';
+                    if (nightRow) nightRow.style.display = hasNightSite ? 'flex' : 'none';
+                } else {
+                    siteContainer.style.display = 'none';
+                }
             }
             
             // ============================================
@@ -7048,13 +7342,14 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeOutNightDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-           // ============================================
-// Site
-if (data.site) {
-    document.getElementById('viewSite').textContent = data.site;
-} else {
-    document.getElementById('viewSite').textContent = '--';
-}
+            // ============================================
+            // REMARKS
+            // ============================================
+            if (data.remarks) {
+                document.getElementById('viewRemarks').textContent = data.remarks;
+            } else {
+                document.getElementById('viewRemarks').textContent = '--';
+            }
             
             // ============================================
             // HOURS CALCULATION
@@ -7088,6 +7383,8 @@ if (data.site) {
         showNotification('Error loading data', 'error', 'viewNotificationArea');
     }
 }
+
+
 
 function editFromView() {
     if (window.currentViewData) {
@@ -7203,21 +7500,28 @@ async function fetchAttendanceData(employeeId, date) {
             const storedWorkdayType = data.workday_type || '';
             const storedLeaveType = data.leave_type || '';
             
+            // STORE SITE ASSIGNMENTS
+            const storedSiteAm = data.site_assignment_am || '';
+            const storedSitePm = data.site_assignment_pm || '';
+            const storedSiteNight = data.site_assignment_night || '';
+            
             // Set AM Status
             if (data.status) {
                 if (data.status === 'Absent') {
                     document.getElementById('statusAbsent').checked = true;
                     disableTimeInputs('am', true);
+                    disableSiteAssignment('am', true);
                 } else if (data.status === 'On Leave') {
                     document.getElementById('statusPresent').checked = false;
                     document.getElementById('statusAbsent').checked = false;
-                    // Don't set any radio button for On Leave since it's removed
                     disableTimeInputs('am', true);
                     disableTimeInputs('pm', true);
                     disableTimeInputs('night', true);
+                    
                 } else if (data.status === 'Present') {
                     document.getElementById('statusPresent').checked = true;
                     disableTimeInputs('am', false);
+                    disableSiteAssignment('am', false);
                 }
             }
             
@@ -7232,19 +7536,50 @@ async function fetchAttendanceData(employeeId, date) {
                 console.log('Workday loaded - workday type set to:', storedWorkdayType);
             }
             
+            // ============================================
+            // LOAD SITE ASSIGNMENTS INTO DROPDOWNS
+            // ============================================
+            if (storedSiteAm) {
+                const amSiteSelect = document.getElementById('siteAssignmentAm');
+                if (amSiteSelect) {
+                    amSiteSelect.value = storedSiteAm;
+                    console.log('AM Site loaded:', storedSiteAm);
+                }
+            }
+            
+            if (storedSitePm) {
+                const pmSiteSelect = document.getElementById('siteAssignmentPm');
+                if (pmSiteSelect) {
+                    pmSiteSelect.value = storedSitePm;
+                    console.log('PM Site loaded:', storedSitePm);
+                }
+            }
+            
+            if (storedSiteNight) {
+                const nightSiteSelect = document.getElementById('siteAssignmentNight');
+                if (nightSiteSelect) {
+                    nightSiteSelect.value = storedSiteNight;
+                    console.log('Night Site loaded:', storedSiteNight);
+                }
+            }
+            
             // Set PM status if available in data
             if (data.pm_status) {
                 if (data.pm_status === 'Present') {
                     document.getElementById('pmStatusPresent').checked = true;
                     disableTimeInputs('pm', false);
+                    disableSiteAssignment('pm', false);
                 } else if (data.pm_status === 'Absent') {
                     document.getElementById('pmStatusAbsent').checked = true;
                     disableTimeInputs('pm', true);
                     resetTimeFields('pm');
+                    disableSiteAssignment('pm', true);
+                    resetSiteAssignment('pm');
                 } else if (data.pm_status === 'On Leave') {
-                    // No radio button for On Leave, just disable
                     disableTimeInputs('pm', true);
                     resetTimeFields('pm');
+                    disableSiteAssignment('pm', true);
+                    resetSiteAssignment('pm');
                 }
             }
             
@@ -7253,14 +7588,18 @@ async function fetchAttendanceData(employeeId, date) {
                 if (data.night_status === 'Present') {
                     document.getElementById('nightStatusPresent').checked = true;
                     disableTimeInputs('night', false);
+                    disableSiteAssignment('night', false);
                 } else if (data.night_status === 'Absent') {
                     document.getElementById('nightStatusAbsent').checked = true;
                     disableTimeInputs('night', true);
                     resetTimeFields('night');
+                    disableSiteAssignment('night', true);
+                    resetSiteAssignment('night');
                 } else if (data.night_status === 'On Leave') {
-                    // No radio button for On Leave, just disable
                     disableTimeInputs('night', true);
                     resetTimeFields('night');
+                    disableSiteAssignment('night', true);
+                    resetSiteAssignment('night');
                 }
             }
             
@@ -7401,12 +7740,10 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-// Set site dropdown
-if (data.site) {
-    document.getElementById('site').value = data.site;
-} else {
-    document.getElementById('site').value = '';
-}
+            // Set remarks
+            if (data.remarks) {
+                document.getElementById('remarks').value = data.remarks;
+            }
             
             // Update total hours calculation
             updateTotalHours();
@@ -7455,7 +7792,6 @@ function resetAttendanceForm() {
     const form = document.getElementById('addAttendanceForm');
     if (form) form.reset();
     
-    // Clear employee selection
     const selectedCard = document.getElementById('selectedEmployeeCard');
     if (selectedCard) {
         selectedCard.style.display = 'none';
@@ -7473,38 +7809,35 @@ function resetAttendanceForm() {
     resetTimeFields('pm');
     resetTimeFields('night');
     
-    // DO NOT auto-check any radio buttons
-    // Let them all be unchecked initially
+    // Reset site assignments
+    resetSiteAssignment('am');
+    resetSiteAssignment('pm');
+    resetSiteAssignment('night');
     
-// Reset site dropdown
-const siteSelect = document.getElementById('site');
-if (siteSelect) siteSelect.value = '';
-
-    // Reset leave type dropdown
     const leaveSelect = document.getElementById('leaveType');
     if (leaveSelect) leaveSelect.value = '';
     
-    // Workday type is standalone - just reset the dropdown
     const workdaySelect = document.getElementById('workdayType');
     if (workdaySelect) workdaySelect.value = '';
     
-    // Enable all time inputs by default
     disableTimeInputs('am', false);
     disableTimeInputs('pm', false);
     disableTimeInputs('night', false);
+    disableSiteAssignment('am', false);
+    disableSiteAssignment('pm', false);
+    disableSiteAssignment('night', false);
     
     const attendanceId = document.getElementById('attendanceId');
     if (attendanceId) attendanceId.value = '';
     
     clearValidationHighlights();
+    clearSiteAssignmentErrors();
     
-    // Hide workday error message
     const workdayError = document.getElementById('workdayError');
     if (workdayError) {
         workdayError.style.display = 'none';
     }
 }
-
 // ============================================
 // TIME MODAL FUNCTIONS
 // ============================================
@@ -7640,10 +7973,6 @@ function updateTimeDisplay(displayId, inputId, timeDisplay, time24, period) {
     
     updateTotalHours();
 }
-
-// ============================================
-// FORM SUBMISSION - WITH WORKDAY TYPE REQUIRED
-// ============================================
 function submitAttendanceForm() {
     if (isViewMode) return;
     
@@ -7656,7 +7985,6 @@ function submitAttendanceForm() {
     const nightStatusAbsent = document.getElementById('nightStatusAbsent');
     const attendanceDate = document.getElementById('attendanceDate').value;
     
-    // WORKDAY TYPE - REQUIRED
     const workdayType = document.getElementById('workdayType').value;
     
     const timeInAm = document.getElementById('timeInAm').value;
@@ -7667,13 +7995,14 @@ function submitAttendanceForm() {
     const timeOutNight = document.getElementById('timeOutNight').value;
     
     clearValidationHighlights();
+    clearSiteAssignmentErrors();
     
-    // Hide workday error message initially
     const workdayError = document.getElementById('workdayError');
     if (workdayError) {
         workdayError.style.display = 'none';
     }
     
+    // Check if employee is selected
     if (!employeeSelect.value) {
         showNotification('Please select an employee', 'error');
         if (!isEditMode) {
@@ -7682,55 +8011,25 @@ function submitAttendanceForm() {
         return false;
     }
     
+    // Check if date is selected
     if (!attendanceDate) {
         showNotification('Please select a date', 'error');
         document.getElementById('attendanceDateField').focus();
         return false;
     }
     
-    // WORKDAY TYPE VALIDATION - REQUIRED FOR ALL
-    if (!workdayType || workdayType === '') {
-        if (workdayError) {
-            workdayError.style.display = 'flex';
-        }
-        // Highlight the workday select
-        document.getElementById('workdayType').style.borderColor = '#e74c3c';
-        document.getElementById('workdayType').focus();
-        
-        // Scroll to workday section
-        document.getElementById('workdayTypeContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        showNotification('Please select a Workday Type', 'error');
-        return false;
-    } else {
-        document.getElementById('workdayType').style.borderColor = '#75e6da';
-    }
+    // ============================================
+    // CRITICAL FIX: Check if at least one session has a status selected
+    // ============================================
+
+    // PM Validation - Site Assignment is ALWAYS required if a status is selected
+const pmStatusSelected = pmStatusPresent.checked || pmStatusAbsent.checked;
+
+if (pmStatusSelected) {
+    let hasError = false;
     
-    // AM Status validation - only require if Present is checked and no times
-    if (statusPresent && statusPresent.checked) {
-        let hasError = false;
-        
-        if (!timeInAm) {
-            document.getElementById('timeInAmDisplay').classList.add('validation-error');
-            document.getElementById('timeInAmError').style.display = 'flex';
-            hasError = true;
-        }
-        if (!timeOutAm) {
-            document.getElementById('timeOutAmDisplay').classList.add('validation-error');
-            document.getElementById('timeOutAmError').style.display = 'flex';
-            hasError = true;
-        }
-        
-        if (hasError) {
-            document.querySelector('.time-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
-            return false;
-        }
-    }
-    
-    // PM Status validation - only if Present is checked
+    // If Present is selected, validate time fields
     if (pmStatusPresent && pmStatusPresent.checked) {
-        let hasError = false;
-        
         if (!timeInPm) {
             document.getElementById('timeInPmDisplay').classList.add('validation-error');
             document.getElementById('timeInPmError').style.display = 'flex';
@@ -7741,20 +8040,38 @@ function submitAttendanceForm() {
             document.getElementById('timeOutPmError').style.display = 'flex';
             hasError = true;
         }
-        
-        if (hasError) {
-            const pmSection = document.querySelectorAll('.time-section')[1];
-            if (pmSection) {
-                pmSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return false;
-        }
+    } else if (pmStatusAbsent && pmStatusAbsent.checked) {
+        // If Absent, clear time fields
+        document.getElementById('timeInPm').value = '';
+        document.getElementById('timeOutPm').value = '';
     }
     
-    // Night Status validation - only if Present is checked
+    // ✅ SITE ASSIGNMENT VALIDATION - REQUIRED FOR ALL STATUSES
+    const pmSiteValid = validateSiteAssignment('pm');
+    if (!pmSiteValid) {
+        hasError = true;
+        document.getElementById('pmSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    if (hasError) {
+        const pmSection = document.querySelectorAll('.time-section')[1];
+        if (pmSection) {
+            pmSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
+    }
+}
+    
+    // ============================================
+    // Night Validation - Only if Present is selected
+   // Night Validation - Site Assignment is ALWAYS required if a status is selected
+const nightStatusSelected = nightStatusPresent.checked || nightStatusAbsent.checked;
+
+if (nightStatusSelected) {
+    let hasError = false;
+    
+    // If Present is selected, validate time fields
     if (nightStatusPresent && nightStatusPresent.checked) {
-        let hasError = false;
-        
         if (!timeInNight) {
             document.getElementById('timeInNightDisplay').classList.add('validation-error');
             document.getElementById('timeInNightError').style.display = 'flex';
@@ -7765,39 +8082,48 @@ function submitAttendanceForm() {
             document.getElementById('timeOutNightError').style.display = 'flex';
             hasError = true;
         }
-        
-        if (hasError) {
-            const nightSection = document.querySelectorAll('.time-section')[2];
-            if (nightSection) {
-                nightSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-            return false;
-        }
-    }
-    
-    // Leave type is optional - no validation required
-    
-    // Handle absent - clear only that session's times
-    if (statusAbsent && statusAbsent.checked) {
-        document.getElementById('timeInAm').value = '';
-        document.getElementById('timeOutAm').value = '';
-    }
-    
-    if (pmStatusAbsent && pmStatusAbsent.checked) {
-        document.getElementById('timeInPm').value = '';
-        document.getElementById('timeOutPm').value = '';
-    }
-    
-    if (nightStatusAbsent && nightStatusAbsent.checked) {
+    } else if (nightStatusAbsent && nightStatusAbsent.checked) {
+        // If Absent, clear time fields
         document.getElementById('timeInNight').value = '';
         document.getElementById('timeOutNight').value = '';
     }
     
+    // ✅ SITE ASSIGNMENT VALIDATION - REQUIRED FOR ALL STATUSES
+    const nightSiteValid = validateSiteAssignment('night');
+    if (!nightSiteValid) {
+        hasError = true;
+        document.getElementById('nightSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    if (hasError) {
+        const nightSection = document.querySelectorAll('.time-section')[2];
+        if (nightSection) {
+            nightSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return false;
+    }
+}
+    
+    // Additional check: If any session has Present status but no times, prevent submission
+    if (statusPresent && statusPresent.checked && (!timeInAm || !timeOutAm)) {
+        showNotification('Please fill in both AM Time In and Time Out when Present', 'error');
+        return false;
+    }
+    
+    if (pmStatusPresent && pmStatusPresent.checked && (!timeInPm || !timeOutPm)) {
+        showNotification('Please fill in both PM Time In and Time Out when Present', 'error');
+        return false;
+    }
+    
+    if (nightStatusPresent && nightStatusPresent.checked && (!timeInNight || !timeOutNight)) {
+        showNotification('Please fill in both Night Time In and Time Out when Present', 'error');
+        return false;
+    }
+    
+    // Submit the form
     document.getElementById('addAttendanceForm').submit();
     return true;
 }
-
-// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 function formatDateForDisplay(dateString) {

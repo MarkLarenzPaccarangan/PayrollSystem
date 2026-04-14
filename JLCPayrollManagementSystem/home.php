@@ -69,8 +69,7 @@ include_once("connection.php");
 
 /**
  * Get sites with employee counts and attendance for a specific date - FIXED VERSION
- * Now properly uses status and pm_status columns for present count
- * And uses leave_type column for leave count
+ * Now properly queries from attendance table (site_assignment fields)
  */
 function getSitesWithAttendance($conn, $filter_date = null, $search = '', $sort_by = 'site_name', $sort_order = 'ASC') {
     if (!$filter_date) {
@@ -83,18 +82,13 @@ function getSitesWithAttendance($conn, $filter_date = null, $search = '', $sort_
     }
     $sort_order = strtoupper($sort_order) === 'DESC' ? 'DESC' : 'ASC';
     
-    // Get sites first
+    // Get all sites
     $query = "SELECT 
                 s.id,
                 s.site_name,
                 s.site_manager,
                 s.site_address,
-                s.is_others,
-                (SELECT COUNT(*) FROM site_employee se WHERE se.site_id = s.id AND se.status = 'active') as total_employees,
-                0 as present_count,
-                0 as absent_count,
-                0 as leave_count,
-                0 as attendance_rate
+                s.is_others
               FROM site_monitoring s
               WHERE 1=1";
     
@@ -141,39 +135,60 @@ function getSitesWithAttendance($conn, $filter_date = null, $search = '', $sort_
     
     $sites = [];
     while ($row = $result->fetch_assoc()) {
-        // Get present count using status (AM) OR pm_status (PM) OR night_status
+        $site_name = $row['site_name'];
+        
+        // FIXED: Get employee counts from ATTENDANCE table based on site assignments
+        // Total employees count (distinct employees assigned to this site on this date)
+        $total_query = "SELECT COUNT(DISTINCT a.employee_id) as total 
+                        FROM attendance a
+                        WHERE DATE(a.date) = DATE(?)
+                        AND (a.site_assignment_am = ? OR a.site_assignment_pm = ? OR a.site_assignment_night = ?)";
+        $total_stmt = $conn->prepare($total_query);
+        if ($total_stmt) {
+            $total_stmt->bind_param("ssss", $filter_date, $site_name, $site_name, $site_name);
+            $total_stmt->execute();
+            $total_result = $total_stmt->get_result();
+            $total_row = $total_result->fetch_assoc();
+            $row['total_employees'] = intval($total_row['total'] ?? 0);
+            $total_stmt->close();
+        } else {
+            $row['total_employees'] = 0;
+        }
+        
+        // Get present count (any session is Present)
         $present_query = "SELECT COUNT(DISTINCT a.employee_id) as present_count 
-                          FROM attendance a 
-                          INNER JOIN site_employee se ON a.employee_id = se.employee_id 
-                          WHERE se.site_id = ? AND a.date = ? 
+                          FROM attendance a
+                          WHERE DATE(a.date) = DATE(?)
+                          AND (a.site_assignment_am = ? OR a.site_assignment_pm = ? OR a.site_assignment_night = ?)
                           AND (a.status = 'Present' OR a.pm_status = 'Present' OR a.night_status = 'Present')";
         $present_stmt = $conn->prepare($present_query);
         if ($present_stmt) {
-            $present_stmt->bind_param("is", $row['id'], $filter_date);
+            $present_stmt->bind_param("ssss", $filter_date, $site_name, $site_name, $site_name);
             $present_stmt->execute();
             $present_result = $present_stmt->get_result();
-            if ($present_row = $present_result->fetch_assoc()) {
-                $row['present_count'] = intval($present_row['present_count']);
-            }
+            $present_row = $present_result->fetch_assoc();
+            $row['present_count'] = intval($present_row['present_count'] ?? 0);
             $present_stmt->close();
+        } else {
+            $row['present_count'] = 0;
         }
         
-        // FIXED: Get leave count using leave_type column (matches attendance.php logic)
+        // Get leave count
         $leave_query = "SELECT COUNT(DISTINCT a.employee_id) as leave_count 
-                        FROM attendance a 
-                        INNER JOIN site_employee se ON a.employee_id = se.employee_id 
-                        WHERE se.site_id = ? AND a.date = ? 
-                        AND a.leave_type IS NOT NULL 
-                        AND a.leave_type != ''";
+                        FROM attendance a
+                        WHERE DATE(a.date) = DATE(?)
+                        AND (a.site_assignment_am = ? OR a.site_assignment_pm = ? OR a.site_assignment_night = ?)
+                        AND a.leave_type IS NOT NULL AND a.leave_type != ''";
         $leave_stmt = $conn->prepare($leave_query);
         if ($leave_stmt) {
-            $leave_stmt->bind_param("is", $row['id'], $filter_date);
+            $leave_stmt->bind_param("ssss", $filter_date, $site_name, $site_name, $site_name);
             $leave_stmt->execute();
             $leave_result = $leave_stmt->get_result();
-            if ($leave_row = $leave_result->fetch_assoc()) {
-                $row['leave_count'] = intval($leave_row['leave_count']);
-            }
+            $leave_row = $leave_result->fetch_assoc();
+            $row['leave_count'] = intval($leave_row['leave_count'] ?? 0);
             $leave_stmt->close();
+        } else {
+            $row['leave_count'] = 0;
         }
         
         // Calculate absent count
@@ -204,6 +219,19 @@ function getSitesWithAttendance($conn, $filter_date = null, $search = '', $sort_
         $sites[] = $row;
     }
     
+    // If sorting by calculated fields, sort in PHP
+    if (in_array($sort_by, ['total_employees', 'present_count', 'absent_count', 'leave_count', 'attendance_rate'])) {
+        usort($sites, function($a, $b) use ($sort_by, $sort_order) {
+            $val_a = $a[$sort_by] ?? 0;
+            $val_b = $b[$sort_by] ?? 0;
+            if ($sort_order == 'ASC') {
+                return $val_a - $val_b;
+            } else {
+                return $val_b - $val_a;
+            }
+        });
+    }
+    
     return $sites;
 }
 
@@ -228,64 +256,68 @@ function getAvailableDates($conn) {
 }
 
 /**
- * Get total statistics across all sites - FIXED to use leave_type for leave count
- * NOW CORRECTLY COUNTS LEAVE BASED ON LEAVE_TYPE COLUMN
+ * Get total statistics across all sites - FIXED to use attendance table
  */
 function getTotalStats($conn, $filter_date = null) {
     if (!$filter_date) {
         $filter_date = date('Y-m-d');
     }
     
-    $query = "SELECT 
-                COUNT(*) as total_sites
-              FROM site_monitoring";
+    // Get total sites
+    $sites_query = "SELECT COUNT(*) as total_sites FROM site_monitoring";
+    $sites_result = $conn->query($sites_query);
+    $sites_row = $sites_result->fetch_assoc();
     
-    $result = $conn->query($query);
-    $row = $result->fetch_assoc();
+    // FIXED: Get total employees from attendance table (distinct employees with site assignments on this date)
+    $total_emp_query = "SELECT COUNT(DISTINCT a.employee_id) as total 
+                        FROM attendance a
+                        WHERE DATE(a.date) = DATE(?)
+                        AND (a.site_assignment_am IS NOT NULL OR a.site_assignment_pm IS NOT NULL OR a.site_assignment_night IS NOT NULL)";
+    $total_emp_stmt = $conn->prepare($total_emp_query);
+    $total_emp_stmt->bind_param("s", $filter_date);
+    $total_emp_stmt->execute();
+    $total_emp_result = $total_emp_stmt->get_result();
+    $total_emp_row = $total_emp_result->fetch_assoc();
+    $total_employees = intval($total_emp_row['total'] ?? 0);
+    $total_emp_stmt->close();
     
-    // Get total employees from site_employee (active only)
-    $emp_query = "SELECT COUNT(DISTINCT employee_id) as total FROM site_employee WHERE status = 'active'";
-    $emp_result = $conn->query($emp_query);
-    $emp_row = $emp_result->fetch_assoc();
-    
-    // Get present count using status OR pm_status OR night_status
-    $present_query = "SELECT COUNT(DISTINCT employee_id) as total 
-                      FROM attendance 
-                      WHERE date = ? 
-                      AND (status = 'Present' OR pm_status = 'Present' OR night_status = 'Present')";
+    // Get present count
+    $present_query = "SELECT COUNT(DISTINCT a.employee_id) as total 
+                      FROM attendance a
+                      WHERE DATE(a.date) = DATE(?)
+                      AND (a.status = 'Present' OR a.pm_status = 'Present' OR a.night_status = 'Present')";
     $present_stmt = $conn->prepare($present_query);
     $present_stmt->bind_param("s", $filter_date);
     $present_stmt->execute();
     $present_result = $present_stmt->get_result();
     $present_row = $present_result->fetch_assoc();
+    $total_present = intval($present_row['total'] ?? 0);
+    $present_stmt->close();
     
-    // FIXED: Get on leave count using leave_type column (matches attendance.php)
-    $leave_query = "SELECT COUNT(DISTINCT employee_id) as total 
-                    FROM attendance 
-                    WHERE date = ? 
-                    AND leave_type IS NOT NULL 
-                    AND leave_type != ''";
+    // Get leave count
+    $leave_query = "SELECT COUNT(DISTINCT a.employee_id) as total 
+                    FROM attendance a
+                    WHERE DATE(a.date) = DATE(?)
+                    AND a.leave_type IS NOT NULL AND a.leave_type != ''";
     $leave_stmt = $conn->prepare($leave_query);
     $leave_stmt->bind_param("s", $filter_date);
     $leave_stmt->execute();
     $leave_result = $leave_stmt->get_result();
     $leave_row = $leave_result->fetch_assoc();
+    $total_leave = intval($leave_row['total'] ?? 0);
+    $leave_stmt->close();
     
-    // Calculate absent count
-    $total_employees = $emp_row['total'] ?? 0;
-    $total_present = $present_row['total'] ?? 0;
-    $total_leave = $leave_row['total'] ?? 0;
+    // Calculate absent
     $total_absent = max(0, $total_employees - $total_present - $total_leave);
     
     return [
-        'total_sites' => $row['total_sites'] ?? 0,
+        'total_sites' => $sites_row['total_sites'] ?? 0,
         'total_employees' => $total_employees,
         'total_present' => $total_present,
         'total_leave' => $total_leave,
         'total_absent' => $total_absent
     ];
 }
-
 /**
  * Get employees with attendance status for a specific site and date - FIXED with night session
  * Now correctly shows On Leave status when leave_type exists
@@ -313,7 +345,7 @@ function getSiteEmployeesWithAttendance($conn, $site_id, $filter_date = null) {
                 a.time_out_pm,
                 a.time_in_night,
                 a.time_out_night,
-                a.site,
+                a.remarks,
                 a.total_hours,
                 a.leave_type
               FROM employees e
@@ -2397,22 +2429,23 @@ $day = date('d', strtotime($filter_date));
                     
                     if (data.employees && data.employees.length > 0) {
                         let html = `
-    <div class="employees-table-container">
-        <table class="employees-table">
-            <thead>
-                <tr>
-                    <th><i class="fas fa-user"></i> Employee</th>
-                    <th><i class="fas fa-briefcase"></i> Position</th>
-                    <th><i class="fas fa-sun"></i> AM Status</th>
-                    <th><i class="fas fa-moon"></i> PM Status</th>
-                    <th><i class="fas fa-star"></i> Night Status</th>
-                    <th><i class="fas fa-clock"></i> Time Details</th>
-                    <th><i class="fas fa-hourglass-half"></i> Total Hours</th>
-                    <th><i class="fas fa-location-dot"></i> Site</th>  <!-- Changed icon here -->
-                </tr>
-            </thead>
-            <tbody>
-`;
+                            <div class="employees-table-container">
+                                <table class="employees-table">
+                                    <thead>
+                                        <tr>
+                                            <th><i class="fas fa-user"></i> Employee</th>
+                                            <th><i class="fas fa-briefcase"></i> Position</th>
+                                            <th><i class="fas fa-sun"></i> AM Status</th>
+                                            <th><i class="fas fa-moon"></i> PM Status</th>
+                                            <th><i class="fas fa-star"></i> Night Status</th>
+                                            <th><i class="fas fa-clock"></i> Time Details</th>
+                                            <th><i class="fas fa-hourglass-half"></i> Total Hours</th>
+                                            <th><i class="fas fa-comment"></i> Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
                         data.employees.forEach(emp => {
                             // AM Status
                             const amStatus = emp.status_am || 'Absent';
@@ -2503,7 +2536,7 @@ $day = date('d', strtotime($filter_date));
                                     </td>
                                     <td>
                                         <span class="time-badge" style="color: #64748b; max-width: 200px; white-space: normal; word-wrap: break-word;">
-                                            ${emp.site || '—'}
+                                            ${emp.remarks || '—'}
                                         </span>
                                     </td>
                                 </tr>

@@ -506,7 +506,7 @@ echo '<meta name="Generator" content="PHP">';
                 <th colspan="2">Night Shift</th>
                 <th class="col-hours" rowspan="2">Total Hours</th>
                 <th class="col-leave" rowspan="2">Leave Type</th>
-                <th class="col-site" rowspan="2">Site</th>
+                <th class="col-remarks" rowspan="2">Remarks</th>
             </tr>
             <tr>
                 <th class="col-time">Time In</th>
@@ -605,7 +605,7 @@ echo '<meta name="Generator" content="PHP">';
                         -
                     <?php endif; ?>
                 </td>
-                <td class="text-left"><?= !empty($att['site']) ? htmlspecialchars($att['site']) : '-' ?></td>
+                <td class="text-left"><?= !empty($att['remarks']) ? htmlspecialchars($att['remarks']) : '-' ?></td>
             </tr>
             <?php else: ?>
             <tr class="<?= $row_class ?>">

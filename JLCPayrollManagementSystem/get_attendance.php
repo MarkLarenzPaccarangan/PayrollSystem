@@ -28,7 +28,8 @@ try {
                    time_in_am, time_out_am, 
                    time_in_pm, time_out_pm,
                    time_in_night, time_out_night,
-                   site, leave_type, workday_type,
+                   remarks, leave_type, workday_type,
+                   site_assignment_am, site_assignment_pm, site_assignment_night,
                    total_hours
             FROM attendance 
             WHERE employee_id = ? AND DATE(date) = DATE(?)";
@@ -67,9 +68,12 @@ try {
             'time_out_pm' => '',
             'time_in_night' => '',
             'time_out_night' => '',
-            'site' => '',
+            'remarks' => '',
             'leave_type' => '',
             'workday_type' => '',
+            'site_assignment_am' => '',
+            'site_assignment_pm' => '',
+            'site_assignment_night' => '',
             'total_hours' => '0.00'
         ]);
     }

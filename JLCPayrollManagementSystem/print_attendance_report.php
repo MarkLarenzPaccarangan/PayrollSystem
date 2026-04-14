@@ -17,51 +17,6 @@ if (empty($date_from) || empty($date_to)) {
     die("Date range is required");
 }
 
-// Build query
-$sql = "SELECT 
-            e.id AS employee_id,
-            e.first_name,
-            e.middle_name,
-            e.last_name,
-            e.position,
-            a.id as attendance_id,
-            a.date,
-            a.status,
-            a.pm_status,
-            a.night_status,
-            a.time_in_am,
-            a.time_out_am,
-            a.time_in_pm,
-            a.time_out_pm,
-            a.time_in_night,
-            a.time_out_night,
-            a.site,
-            a.leave_type,
-            a.workday_type
-        FROM employees e
-        LEFT JOIN attendance a ON a.employee_id = e.id 
-        WHERE a.date BETWEEN ? AND ?";
-
-$params = [$date_from, $date_to];
-$param_types = "ss";
-
-if ($employee_id > 0) {
-    $sql .= " AND e.id = ?";
-    $params[] = $employee_id;
-    $param_types .= "i";
-}
-
-$sql .= " ORDER BY e.last_name ASC, a.date ASC";
-
-$stmt = $conn->prepare($sql);
-if ($stmt === false) {
-    die("Database error");
-}
-
-$stmt->bind_param($param_types, ...$params);
-$stmt->execute();
-$result = $stmt->get_result();
-
 // Get employee name if filtered
 $employee_name = "All Employees";
 if ($employee_id > 0) {
@@ -76,39 +31,176 @@ if ($employee_id > 0) {
     $name_stmt->close();
 }
 
-// Calculate totals
-$total_hours = 0;
-$present_count = 0;
-$absent_count = 0;
-$leave_count = 0;
-$rows = [];
+// Get all distinct sites that have attendance records within the date range
+$sites_query = "SELECT DISTINCT site_name 
+                FROM (
+                    SELECT site_assignment_am as site_name FROM attendance 
+                    WHERE date BETWEEN ? AND ? AND site_assignment_am IS NOT NULL AND site_assignment_am != ''
+                    UNION
+                    SELECT site_assignment_pm as site_name FROM attendance 
+                    WHERE date BETWEEN ? AND ? AND site_assignment_pm IS NOT NULL AND site_assignment_pm != ''
+                    UNION
+                    SELECT site_assignment_night as site_name FROM attendance 
+                    WHERE date BETWEEN ? AND ? AND site_assignment_night IS NOT NULL AND site_assignment_night != ''
+                ) AS sites
+                ORDER BY site_name";
 
-while ($row = $result->fetch_assoc()) {
-    $rows[] = $row;
+$sites_stmt = $conn->prepare($sites_query);
+$sites_stmt->bind_param("ssssss", $date_from, $date_to, $date_from, $date_to, $date_from, $date_to);
+$sites_stmt->execute();
+$sites_result = $sites_stmt->get_result();
+
+$sites = [];
+while ($site_row = $sites_result->fetch_assoc()) {
+    $sites[] = $site_row['site_name'];
+}
+$sites_stmt->close();
+
+// For each site, get attendance records
+$site_data = [];
+$grand_total_records = 0;
+$grand_total_hours = 0;
+$grand_present_count = 0;
+$grand_absent_count = 0;
+$grand_leave_count = 0;
+
+foreach ($sites as $site_name) {
+    // Build query for this specific site
+    $sql = "SELECT 
+                e.id AS employee_id,
+                e.first_name,
+                e.middle_name,
+                e.last_name,
+                e.position,
+                a.id as attendance_id,
+                a.date,
+                a.status,
+                a.pm_status,
+                a.night_status,
+                a.time_in_am,
+                a.time_out_am,
+                a.time_in_pm,
+                a.time_out_pm,
+                a.time_in_night,
+                a.time_out_night,
+                a.remarks,
+                a.leave_type,
+                a.workday_type,
+                a.site_assignment_am,
+                a.site_assignment_pm,
+                a.site_assignment_night
+            FROM employees e
+            INNER JOIN attendance a ON a.employee_id = e.id 
+            WHERE a.date BETWEEN ? AND ?
+            AND (
+                a.site_assignment_am = ? OR 
+                a.site_assignment_pm = ? OR 
+                a.site_assignment_night = ?
+            )";
     
-    // Count statuses - FIXED to check leave_type first
-    if (!empty($row['leave_type']) && $row['leave_type'] != 'None' && $row['leave_type'] != '') {
-        $leave_count++;
-    } elseif ($row['status'] == 'Present') {
-        $present_count++;
-    } elseif ($row['status'] == 'On Leave') {
-        $leave_count++;
-    } else {
-        $absent_count++;
+    $params = [$date_from, $date_to, $site_name, $site_name, $site_name];
+    $param_types = "sssss";
+    
+    if ($employee_id > 0) {
+        $sql .= " AND e.id = ?";
+        $params[] = $employee_id;
+        $param_types .= "i";
     }
     
-    $total = calculateTotalHoursForPrint(
-        $row['time_in_am'], $row['time_out_am'],
-        $row['time_in_pm'], $row['time_out_pm'],
-        $row['time_in_night'], $row['time_out_night']
-    );
-    $total_hours += floatval($total);
+    $sql .= " ORDER BY e.last_name ASC, a.date ASC";
+    
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        continue;
+    }
+    
+    $stmt->bind_param($param_types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $site_records = [];
+    $site_total_hours = 0;
+    $site_present_count = 0;
+    $site_absent_count = 0;
+    $site_leave_count = 0;
+    
+    while ($row = $result->fetch_assoc()) {
+        // Calculate total hours for this record
+        $total = calculateTotalHoursForPrint(
+            $row['time_in_am'], $row['time_out_am'],
+            $row['time_in_pm'], $row['time_out_pm'],
+            $row['time_in_night'], $row['time_out_night']
+        );
+        $row['total_hours'] = $total;
+        $site_total_hours += floatval($total);
+        
+        // Format times for display
+        $row['time_in_am_display'] = formatTimeForPrint($row['time_in_am']);
+        $row['time_out_am_display'] = formatTimeForPrint($row['time_out_am']);
+        $row['time_in_pm_display'] = formatTimeForPrint($row['time_in_pm']);
+        $row['time_out_pm_display'] = formatTimeForPrint($row['time_out_pm']);
+        $row['time_in_night_display'] = formatTimeForPrint($row['time_in_night']);
+        $row['time_out_night_display'] = formatTimeForPrint($row['time_out_night']);
+        
+        // Format employee name
+        $row['employee_name'] = trim($row['first_name'] . ' ' . ($row['middle_name'] ?? '') . ' ' . $row['last_name']);
+        
+        // ============================================
+        // FIXED STATUS LOGIC - Checks ALL THREE SESSIONS
+        // ============================================
+        
+        // Check if ON LEAVE first (highest priority)
+        $is_on_leave = (!empty($row['leave_type']) && $row['leave_type'] != 'None' && $row['leave_type'] != '');
+        
+        // Check if PRESENT in ANY session (AM, PM, or Night)
+        $is_present = ($row['status'] == 'Present' || $row['pm_status'] == 'Present' || $row['night_status'] == 'Present');
+        
+        // Determine final status
+        if ($is_on_leave) {
+            $row['overall_status'] = 'On Leave';
+            $site_leave_count++;
+        } elseif ($is_present) {
+            $row['overall_status'] = 'Present';
+            $site_present_count++;
+        } else {
+            $row['overall_status'] = 'Absent';
+            $site_absent_count++;
+        }
+        
+        $site_records[] = $row;
+    }
+    
+    $site_data[] = [
+        'site_name' => $site_name,
+        'records' => $site_records,
+        'summary' => [
+            'record_count' => count($site_records),
+            'present_count' => $site_present_count,
+            'absent_count' => $site_absent_count,
+            'leave_count' => $site_leave_count,
+            'total_hours' => number_format($site_total_hours, 2)
+        ]
+    ];
+    
+    $grand_total_records += count($site_records);
+    $grand_total_hours += $site_total_hours;
+    $grand_present_count += $site_present_count;
+    $grand_absent_count += $site_absent_count;
+    $grand_leave_count += $site_leave_count;
+    
+    $stmt->close();
 }
+
+// Calculate grand total rates
+$grand_total_accounted = $grand_present_count + $grand_absent_count + $grand_leave_count;
+$grand_present_rate = ($grand_total_accounted > 0) ? round(($grand_present_count / $grand_total_accounted) * 100, 2) : 0;
+$grand_absent_rate = ($grand_total_accounted > 0) ? round(($grand_absent_count / $grand_total_accounted) * 100, 2) : 0;
+$grand_leave_rate = ($grand_total_accounted > 0) ? round(($grand_leave_count / $grand_total_accounted) * 100, 2) : 0;
 ?>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Attendance Report - Print</title>
+    <title>Attendance Report - Print (Grouped by Site)</title>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -178,37 +270,44 @@ while ($row = $result->fetch_assoc()) {
             color: #75e6da;
         }
         
-        .summary-value.total-hours {
-            color: #27ae60;
+        .summary-value.total-sites {
+            color: #2E7D32;
         }
         
-        .summary-value.present {
-            color: #28a745;
+        .summary-value.total-records {
+            color: #3498db;
         }
         
-        .summary-value.absent {
-            color: #dc3545;
+        .site-section {
+            margin-top: 30px;
+            margin-bottom: 30px;
+            page-break-inside: avoid;
         }
         
-        .summary-value.leave {
-            color: #ffc107;
+        .site-header {
+            background: linear-gradient(135deg, #2E7D32, #1B5E20);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px 8px 0 0;
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .site-header i {
+            margin-right: 8px;
         }
         
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
             border: 1px solid #e0e0e0;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            font-size: 10px;
+            font-size: 9px;
         }
         
         th {
             background: linear-gradient(135deg, #75e6da, #5fd9c9);
-            color: white;
-            padding: 10px 5px;
+            color: #2c3e50;
+            padding: 8px 4px;
             font-weight: 600;
             text-align: center;
             border: 1px solid #5fd9c9;
@@ -216,16 +315,16 @@ while ($row = $result->fetch_assoc()) {
         }
         
         td {
-            padding: 8px 5px;
+            padding: 6px 4px;
             border: 1px solid #e0e0e0;
             vertical-align: middle;
         }
         
         .status-badge {
             display: inline-block;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 20px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-align: center;
         }
@@ -256,7 +355,7 @@ while ($row = $result->fetch_assoc()) {
         
         .time-display {
             font-family: monospace;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
         
         .pm-label {
@@ -271,9 +370,9 @@ while ($row = $result->fetch_assoc()) {
         
         .leave-badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 12px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
         }
         
@@ -294,9 +393,9 @@ while ($row = $result->fetch_assoc()) {
         
         .workday-badge {
             display: inline-block;
-            padding: 4px 8px;
+            padding: 3px 6px;
             border-radius: 12px;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             background-color: #e3f2fd;
             color: #1976d2;
@@ -308,9 +407,74 @@ while ($row = $result->fetch_assoc()) {
             font-weight: 600;
         }
         
-        .total-row {
-            background: #f0f7f0;
-            font-weight: bold;
+        .site-summary {
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            font-size: 0.8rem;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .site-summary span {
+            margin-right: 15px;
+        }
+        
+        .site-summary i {
+            margin-right: 4px;
+        }
+        
+        .grand-total-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 12px;
+            border: 2px solid #2E7D32;
+        }
+        
+        .grand-total-title {
+            text-align: center;
+            font-size: 1rem;
+            font-weight: 700;
+            color: #2E7D32;
+            margin-bottom: 15px;
+        }
+        
+        .grand-total-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+        
+        .grand-total-box {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        .grand-total-box h4 {
+            color: #2E7D32;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+        
+        .grand-total-table {
+            width: 100%;
+            border: none;
+        }
+        
+        .grand-total-table td {
+            border: none;
+            padding: 4px 0;
+            background: transparent;
+        }
+        
+        .grand-total-table td:first-child {
+            font-weight: 600;
+            color: #555;
         }
         
         .footer {
@@ -333,6 +497,11 @@ while ($row = $result->fetch_assoc()) {
             th {
                 background: #75e6da !important;
                 color: black !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .site-header {
+                background: #2E7D32 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -379,12 +548,24 @@ while ($row = $result->fetch_assoc()) {
         .no-print button.close-btn:hover {
             background: #7f8c8d;
         }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #95a5a6;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #75e6da;
+        }
     </style>
 </head>
 <body>
     <div class="report-header">
         <div class="report-title">
-            <i class="fas fa-calendar-check"></i> Attendance Report
+            <i class="fas fa-calendar-check"></i> Attendance Report (Grouped by Site)
         </div>
         <div class="report-date-range">
             <?= date('M d, Y', strtotime($date_from)) ?> to <?= date('M d, Y', strtotime($date_to)) ?>
@@ -397,175 +578,198 @@ while ($row = $result->fetch_assoc()) {
             <span class="summary-value employee"><?= htmlspecialchars($employee_name) ?></span>
         </div>
         <div class="summary-item">
-            <span class="summary-label">Total Records:</span>
-            <span class="summary-value"><?= count($rows) ?></span>
+            <span class="summary-label">Total Sites:</span>
+            <span class="summary-value total-sites"><?= count($sites) ?></span>
         </div>
         <div class="summary-item">
-            <span class="summary-label">Total Hours:</span>
-            <span class="summary-value total-hours"><?= number_format($total_hours, 2) ?> hrs</span>
+            <span class="summary-label">Total Records:</span>
+            <span class="summary-value total-records"><?= $grand_total_records ?></span>
         </div>
         <div class="summary-item">
             <span class="summary-label">Present:</span>
-            <span class="summary-value present"><?= $present_count ?></span>
+            <span class="summary-value present"><?= $grand_present_count ?></span>
         </div>
         <div class="summary-item">
             <span class="summary-label">Absent:</span>
-            <span class="summary-value absent"><?= $absent_count ?></span>
+            <span class="summary-value absent"><?= $grand_absent_count ?></span>
         </div>
         <div class="summary-item">
             <span class="summary-label">On Leave:</span>
-            <span class="summary-value leave"><?= $leave_count ?></span>
+            <span class="summary-value leave"><?= $grand_leave_count ?></span>
         </div>
     </div>
     
-     <table>
-        <thead>
-            <tr>
-                <th>Employee</th>
-                <th>Date</th>
-                <th>AM Status</th>
-                <th>AM In</th>
-                <th>AM Out</th>
-                <th>PM Status</th>
-                <th>PM/Night In</th>
-                <th>PM/Night Out</th>
-                <th>Night Status</th>
-                <th>Leave</th>
-                <th>Workday Type</th>
-                <th>Total Hrs</th>
-                <th>Site</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php if (!empty($rows)): ?>
-                <?php foreach ($rows as $row): ?>
-                    <?php
-                    $full_name = trim($row['first_name'] . ' ' . ($row['middle_name'] ?? '') . ' ' . $row['last_name']);
-                    
-                    // Format status - FIXED to check leave_type first
-                    if (!empty($row['leave_type']) && $row['leave_type'] != 'None' && $row['leave_type'] != '') {
-                        $am_status = 'On Leave';
-                        $am_class = 'status-leave';
-                    } else {
-                        $am_status = $row['status'] ?? 'No Record';
-                        $am_class = 'status-no-record';
-                        if ($am_status == 'Present') $am_class = 'status-present';
-                        elseif ($am_status == 'Absent') $am_class = 'status-absent';
-                        elseif ($am_status == 'On Leave') $am_class = 'status-leave';
-                    }
-                    
-                    $pm_status = $row['pm_status'] ?? 'No Record';
-                    $pm_class = 'status-no-record';
-                    if ($pm_status == 'Present') $pm_class = 'status-present';
-                    elseif ($pm_status == 'Absent') $pm_class = 'status-absent';
-                    elseif ($pm_status == 'On Leave') $pm_class = 'status-leave';
-                    
-                    $night_status = $row['night_status'] ?? 'No Record';
-                    $night_class = 'status-no-record';
-                    if ($night_status == 'Present') $night_class = 'status-present';
-                    elseif ($night_status == 'Absent') $night_class = 'status-absent';
-                    elseif ($night_status == 'On Leave') $night_class = 'status-leave';
-                    
-                    // Format times - FIXED to handle 00:00:00
-                    $time_in_am = formatTimeForPrint($row['time_in_am']);
-                    $time_out_am = formatTimeForPrint($row['time_out_am']);
-                    $time_in_pm = formatTimeForPrint($row['time_in_pm']);
-                    $time_out_pm = formatTimeForPrint($row['time_out_pm']);
-                    $time_in_night = formatTimeForPrint($row['time_in_night']);
-                    $time_out_night = formatTimeForPrint($row['time_out_night']);
-                    
-                    // Leave type class
-                    $leave_class = '';
-                    if (!empty($row['leave_type'])) {
-                        if (strpos(strtolower($row['leave_type']), 'sick') !== false) {
-                            $leave_class = 'sick';
-                        } elseif (strpos(strtolower($row['leave_type']), 'vacation') !== false) {
-                            $leave_class = 'vacation';
-                        } elseif (strpos(strtolower($row['leave_type']), 'emergency') !== false) {
-                            $leave_class = 'emergency';
-                        }
-                    }
-                    
-                    $total = calculateTotalHoursForPrint(
-                        $row['time_in_am'], $row['time_out_am'],
-                        $row['time_in_pm'], $row['time_out_pm'],
-                        $row['time_in_night'], $row['time_out_night']
-                    );
-                    ?>
-                    <tr>
-                        <td>
-                            <?= htmlspecialchars($full_name) ?><br>
-                            <small style="color: #666;">ID: <?= $row['employee_id'] ?></small>
-                        </td>
-                        <td style="text-align: center;"><?= date('M d, Y', strtotime($row['date'])) ?></td>
-                        <td style="text-align: center;">
-                            <span class="status-badge <?= $am_class ?>"><?= $am_status ?></span>
-                        </td>
-                        <td style="text-align: center; font-family: monospace;"><?= $time_in_am ?></td>
-                        <td style="text-align: center; font-family: monospace;"><?= $time_out_am ?></td>
-                        <td style="text-align: center;">
-                            <span class="status-badge <?= $pm_class ?>"><?= $pm_status ?></span>
-                        </td>
-                        <td>
-                            <?php if ($time_in_pm != '-'): ?>
-                                <div><span class="pm-label">PM:</span> <?= $time_in_pm ?></div>
-                            <?php endif; ?>
-                            <?php if ($time_in_night != '-'): ?>
-                                <div><span class="night-label">Night:</span> <?= $time_in_night ?></div>
-                            <?php endif; ?>
-                            <?php if ($time_in_pm == '-' && $time_in_night == '-'): ?>
-                                -
-                            <?php endif; ?>
-                        </td>
-                        <td>
-                            <?php if ($time_out_pm != '-'): ?>
-                                <div><span class="pm-label">PM:</span> <?= $time_out_pm ?></div>
-                            <?php endif; ?>
-                            <?php if ($time_out_night != '-'): ?>
-                                <div><span class="night-label">Night:</span> <?= $time_out_night ?></div>
-                            <?php endif; ?>
-                            <?php if ($time_out_pm == '-' && $time_out_night == '-'): ?>
-                                -
-                            <?php endif; ?>
-                        </td>
-                        <td style="text-align: center;">
-                            <span class="status-badge <?= $night_class ?>"><?= $night_status ?></span>
-                        </td>
-                        <td style="text-align: center;">
-                            <?php if (!empty($row['leave_type']) && $row['leave_type'] != 'None'): ?>
-                                <span class="leave-badge <?= $leave_class ?>"><?= htmlspecialchars($row['leave_type']) ?></span>
-                            <?php else: ?>
-                                -
-                            <?php endif; ?>
-                        </td>
-                        <td style="text-align: center;">
-                            <?php if (!empty($row['workday_type'])): ?>
-                                <span class="workday-badge"><?= htmlspecialchars($row['workday_type']) ?></span>
-                            <?php else: ?>
-                                -
-                            <?php endif; ?>
-                        </td>
-                        <td style="text-align: center;">
-                            <span class="total-hours"><?= $total ?></span>
-                        </td>
-                        <td><?= htmlspecialchars($row['site'] ?? '-') ?></td>
-                    </tr>
-                <?php endforeach; ?>
-                <tr class="total-row">
-                    <td colspan="11" style="text-align: right;"><strong>TOTAL HOURS:</strong></td>
-                    <td><strong><?= number_format($total_hours, 2) ?></strong></td>
-                    <td></td>
-                </tr>
-            <?php else: ?>
-                <tr>
-                    <td colspan="13" style="text-align: center; padding: 30px;">
-                        <i class="fas fa-calendar-times" style="font-size: 2rem; color: #75e6da; margin-bottom: 10px; display: block;"></i>
-                        No attendance records found for the selected period
-                    </td>
-                </tr>
+    <?php if (empty($site_data) || $grand_total_records == 0): ?>
+        <div class="empty-state">
+            <i class="fas fa-calendar-times"></i>
+            <p>No attendance records found for the selected period.</p>
+        </div>
+    <?php else: ?>
+        <?php foreach ($site_data as $site): ?>
+            <?php if (empty($site['records'])): ?>
+                <?php continue; ?>
             <?php endif; ?>
-        </tbody>
-    </table>
+            
+            <div class="site-section">
+                <div class="site-header">
+                    <i class="fas fa-building"></i> SITE: <?= htmlspecialchars($site['site_name']) ?>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Date</th>
+                            <th>AM Status</th>
+                            <th>AM In</th>
+                            <th>AM Out</th>
+                            <th>PM Status</th>
+                            <th>PM/Night In</th>
+                            <th>PM/Night Out</th>
+                            <th>Night Status</th>
+                            <th>Leave</th>
+                            <th>Workday Type</th>
+                            <th>Total Hrs</th>
+                            <th>Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($site['records'] as $row): ?>
+                            <?php
+                            // Format status
+                            if (!empty($row['leave_type']) && $row['leave_type'] != 'None' && $row['leave_type'] != '') {
+                                $am_status = 'On Leave';
+                                $am_class = 'status-leave';
+                            } else {
+                                $am_status = $row['status'] ?? 'No Record';
+                                $am_class = 'status-no-record';
+                                if ($am_status == 'Present') $am_class = 'status-present';
+                                elseif ($am_status == 'Absent') $am_class = 'status-absent';
+                                elseif ($am_status == 'On Leave') $am_class = 'status-leave';
+                            }
+                            
+                            $pm_status = $row['pm_status'] ?? 'No Record';
+                            $pm_class = 'status-no-record';
+                            if ($pm_status == 'Present') $pm_class = 'status-present';
+                            elseif ($pm_status == 'Absent') $pm_class = 'status-absent';
+                            elseif ($pm_status == 'On Leave') $pm_class = 'status-leave';
+                            
+                            $night_status = $row['night_status'] ?? 'No Record';
+                            $night_class = 'status-no-record';
+                            if ($night_status == 'Present') $night_class = 'status-present';
+                            elseif ($night_status == 'Absent') $night_class = 'status-absent';
+                            elseif ($night_status == 'On Leave') $night_class = 'status-leave';
+                            
+                            // Leave type class
+                            $leave_class = '';
+                            if (!empty($row['leave_type'])) {
+                                if (strpos(strtolower($row['leave_type']), 'sick') !== false) {
+                                    $leave_class = 'sick';
+                                } elseif (strpos(strtolower($row['leave_type']), 'vacation') !== false) {
+                                    $leave_class = 'vacation';
+                                } elseif (strpos(strtolower($row['leave_type']), 'emergency') !== false) {
+                                    $leave_class = 'emergency';
+                                }
+                            }
+                            ?>
+                            <tr>
+                                <td>
+                                    <?= htmlspecialchars($row['employee_name']) ?><br>
+                                    <small style="color: #666;">ID: <?= $row['employee_id'] ?></small>
+                                </div>
+                                <td><?= date('M d, Y', strtotime($row['date'])) ?> </div>
+                                <td style="text-align: center;">
+                                    <span class="status-badge <?= $am_class ?>"><?= $am_status ?></span>
+                                </div>
+                                <td style="text-align: center; font-family: monospace;"><?= $row['time_in_am_display'] ?> </div>
+                                <td style="text-align: center; font-family: monospace;"><?= $row['time_out_am_display'] ?> </div>
+                                <td style="text-align: center;">
+                                    <span class="status-badge <?= $pm_class ?>"><?= $pm_status ?></span>
+                                </div>
+                                <td>
+                                    <?php if ($row['time_in_pm_display'] != '-'): ?>
+                                        <div><span class="pm-label">PM:</span> <?= $row['time_in_pm_display'] ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($row['time_in_night_display'] != '-'): ?>
+                                        <div><span class="night-label">Night:</span> <?= $row['time_in_night_display'] ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($row['time_in_pm_display'] == '-' && $row['time_in_night_display'] == '-'): ?>
+                                        -
+                                    <?php endif; ?>
+                                </div>
+                                <td>
+                                    <?php if ($row['time_out_pm_display'] != '-'): ?>
+                                        <div><span class="pm-label">PM:</span> <?= $row['time_out_pm_display'] ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($row['time_out_night_display'] != '-'): ?>
+                                        <div><span class="night-label">Night:</span> <?= $row['time_out_night_display'] ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($row['time_out_pm_display'] == '-' && $row['time_out_night_display'] == '-'): ?>
+                                        -
+                                    <?php endif; ?>
+                                </div>
+                                <td style="text-align: center;">
+                                    <span class="status-badge <?= $night_class ?>"><?= $night_status ?></span>
+                                </div>
+                                <td style="text-align: center;">
+                                    <?php if (!empty($row['leave_type']) && $row['leave_type'] != 'None'): ?>
+                                        <span class="leave-badge <?= $leave_class ?>"><?= htmlspecialchars($row['leave_type']) ?></span>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </div>
+                                <td style="text-align: center;">
+                                    <?php if (!empty($row['workday_type'])): ?>
+                                        <span class="workday-badge"><?= htmlspecialchars($row['workday_type']) ?></span>
+                                    <?php else: ?>
+                                        -
+                                    <?php endif; ?>
+                                </div>
+                                <td style="text-align: center;">
+                                    <span class="total-hours"><?= $row['total_hours'] ?></span>
+                                </div>
+                                <td style="font-size: 0.75rem;"><?= htmlspecialchars($row['remarks'] ?? '-') ?></div>
+                             </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                
+                <!-- Site Summary -->
+                <div class="site-summary">
+                    <span><i class="fas fa-users"></i> Employees: <?= $site['summary']['record_count'] ?></span>
+                    <span style="color: #28a745;"><i class="fas fa-check-circle"></i> Present: <?= $site['summary']['present_count'] ?></span>
+                    <span style="color: #dc3545;"><i class="fas fa-times-circle"></i> Absent: <?= $site['summary']['absent_count'] ?></span>
+                    <span style="color: #ffc107;"><i class="fas fa-umbrella-beach"></i> On Leave: <?= $site['summary']['leave_count'] ?></span>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        
+        <!-- GRAND TOTAL SUMMARY -->
+        <div class="grand-total-section">
+            <div class="grand-total-title">
+                <i class="fas fa-chart-line"></i> GRAND TOTAL SUMMARY (All Sites Combined)
+            </div>
+            <div class="grand-total-grid">
+                <div class="grand-total-box">
+                    <h4>ATTENDANCE SUMMARY</h4>
+                    <table class="grand-total-table">
+                        <tr><td><strong>Total Records:</strong></td><td><?= $grand_total_records ?></td></tr>
+                        <tr><td><strong>Present Days:</strong></td><td style="color: #28a745;"><?= $grand_present_count ?></td></tr>
+                        <tr><td><strong>Absent Days:</strong></td><td style="color: #dc3545;"><?= $grand_absent_count ?></td></tr>
+                        <tr><td><strong>Leave Days:</strong></td><td style="color: #ffc107;"><?= $grand_leave_count ?></td></tr>
+                    </table>
+                </div>
+                <div class="grand-total-box">
+                    <h4>ATTENDANCE RATE</h4>
+                    <table class="grand-total-table">
+                        <tr><td><strong>Present Rate:</strong></td><td style="color: #28a745;"><?= $grand_present_rate ?>%</td></tr>
+                        <tr><td><strong>Absent Rate:</strong></td><td style="color: #dc3545;"><?= $grand_absent_rate ?>%</td></tr>
+                        <tr><td><strong>Leave Rate:</strong></td><td style="color: #ffc107;"><?= $grand_leave_rate ?>%</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
     
     <div class="footer">
         Report ID: RPT-ATT-<?= date('Ymd') ?>-<?= strtoupper(substr(md5($date_from . $date_to . $employee_id), 0, 6)) ?><br>
@@ -587,7 +791,7 @@ while ($row = $result->fetch_assoc()) {
 </html>
 <?php
 // ============================================
-// HELPER FUNCTIONS - FIXED FOR MIDNIGHT
+// HELPER FUNCTIONS
 // ============================================
 
 function formatTimeForPrint($time) {
@@ -604,19 +808,19 @@ function formatTimeForPrint($time) {
 function calculateTotalHoursForPrint($time_in_am, $time_out_am, $time_in_pm, $time_out_pm, $time_in_night, $time_out_night) {
     $total = 0;
     
-    // Calculate AM hours - FIXED to include 00:00:00
+    // Calculate AM hours
     if (!empty($time_in_am) && !empty($time_out_am)) {
         $am_hours = calculateHoursForPrint($time_in_am, $time_out_am);
         $total += floatval($am_hours);
     }
     
-    // Calculate PM hours - FIXED to include 00:00:00
+    // Calculate PM hours
     if (!empty($time_in_pm) && !empty($time_out_pm)) {
         $pm_hours = calculateHoursForPrint($time_in_pm, $time_out_pm);
         $total += floatval($pm_hours);
     }
     
-    // Calculate Night hours - FIXED to include 00:00:00
+    // Calculate Night hours
     if (!empty($time_in_night) && !empty($time_out_night)) {
         $night_hours = calculateHoursForPrint($time_in_night, $time_out_night);
         $total += floatval($night_hours);

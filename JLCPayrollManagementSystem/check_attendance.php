@@ -23,13 +23,15 @@ if (!$employee_id || !$date) {
 }
 
 try {
-$check_sql = "SELECT id, status, pm_status, night_status,
-                     time_in_am, time_out_am, 
-                     time_in_pm, time_out_pm,
-                     time_in_night, time_out_night,
-                     site, leave_type, workday_type    // ← NEW (changed remarks to site)
-              FROM attendance 
-              WHERE employee_id = ? AND DATE(date) = DATE(?)";
+    // UPDATED: Include workday_type and leave_type in the query
+    $check_sql = "SELECT id, status, pm_status, night_status,
+                         time_in_am, time_out_am, 
+                         time_in_pm, time_out_pm,
+                         time_in_night, time_out_night,
+                         remarks, leave_type, workday_type
+                  FROM attendance 
+                  WHERE employee_id = ? AND DATE(date) = DATE(?)";
+    
     $check_stmt = $conn->prepare($check_sql);
     
     if (!$check_stmt) {
@@ -54,25 +56,25 @@ $check_sql = "SELECT id, status, pm_status, night_status,
         ];
         
         // Return the attendance data with all fields
-     echo json_encode([
-    'exists' => true,
-    'attendance' => [
-        'id' => $attendance['id'],
-        'status' => $attendance['status'],
-        'pm_status' => $attendance['pm_status'] ?? 'Absent',
-        'night_status' => $attendance['night_status'] ?? 'Absent',
-        'time_in_am' => $attendance['time_in_am'],
-        'time_out_am' => $attendance['time_out_am'],
-        'time_in_pm' => $attendance['time_in_pm'],
-        'time_out_pm' => $attendance['time_out_pm'],
-        'time_in_night' => $attendance['time_in_night'],
-        'time_out_night' => $attendance['time_out_night'],
-      'site' => $attendance['site'],  // ← CHANGE remarks TO site
-        'leave_type' => $attendance['leave_type'],
-        'workday_type' => $attendance['workday_type'],
-        'formatted_times' => $formatted_times
-    ]
-]);
+        echo json_encode([
+            'exists' => true,
+            'attendance' => [
+                'id' => $attendance['id'],
+                'status' => $attendance['status'],
+                'pm_status' => $attendance['pm_status'] ?? 'Absent',
+                'night_status' => $attendance['night_status'] ?? 'Absent',
+                'time_in_am' => $attendance['time_in_am'],
+                'time_out_am' => $attendance['time_out_am'],
+                'time_in_pm' => $attendance['time_in_pm'],
+                'time_out_pm' => $attendance['time_out_pm'],
+                'time_in_night' => $attendance['time_in_night'],
+                'time_out_night' => $attendance['time_out_night'],
+                'remarks' => $attendance['remarks'],
+                'leave_type' => $attendance['leave_type'],
+                'workday_type' => $attendance['workday_type'],
+                'formatted_times' => $formatted_times
+            ]
+        ]);
     } else {
         echo json_encode([
             'exists' => false

@@ -445,40 +445,28 @@ if (!empty($record['time_in_night']) && !empty($record['time_out_night'])) {
                         }
                     }
                     
-                    // NIGHT SESSION CALCULATION - Treat independently with its own 8-hour quota
-                    if ($night_hours > 0) {
-                        error_log("     Night hours: " . $night_hours . " hrs - Treating independently with its own 8-hour quota");
-                        
-                        if ($night_hours <= 8) {
-                            // All night hours are regular night
-                            $regular_night_hours += $night_hours;
-                            // For regular employees on paid holidays, use night multiplier? Wait, no - use basic rate (1.0) for hours
-                            if ($is_paid_holiday_for_regular) {
-                                $regular_night_pay += $night_hours * $hourly_rate * 1.0;
-                                error_log("     All night hours for Regular on Paid Holiday: " . $night_hours . " hrs × " . $hourly_rate . " × 1.0 = " . ($night_hours * $hourly_rate * 1.0));
-                            } else {
-                                $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
-                                error_log("     All night hours are regular: " . $night_hours . " hrs × " . $hourly_rate . " × " . $multipliers['night'] . " = " . ($night_hours * $hourly_rate * $multipliers['night']));
-                            }
-                        } else {
-                            // Split night hours into regular (8) and overtime (excess)
-                            $regular_night_hours += 8;
-                            $night_shift_overtime_hours += ($night_hours - 8);
-                            
-                            // For regular employees on paid holidays, use basic rate for regular night hours
-                            if ($is_paid_holiday_for_regular) {
-                                $regular_night_pay += 8 * $hourly_rate * 1.0;
-                                error_log("     Night Regular (8) for Regular on Paid Holiday: 8 hrs × " . $hourly_rate . " × 1.0 = " . (8 * $hourly_rate * 1.0));
-                            } else {
-                                $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
-                                error_log("     Night Regular (8): 8 hrs × " . $hourly_rate . " × " . $multipliers['night'] . " = " . (8 * $hourly_rate * $multipliers['night']));
-                            }
-                            
-                            // Night overtime uses the same overtime multiplier as day
-                            $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
-                            error_log("     Night Overtime: " . ($night_hours - 8) . " hrs × " . $hourly_rate . " × " . $multipliers['overtime'] . " = " . (($night_hours - 8) * $hourly_rate * $multipliers['overtime']));
-                        }
-                    }
+                    // Sa una to!!!! NIGHT SESSION CALCULATION - Treat independently with its own 8-hour quota
+if ($night_hours > 0) {
+    error_log("     Night hours: " . $night_hours . " hrs - Treating independently with its own 8-hour quota");
+    
+    if ($night_hours <= 8) {
+        $regular_night_hours += $night_hours;
+        // FIXED: Use night multiplier for both regular and paid holiday employees
+        $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
+        error_log("     All night hours: " . $night_hours . " hrs × " . $hourly_rate . " × " . $multipliers['night'] . " = " . ($night_hours * $hourly_rate * $multipliers['night']));
+    } else {
+        $regular_night_hours += 8;
+        $night_shift_overtime_hours += ($night_hours - 8);
+        
+        // FIXED: Use night multiplier for regular night hours (first 8 hours)
+        $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
+        error_log("     Night Regular (8): 8 hrs × " . $hourly_rate . " × " . $multipliers['night'] . " = " . (8 * $hourly_rate * $multipliers['night']));
+        
+        // Night overtime uses the same overtime multiplier as day
+        $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
+        error_log("     Night Overtime: " . ($night_hours - 8) . " hrs × " . $hourly_rate . " × " . $multipliers['overtime'] . " = " . (($night_hours - 8) * $hourly_rate * $multipliers['overtime']));
+    }
+}
                 }
                 else if ($is_absent) {
                     // Absent employee
@@ -1015,32 +1003,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['recalculate_payroll']
                     }
                     
                     // NIGHT SESSION CALCULATION - Treat independently with its own 8-hour quota
-                    if ($night_hours > 0) {
-                        if ($night_hours <= 8) {
-                            // All night hours are regular night
-                            $regular_night_hours += $night_hours;
-                            // For regular employees on paid holidays, use basic rate (1.0) for hours
-                            if ($is_paid_holiday_for_regular) {
-                                $regular_night_pay += $night_hours * $hourly_rate * 1.0;
-                            } else {
-                                $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
-                            }
-                        } else {
-                            // Split night hours into regular (8) and overtime (excess)
-                            $regular_night_hours += 8;
-                            $night_shift_overtime_hours += ($night_hours - 8);
-                            
-                            // For regular employees on paid holidays, use basic rate for regular night hours
-                            if ($is_paid_holiday_for_regular) {
-                                $regular_night_pay += 8 * $hourly_rate * 1.0;
-                            } else {
-                                $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
-                            }
-                            
-                            // Night overtime uses the same overtime multiplier as day
-                            $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
-                        }
-                    }
+if ($night_hours > 0) {
+    if ($night_hours <= 8) {
+        $regular_night_hours += $night_hours;
+        // FIXED: Use night multiplier for both regular and paid holiday employees
+        $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
+    } else {
+        $regular_night_hours += 8;
+        $night_shift_overtime_hours += ($night_hours - 8);
+        
+        // FIXED: Use night multiplier for regular night hours (first 8 hours)
+        $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
+        
+        $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
+    }
+}
                 }
                 else if ($is_absent) {
                     // Absent employee
