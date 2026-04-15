@@ -13,56 +13,37 @@ include_once("connection.php");
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 $employee_id = isset($_GET['employee_id']) ? intval($_GET['employee_id']) : 0;
-$site_id = isset($_GET['site_id']) ? intval($_GET['site_id']) : 0;  // NEW: Site filter
 
 if (empty($date_from) || empty($date_to)) {
     echo json_encode(['success' => false, 'message' => 'Date range is required']);
     exit;
 }
 
-// NEW: Get site name if filtered
-$selected_site_name = '';
-if ($site_id > 0) {
-    $site_query = "SELECT site_name FROM site_monitoring WHERE id = ?";
-    $site_stmt = $conn->prepare($site_query);
-    $site_stmt->bind_param("i", $site_id);
-    $site_stmt->execute();
-    $site_result = $site_stmt->get_result();
-    if ($site_row = $site_result->fetch_assoc()) {
-        $selected_site_name = $site_row['site_name'];
-    }
-    $site_stmt->close();
+// Get all distinct sites that have attendance records within the date range
+$sites_query = "SELECT DISTINCT site_name 
+                FROM (
+                    SELECT site_assignment_am as site_name FROM attendance 
+                    WHERE date BETWEEN ? AND ? AND site_assignment_am IS NOT NULL AND site_assignment_am != ''
+                    UNION
+                    SELECT site_assignment_pm as site_name FROM attendance 
+                    WHERE date BETWEEN ? AND ? AND site_assignment_pm IS NOT NULL AND site_assignment_pm != ''
+                    UNION
+                    SELECT site_assignment_night as site_name FROM attendance 
+                    WHERE date BETWEEN ? AND ? AND site_assignment_night IS NOT NULL AND site_assignment_night != ''
+                ) AS sites
+                ORDER BY site_name";
+
+$sites_stmt = $conn->prepare($sites_query);
+$sites_stmt->bind_param("ssssss", $date_from, $date_to, $date_from, $date_to, $date_from, $date_to);
+$sites_stmt->execute();
+$sites_result = $sites_stmt->get_result();
+
+$sites = [];
+while ($site_row = $sites_result->fetch_assoc()) {
+    $sites[] = $site_row['site_name'];
 }
+$sites_stmt->close();
 
-// NEW: If site is selected, only get that site
-if ($site_id > 0 && !empty($selected_site_name)) {
-    $sites = [$selected_site_name];
-} else {
-    // Get all distinct sites that have attendance records within the date range
-    $sites_query = "SELECT DISTINCT site_name 
-                    FROM (
-                        SELECT site_assignment_am as site_name FROM attendance 
-                        WHERE date BETWEEN ? AND ? AND site_assignment_am IS NOT NULL AND site_assignment_am != ''
-                        UNION
-                        SELECT site_assignment_pm as site_name FROM attendance 
-                        WHERE date BETWEEN ? AND ? AND site_assignment_pm IS NOT NULL AND site_assignment_pm != ''
-                        UNION
-                        SELECT site_assignment_night as site_name FROM attendance 
-                        WHERE date BETWEEN ? AND ? AND site_assignment_night IS NOT NULL AND site_assignment_night != ''
-                    ) AS sites
-                    ORDER BY site_name";
-
-    $sites_stmt = $conn->prepare($sites_query);
-    $sites_stmt->bind_param("ssssss", $date_from, $date_to, $date_from, $date_to, $date_from, $date_to);
-    $sites_stmt->execute();
-    $sites_result = $sites_stmt->get_result();
-
-    $sites = [];
-    while ($site_row = $sites_result->fetch_assoc()) {
-        $sites[] = $site_row['site_name'];
-    }
-    $sites_stmt->close();
-}
 // For each site, get attendance records
 $site_data = [];
 $all_records_flat = []; // FOR BACKWARD COMPATIBILITY - keeps original flat structure

@@ -4044,9 +4044,9 @@ include("./includes/header.php");
                             </select>
                             
                             <!-- SELECTED EMPLOYEE CARD -->
-                            <div class="selected-employee-card" id="selectedEmployeeCard" style="background: #f8f9fa; border-color: #75e6da;">
+                            <div class="selected-employee-card" id="selectedEmployeeCard" style="display: none;">
                                 <div class="selected-employee-info">
-                                  <div class="selected-employee-avatar" style="background: linear-gradient(135deg, #75e6da, #5fd9c9);">
+                                    <div class="selected-employee-avatar">
                                         <i class="fas fa-user-circle"></i>
                                     </div>
                                     <div class="selected-employee-details">
@@ -4371,7 +4371,7 @@ include("./includes/header.php");
     </div>
     
 <!-- PM Site Assignment -->
-<div class="site-assignment-container" id="pmSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
+<div class="site-assignment-container" id="pmSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #f39c12;">
     <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
         <i class="fas fa-building"></i> Site Assignment (PM) <span style="color: #e74c3c;" class="required-star">*</span>
     </label>
@@ -4466,7 +4466,7 @@ include("./includes/header.php");
     </div>
     
 <!-- Night Site Assignment -->
-<div class="site-assignment-container" id="nightSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
+<div class="site-assignment-container" id="nightSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #9b59b6;">
     <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
         <i class="fas fa-building"></i> Site Assignment (Night) <span style="color: #e74c3c;" class="required-star">*</span>
     </label>
@@ -4580,19 +4580,19 @@ include("./includes/header.php");
                     </div>
                     
                  <!-- Workday Type Display -->
-<div id="viewWorkdayContainer" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 1px solid #f8f9fa; display: none;">
+<div id="viewWorkdayContainer" style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 12px; border: 1px solid #bbdefb; display: none;">
     <div style="display: flex; align-items: center; gap: 10px;">
-        <span class="status-dot" style="width: 12px; height: 12px; background-color: #75e6da;"></span>
-        <span style="font-weight: 600; color: #060606;">Workday Type</span>
-        <span id="viewWorkdayType" style="background: #f8f9fa; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; color: #1976d2;"></span>
+        <span class="status-dot" style="width: 12px; height: 12px; background-color: #1976d2;"></span>
+        <span style="font-weight: 600; color: #1976d2;">Workday Type</span>
+        <span id="viewWorkdayType" style="background: #bbdefb; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; color: #1976d2;"></span>
     </div>
 </div>
 
 <!-- Site Assignment Display - NEW -->
-<div id="viewSiteAssignmentContainer" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #f8f9fa); border-radius: 12px; border: 1px solid #f8f9fa; display: none;">
+<div id="viewSiteAssignmentContainer" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; border: 1px solid #a5d6a7; display: none;">
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-        <i class="fas fa-building" style="color: #75e6da;"></i>
-        <span style="font-weight: 600; color: #060606;">Site Assignments</span>
+        <i class="fas fa-building" style="color: #2e7d32;"></i>
+        <span style="font-weight: 600; color: #2e7d32;">Site Assignments</span>
     </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
         <div id="viewAmSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
@@ -4600,11 +4600,11 @@ include("./includes/header.php");
             <span id="viewAmSiteValue">--</span>
         </div>
         <div id="viewPmSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
-            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">PM:</span>
+            <span style="font-weight: 600; color: #f39c12; min-width: 60px;">PM:</span>
             <span id="viewPmSiteValue">--</span>
         </div>
         <div id="viewNightSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
-            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">Night:</span>
+            <span style="font-weight: 600; color: #9b59b6; min-width: 60px;">Night:</span>
             <span id="viewNightSiteValue">--</span>
         </div>
     </div>
@@ -4663,7 +4663,7 @@ include("./includes/header.php");
                             <h4>Afternoon & Night Sessions</h4>
                         </div>
                         
-                        <div class="pm-status-container" style="border-left-color: #75e6da;">
+                        <div class="pm-status-container" style="border-left-color: #f39c12;">
                             <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="status-dot present" id="viewPmStatusDot" style="display: none;"></span>
@@ -4683,7 +4683,7 @@ include("./includes/header.php");
                         <!-- PM Times -->
                         <div style="margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i class="fas fa-sun" style="color: #75e6da;"></i>
+                                <i class="fas fa-sun" style="color: #f39c12;"></i>
                                 <span style="font-weight: 600;">Afternoon Session</span>
                             </div>
                             <div class="time-input-row">
@@ -4712,7 +4712,7 @@ include("./includes/header.php");
                         <!-- Night Times -->
                         <div>
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i class="fas fa-moon" style="color: #75e6da;"></i>
+                                <i class="fas fa-moon" style="color: #9b59b6;"></i>
                                 <span style="font-weight: 600;">Night Session</span>
                             </div>
                             <div class="time-input-row">
@@ -5014,27 +5014,6 @@ include("./includes/header.php");
                                 </div>
                             </div>
                             
-                            <!-- NEW: SITE Dropdown - Add this after Employee -->
-<!-- ============================================ -->
-<div style="flex: 1.5; min-width: 250px;">
-    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
-        <i class="fas fa-building" style="margin-right: 8px; color: #75e6da;"></i> SITE
-    </label>
-    <div class="site-select-wrapper">
-        <select id="reportSiteId" class="filter-input" style="height: 45px; padding: 0 15px;">
-            <option value="0">All Sites</option>
-            <?php 
-            $sites_dropdown = $conn->query("SELECT id, site_name FROM site_monitoring ORDER BY site_name");
-            if ($sites_dropdown && $sites_dropdown->num_rows > 0) {
-                while($site = $sites_dropdown->fetch_assoc()) {
-                    echo '<option value="' . $site['id'] . '">' . htmlspecialchars($site['site_name']) . '</option>';
-                }
-            }
-            ?>
-        </select>
-    </div>
-</div>
-
                             <!-- GENERATE Button -->
                             <div style="flex: 0.8; min-width: 120px;">
                                 <button class="btn-preview" onclick="loadReportData()" style="height: 45px;">
@@ -5576,11 +5555,11 @@ function closeReportModal() {
     }
 }
 
+// Load Report Data Function
 function loadReportData() {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
     const employeeId = document.getElementById('reportEmployeeId').value;
-    const siteId = document.getElementById('reportSiteId').value;  // NEW: Get site filter
     
     if (!dateFrom || !dateTo) {
         alert('Please select both From and To dates');
@@ -5595,12 +5574,12 @@ function loadReportData() {
         </div>
     `;
     
-    // Update download link with site filter
+    // Update download link
     const downloadLink = document.getElementById('downloadExcelLink');
-    downloadLink.href = `download_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}&site_id=${siteId}`;
+    downloadLink.href = `download_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}`;
     
-    // AJAX call with site filter
-    fetch(`get_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}&site_id=${siteId}`)
+    // AJAX call to get report data
+    fetch(`get_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {

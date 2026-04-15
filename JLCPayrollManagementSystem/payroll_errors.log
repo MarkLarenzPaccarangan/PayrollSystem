@@ -7020,420 +7020,908 @@
 [13-Apr-2026 09:42:59 UTC] DATE: 2026-04-28 - No attendance record
 [13-Apr-2026 09:42:59 UTC] DATE: 2026-04-29 - No attendance record
 [13-Apr-2026 09:42:59 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-01 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-02 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-03 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-04 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-05 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-06 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-07 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-08 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-09 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-10 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-11 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-12 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-13 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 01:19:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 01:19:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 01:19:32 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 01:19:32 UTC]      Day Regular (<=8): 4 hrs × 100 × 1 = 400
-[14-Apr-2026 01:19:32 UTC]      Night hours: 4 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 01:19:32 UTC]      All night hours are regular: 4 hrs × 100 × 1.1 = 440
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-14 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 01:19:32 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 01:42:28 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
-[14-Apr-2026 01:42:28 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
-[14-Apr-2026 01:42:28 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
-[14-Apr-2026 01:42:28 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 01:42:28 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
-[14-Apr-2026 01:42:28 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 01:42:28 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 01:42:28 UTC]      Day Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 01:42:28 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 01:42:28 UTC]      All night hours for Regular on Paid Holiday: 2 hrs × 87.5 × 1.0 = 175
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-01 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-02 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-03 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-04 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-05 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-06 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-07 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-08 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-09 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 01:51:18 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 01:51:18 UTC]      Day Regular (<=8): 7 hrs × 87.5 × 1 = 612.5
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-10 - Raw workday_type from DB: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Processing workday_type: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Found multipliers for: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:18 UTC]   -> PRESENT: Workday type = Special (Non-Working) Day, Employee type = regular
-[14-Apr-2026 01:51:18 UTC]      Day Regular (<=8): 5 hrs × 87.5 × 1.3 = 568.75
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-11 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-12 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-13 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 01:51:18 UTC]   -> ON LEAVE: Added daily salary of 700.00
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Processing workday_type: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:18 UTC] WORKDAY DEBUG: Found multipliers for: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:18 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 01:51:18 UTC]   -> PRESENT: Workday type = Special (Non-Working) Day, Employee type = regular
-[14-Apr-2026 01:51:18 UTC]      Day Regular (8): 8 hrs × 87.5 × 1.3 = 910
-[14-Apr-2026 01:51:18 UTC]      Day Overtime: 2 hrs × 87.5 × 1.69 = 295.75
-[14-Apr-2026 01:51:18 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 01:51:18 UTC]      All night hours are regular: 2 hrs × 87.5 × 1.43 = 250.25
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 01:51:18 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 01:51:42 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:42 UTC] WORKDAY DEBUG: Processing workday_type: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:42 UTC] WORKDAY DEBUG: Found multipliers for: 'Special (Non-Working) Day'
-[14-Apr-2026 01:51:42 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 01:51:42 UTC]   -> PRESENT: Workday type = Special (Non-Working) Day, Employee type = regular
-[14-Apr-2026 01:51:42 UTC]      Day Regular (8): 8 hrs × 87.5 × 1.3 = 910
-[14-Apr-2026 01:51:42 UTC]      Day Overtime: 2 hrs × 87.5 × 1.69 = 295.75
-[14-Apr-2026 01:51:42 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 01:51:42 UTC]      All night hours are regular: 2 hrs × 87.5 × 1.43 = 250.25
-[14-Apr-2026 01:54:23 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
-[14-Apr-2026 01:54:23 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
-[14-Apr-2026 01:54:23 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
-[14-Apr-2026 01:54:23 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 01:54:23 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
-[14-Apr-2026 01:54:23 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 01:54:23 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 01:54:23 UTC]      Day Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 01:54:23 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 01:54:23 UTC]      All night hours for Regular on Paid Holiday: 2 hrs × 87.5 × 1.0 = 175
-[14-Apr-2026 01:56:58 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
-[14-Apr-2026 01:56:58 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
-[14-Apr-2026 01:56:58 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
-[14-Apr-2026 01:56:58 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 01:56:58 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
-[14-Apr-2026 01:56:58 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 01:56:58 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 01:56:58 UTC]      Day Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 01:56:58 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 01:56:58 UTC]      All night hours for Regular on Paid Holiday: 2 hrs × 87.5 × 1.0 = 175
-[14-Apr-2026 02:00:58 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Double Holiday'
-[14-Apr-2026 02:00:58 UTC] WORKDAY DEBUG: Processing workday_type: 'Double Holiday'
-[14-Apr-2026 02:00:58 UTC] WORKDAY DEBUG: Found multipliers for: 'Double Holiday'
-[14-Apr-2026 02:00:58 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 02:00:58 UTC]   -> PRESENT: Workday type = Double Holiday, Employee type = regular
-[14-Apr-2026 02:00:58 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 02:00:58 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 02:00:58 UTC]      Day Overtime: 2 hrs × 87.5 × 3.9 = 682.5
-[14-Apr-2026 02:00:58 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:00:58 UTC]      All night hours for Regular on Paid Holiday: 2 hrs × 87.5 × 1.0 = 175
-[14-Apr-2026 02:10:32 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Double Holiday'
-[14-Apr-2026 02:10:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Double Holiday'
-[14-Apr-2026 02:10:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Double Holiday'
-[14-Apr-2026 02:10:32 UTC] NIGHT MIDNIGHT CALC: in=22:00:00, out=00:00:00, hours=2
-[14-Apr-2026 02:10:32 UTC]   -> PRESENT: Workday type = Double Holiday, Employee type = regular
-[14-Apr-2026 02:10:32 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 02:10:32 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 02:10:32 UTC]      Day Overtime: 2 hrs × 87.5 × 3.9 = 682.5
-[14-Apr-2026 02:10:32 UTC]      Night hours: 2 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:10:32 UTC]      All night hours: 2 hrs × 87.5 × 3.3 = 577.5
-[14-Apr-2026 02:13:44 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
-[14-Apr-2026 02:13:44 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
-[14-Apr-2026 02:13:44 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
-[14-Apr-2026 02:13:44 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
-[14-Apr-2026 02:13:44 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 02:13:44 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 02:13:44 UTC]      Day Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 02:13:44 UTC]      Night hours: 10 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:13:44 UTC]      Night Regular (8): 8 hrs × 87.5 × 2.2 = 1540
-[14-Apr-2026 02:13:44 UTC]      Night Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-01 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-02 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-03 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-04 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-05 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-06 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-07 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-08 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-09 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-10 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-11 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-12 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-13 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 02:28:43 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 02:28:43 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 02:28:43 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 02:28:43 UTC]      Day Regular (<=8): 4 hrs × 100 × 1 = 400
-[14-Apr-2026 02:28:43 UTC]      Night hours: 4 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:28:43 UTC]      All night hours: 4 hrs × 100 × 1.1 = 440
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-14 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 02:28:43 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
-[14-Apr-2026 02:34:52 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
-[14-Apr-2026 02:34:52 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
-[14-Apr-2026 02:34:52 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
-[14-Apr-2026 02:34:52 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 02:34:52 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 02:34:52 UTC]      Day Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 02:34:52 UTC]      Night hours: 10 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:34:52 UTC]      Night Regular (8): 8 hrs × 87.5 × 2.2 = 1540
-[14-Apr-2026 02:34:52 UTC]      Night Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 02:34:52 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-01 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-02 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-03 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-04 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-05 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-06 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-07 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-08 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-09 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-10 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-11 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-12 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-13 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 02:41:05 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 02:41:05 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 02:41:05 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 02:41:05 UTC]      Day Regular (<=8): 4 hrs × 100 × 1 = 400
-[14-Apr-2026 02:41:05 UTC]      Night hours: 4 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:41:05 UTC]      All night hours: 4 hrs × 100 × 1.1 = 440
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-14 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 02:41:05 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
-[14-Apr-2026 02:41:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
-[14-Apr-2026 02:41:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
-[14-Apr-2026 02:41:32 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
-[14-Apr-2026 02:41:32 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 700.00
-[14-Apr-2026 02:41:32 UTC]      Day Regular (8) for Regular on Paid Holiday: 8 hrs × 87.5 × 1.0 = 700
-[14-Apr-2026 02:41:32 UTC]      Day Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 02:41:32 UTC]      Night hours: 10 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 02:41:32 UTC]      Night Regular (8): 8 hrs × 87.5 × 2.2 = 1540
-[14-Apr-2026 02:41:32 UTC]      Night Overtime: 2 hrs × 87.5 × 2.6 = 455
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 02:41:32 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 03:09:06 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 03:09:06 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 03:09:06 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 03:09:06 UTC]      Day Regular (8): 8 hrs × 87.5 × 1 = 700
-[14-Apr-2026 03:09:06 UTC]      Day Overtime: 2 hrs × 87.5 × 1.25 = 218.75
-[14-Apr-2026 03:09:06 UTC]      Night hours: 10 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 03:09:06 UTC]      Night Regular (8): 8 hrs × 87.5 × 1.1 = 770
-[14-Apr-2026 03:09:06 UTC]      Night Overtime: 2 hrs × 87.5 × 1.25 = 218.75
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 03:09:06 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 03:11:50 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 03:11:50 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 03:11:50 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 03:11:50 UTC]      Day Regular (8): 8 hrs × 100 × 1 = 800
-[14-Apr-2026 03:11:50 UTC]      Day Overtime: 1 hrs × 100 × 1.25 = 125
-[14-Apr-2026 03:11:50 UTC]      Night hours: 8 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 03:11:50 UTC]      All night hours: 8 hrs × 100 × 1.1 = 880
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 03:11:50 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-01 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-02 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-03 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-04 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-05 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-06 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-07 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-08 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-09 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-10 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-11 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-12 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-13 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 03:34:28 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 03:34:28 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 03:34:28 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 03:34:28 UTC]      Day Regular (<=8): 4 hrs × 100 × 1 = 400
-[14-Apr-2026 03:34:28 UTC]      Night hours: 4 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 03:34:28 UTC]      All night hours: 4 hrs × 100 × 1.1 = 440
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
-[14-Apr-2026 03:34:28 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
-[14-Apr-2026 03:34:28 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
-[14-Apr-2026 03:34:28 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
-[14-Apr-2026 03:34:28 UTC]      Day Regular (8): 8 hrs × 100 × 1 = 800
-[14-Apr-2026 03:34:28 UTC]      Day Overtime: 1 hrs × 100 × 1.25 = 125
-[14-Apr-2026 03:34:28 UTC]      Night hours: 8 hrs - Treating independently with its own 8-hour quota
-[14-Apr-2026 03:34:28 UTC]      All night hours: 8 hrs × 100 × 1.1 = 880
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-15 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-16 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-17 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-18 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-19 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-20 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-21 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-22 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-23 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-24 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-25 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-26 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-27 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-28 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-29 - No attendance record
-[14-Apr-2026 03:34:28 UTC] DATE: 2026-04-30 - No attendance record
-[14-Apr-2026 03:34:33 UTC] === SAVE PAYROLL START ===
-[14-Apr-2026 03:34:33 UTC] POST data: Array
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-14 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 01:33:57 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-14 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 01:36:06 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 01:54:52 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 01:54:52 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 01:54:52 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 01:54:52 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 01:54:52 UTC]      Day Regular (<=8): 8 hrs × 87.5 × 1 = 700
+[14-Apr-2026 01:55:44 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 01:55:44 UTC] POST data: Array
 (
     [save_payroll] => 1
-    [employee_id] => 12
-    [date_from] => 2026-04-01
-    [date_to] => 2026-04-30
-    [base_salary] => 2645
+    [employee_id] => 8
+    [date_from] => 2026-04-14
+    [date_to] => 2026-04-14
+    [base_salary] => 700
     [total_deductions] => 0
-    [net_pay] => 2645
-    [total_work_hours] => 25
+    [net_pay] => 700
+    [total_work_hours] => 8
     [deductions] => []
 )
 
-[14-Apr-2026 03:34:33 UTC] Employee ID: 12
-[14-Apr-2026 03:34:33 UTC] Date From: 2026-04-01
-[14-Apr-2026 03:34:33 UTC] Date To: 2026-04-30
-[14-Apr-2026 03:34:33 UTC] Base Salary: 2645
-[14-Apr-2026 03:34:33 UTC] Total Deductions: 0
-[14-Apr-2026 03:34:33 UTC] Net Pay: 2645
-[14-Apr-2026 03:34:33 UTC] Work Hours: 25
-[14-Apr-2026 03:34:33 UTC] Deductions JSON: []
-[14-Apr-2026 03:34:33 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, payroll_type, status, date, pay_period
-[14-Apr-2026 03:34:33 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, payroll_type, status, date, pay_period) 
+[14-Apr-2026 01:55:44 UTC] Employee ID: 8
+[14-Apr-2026 01:55:44 UTC] Date From: 2026-04-14
+[14-Apr-2026 01:55:44 UTC] Date To: 2026-04-14
+[14-Apr-2026 01:55:44 UTC] Base Salary: 700
+[14-Apr-2026 01:55:44 UTC] Total Deductions: 0
+[14-Apr-2026 01:55:44 UTC] Net Pay: 700
+[14-Apr-2026 01:55:44 UTC] Work Hours: 8
+[14-Apr-2026 01:55:44 UTC] Deductions JSON: []
+[14-Apr-2026 01:55:44 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, payroll_type, status, date, pay_period
+[14-Apr-2026 01:55:44 UTC] PHP Warning:  Undefined variable $day_regular_hours in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 649
+[14-Apr-2026 01:55:44 UTC] PHP Warning:  Undefined variable $day_regular_hours in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 663
+[14-Apr-2026 01:55:44 UTC] PHP Warning:  Undefined variable $night_hours in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 671
+[14-Apr-2026 01:55:44 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, payroll_type, status, date, pay_period) 
                              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
-[14-Apr-2026 03:34:33 UTC] Bind types: issddddsss
-[14-Apr-2026 03:34:33 UTC] Bind params: Array
+[14-Apr-2026 01:55:44 UTC] Bind types: issddddsss
+[14-Apr-2026 01:55:44 UTC] Bind params: Array
 (
-    [0] => 12
-    [1] => 2026-04-01
-    [2] => 2026-04-30
-    [3] => 2645
+    [0] => 8
+    [1] => 2026-04-14
+    [2] => 2026-04-14
+    [3] => 700
     [4] => 0
-    [5] => 2645
-    [6] => 25
+    [5] => 700
+    [6] => 8
     [7] => regular
     [8] => pending
     [9] => 2026-04-01
 )
 
-[14-Apr-2026 03:34:33 UTC] Insert successful, new ID: 17
-[14-Apr-2026 03:34:33 UTC] Cleared old deductions for payroll ID: 17
-[14-Apr-2026 03:34:33 UTC] Deductions decoded: Array
+[14-Apr-2026 01:55:44 UTC] Insert successful, new ID: 16
+[14-Apr-2026 01:55:45 UTC] Cleared old deductions for payroll ID: 16
+[14-Apr-2026 01:55:45 UTC] Deductions decoded: Array
 (
 )
 
-[14-Apr-2026 03:34:33 UTC] === SAVE PAYROLL SUCCESS ===
+[14-Apr-2026 01:55:45 UTC] === SAVE PAYROLL SUCCESS ===
+[14-Apr-2026 01:55:50 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 01:55:50 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 8
+    [date_from] => 2026-04-14
+    [date_to] => 2026-04-14
+    [base_salary] => 700
+    [total_deductions] => 0
+    [net_pay] => 700
+    [total_work_hours] => 8
+    [deductions] => []
+)
+
+[14-Apr-2026 01:55:50 UTC] Employee ID: 8
+[14-Apr-2026 01:55:50 UTC] Date From: 2026-04-14
+[14-Apr-2026 01:55:50 UTC] Date To: 2026-04-14
+[14-Apr-2026 01:55:50 UTC] Base Salary: 700
+[14-Apr-2026 01:55:50 UTC] Total Deductions: 0
+[14-Apr-2026 01:55:50 UTC] Net Pay: 700
+[14-Apr-2026 01:55:50 UTC] Work Hours: 8
+[14-Apr-2026 01:55:50 UTC] Deductions JSON: []
+[14-Apr-2026 01:55:50 UTC] Updating existing payroll ID: 16
+[14-Apr-2026 01:55:50 UTC] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php:623
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\payrollList.php(623): mysqli_stmt->bind_param('ddddsi', '700', '0', '700', '8', 16)
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 623
+[14-Apr-2026 02:24:20 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:24:20 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:24:20 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:24:20 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:24:20 UTC]      AM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:24:20 UTC]      PM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 02:25:26 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:25:26 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:25:26 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:25:26 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:25:26 UTC]      AM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:25:26 UTC]      PM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:32:57 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:32:57 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:32:57 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:32:57 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:32:57 UTC]      AM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:32:57 UTC]      PM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:34:30 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:34:30 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:34:30 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:34:30 UTC]      AM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:34:30 UTC]      PM Session: 4 hrs at Main Office = ₱400
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 02:34:30 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 02:40:42 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:40:42 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:40:42 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:40:42 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:40:42 UTC]      AM Session: 4 hrs at Main = ₱400
+[14-Apr-2026 02:40:42 UTC]      PM Session: 4 hrs at PGH = ₱400
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:42:41 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:42:41 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:42:41 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:42:41 UTC]      Day Regular (<=8): 8 hrs × 100 × 1 = 800
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 02:42:41 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 02:48:20 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:48:20 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:48:20 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:48:20 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:48:20 UTC]      Day Regular (<=8): 8 hrs × 100 × 1 = 800
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:50:01 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:50:01 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:50:01 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:50:01 UTC]      AM Session: 4 hrs at Main = ₱400
+[14-Apr-2026 02:50:01 UTC]      PM Session: 4 hrs at PGH = ₱400
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 02:50:01 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 02:59:14 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 02:59:14 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 02:59:14 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 02:59:14 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 02:59:14 UTC]      AM Session: 4 hrs at Main = ₱400
+[14-Apr-2026 02:59:14 UTC]      PM Session: 4 hrs at PGH = ₱400
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 03:00:50 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 03:00:50 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 03:00:50 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 03:00:50 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 03:00:50 UTC]      AM Session: 4 hrs at Main = ₱400
+[14-Apr-2026 03:00:50 UTC]      PM Session: 4 hrs at PGH = ₱400
+[14-Apr-2026 03:00:50 UTC]      Night hours: 7 hrs - Processing with site breakdown
+[14-Apr-2026 03:00:50 UTC]      Night Regular: 7 hrs at PLDT = ₱770
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 03:03:30 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
+[14-Apr-2026 03:03:30 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
+[14-Apr-2026 03:03:30 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
+[14-Apr-2026 03:03:30 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
+[14-Apr-2026 03:03:30 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 800.00
+[14-Apr-2026 03:03:30 UTC]      AM Session: 4 hrs at Main = ₱800
+[14-Apr-2026 03:03:30 UTC]      PM Session: 4 hrs at PGH = ₱800
+[14-Apr-2026 03:03:30 UTC]      Night hours: 12 hrs - Processing with site breakdown
+[14-Apr-2026 03:03:30 UTC]      Night Regular (8 hrs) at PLDT: ₱800
+[14-Apr-2026 03:03:30 UTC]      Night Overtime (4 hrs) at PLDT: ₱1040
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 03:08:58 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
+[14-Apr-2026 03:08:58 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
+[14-Apr-2026 03:08:58 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
+[14-Apr-2026 03:08:58 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
+[14-Apr-2026 03:08:58 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 800.00
+[14-Apr-2026 03:08:58 UTC]      AM Session: 4 hrs at Main = ₱800
+[14-Apr-2026 03:08:58 UTC]      PM Session: 4 hrs at PGH = ₱800
+[14-Apr-2026 03:08:58 UTC]      Night hours: 12 hrs - Processing with site breakdown
+[14-Apr-2026 03:08:58 UTC]      Night Regular (8 hrs) at PLDT: ₱800
+[14-Apr-2026 03:08:58 UTC]      Night Overtime (4 hrs) at PLDT: ₱1040
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 03:27:04 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
+[14-Apr-2026 03:27:04 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
+[14-Apr-2026 03:27:04 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
+[14-Apr-2026 03:27:04 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
+[14-Apr-2026 03:27:04 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 800.00
+[14-Apr-2026 03:27:04 UTC]      AM Session: 4 hrs at Main = ₱800
+[14-Apr-2026 03:27:04 UTC]      PM Session: 4 hrs at PGH = ₱800
+[14-Apr-2026 03:27:04 UTC]      Night hours: 12 hrs - Processing with site breakdown
+[14-Apr-2026 03:27:04 UTC]      Night Regular (8 hrs) at PLDT: ₱800
+[14-Apr-2026 03:27:04 UTC]      Night Overtime (4 hrs) at PLDT: ₱1040
+[14-Apr-2026 03:27:10 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 03:27:10 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 12
+    [date_from] => 2026-04-01
+    [date_to] => 2026-04-14
+    [base_salary] => 4240
+    [total_deductions] => 0
+    [net_pay] => 4240
+    [total_work_hours] => 20
+    [deductions] => []
+    [salary_breakdown] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+)
+
+[14-Apr-2026 03:27:10 UTC] Employee ID: 12
+[14-Apr-2026 03:27:10 UTC] Date From: 2026-04-01
+[14-Apr-2026 03:27:10 UTC] Date To: 2026-04-14
+[14-Apr-2026 03:27:10 UTC] Base Salary: 4240
+[14-Apr-2026 03:27:10 UTC] Total Deductions: 0
+[14-Apr-2026 03:27:10 UTC] Net Pay: 4240
+[14-Apr-2026 03:27:10 UTC] Work Hours: 20
+[14-Apr-2026 03:27:10 UTC] Deductions JSON: []
+[14-Apr-2026 03:27:10 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period
+[14-Apr-2026 03:27:10 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+[14-Apr-2026 03:27:10 UTC] Bind types: issdddddssss
+[14-Apr-2026 03:27:10 UTC] Bind params: Array
+(
+    [0] => 12
+    [1] => 2026-04-01
+    [2] => 2026-04-14
+    [3] => 4240
+    [4] => 0
+    [5] => 4240
+    [6] => 20
+    [7] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+    [8] => regular
+    [9] => pending
+    [10] => 2026-04-01
+)
+
+[14-Apr-2026 03:27:10 UTC] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php:744
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\payrollList.php(744): mysqli_stmt->bind_param('issdddddssss', '12', '2026-04-01', '2026-04-14', '4240', '0', '4240', '20', '{"Main":{"hours...', 'regular', 'pending', '2026-04-01')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 744
+[14-Apr-2026 03:27:16 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 03:27:16 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 12
+    [date_from] => 2026-04-01
+    [date_to] => 2026-04-14
+    [base_salary] => 4240
+    [total_deductions] => 0
+    [net_pay] => 4240
+    [total_work_hours] => 20
+    [deductions] => []
+    [salary_breakdown] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+)
+
+[14-Apr-2026 03:27:16 UTC] Employee ID: 12
+[14-Apr-2026 03:27:16 UTC] Date From: 2026-04-01
+[14-Apr-2026 03:27:16 UTC] Date To: 2026-04-14
+[14-Apr-2026 03:27:16 UTC] Base Salary: 4240
+[14-Apr-2026 03:27:16 UTC] Total Deductions: 0
+[14-Apr-2026 03:27:16 UTC] Net Pay: 4240
+[14-Apr-2026 03:27:16 UTC] Work Hours: 20
+[14-Apr-2026 03:27:16 UTC] Deductions JSON: []
+[14-Apr-2026 03:27:16 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period
+[14-Apr-2026 03:27:16 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+[14-Apr-2026 03:27:16 UTC] Bind types: issdddddssss
+[14-Apr-2026 03:27:16 UTC] Bind params: Array
+(
+    [0] => 12
+    [1] => 2026-04-01
+    [2] => 2026-04-14
+    [3] => 4240
+    [4] => 0
+    [5] => 4240
+    [6] => 20
+    [7] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+    [8] => regular
+    [9] => pending
+    [10] => 2026-04-01
+)
+
+[14-Apr-2026 03:27:16 UTC] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php:744
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\payrollList.php(744): mysqli_stmt->bind_param('issdddddssss', '12', '2026-04-01', '2026-04-14', '4240', '0', '4240', '20', '{"Main":{"hours...', 'regular', 'pending', '2026-04-01')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 744
+[14-Apr-2026 03:27:29 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 03:27:29 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 12
+    [date_from] => 2026-04-01
+    [date_to] => 2026-04-14
+    [base_salary] => 4240
+    [total_deductions] => 0
+    [net_pay] => 4240
+    [total_work_hours] => 20
+    [deductions] => []
+    [salary_breakdown] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+)
+
+[14-Apr-2026 03:27:29 UTC] Employee ID: 12
+[14-Apr-2026 03:27:29 UTC] Date From: 2026-04-01
+[14-Apr-2026 03:27:29 UTC] Date To: 2026-04-14
+[14-Apr-2026 03:27:29 UTC] Base Salary: 4240
+[14-Apr-2026 03:27:29 UTC] Total Deductions: 0
+[14-Apr-2026 03:27:29 UTC] Net Pay: 4240
+[14-Apr-2026 03:27:29 UTC] Work Hours: 20
+[14-Apr-2026 03:27:29 UTC] Deductions JSON: []
+[14-Apr-2026 03:27:29 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period
+[14-Apr-2026 03:27:29 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+[14-Apr-2026 03:27:29 UTC] Bind types: issdddddssss
+[14-Apr-2026 03:27:29 UTC] Bind params: Array
+(
+    [0] => 12
+    [1] => 2026-04-01
+    [2] => 2026-04-14
+    [3] => 4240
+    [4] => 0
+    [5] => 4240
+    [6] => 20
+    [7] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+    [8] => regular
+    [9] => pending
+    [10] => 2026-04-01
+)
+
+[14-Apr-2026 03:27:29 UTC] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php:744
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\payrollList.php(744): mysqli_stmt->bind_param('issdddddssss', '12', '2026-04-01', '2026-04-14', '4240', '0', '4240', '20', '{"Main":{"hours...', 'regular', 'pending', '2026-04-01')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 744
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
+[14-Apr-2026 03:27:51 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
+[14-Apr-2026 03:27:51 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
+[14-Apr-2026 03:27:51 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
+[14-Apr-2026 03:27:51 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 800.00
+[14-Apr-2026 03:27:51 UTC]      AM Session: 4 hrs at Main = ₱800
+[14-Apr-2026 03:27:51 UTC]      PM Session: 4 hrs at PGH = ₱800
+[14-Apr-2026 03:27:51 UTC]      Night hours: 12 hrs - Processing with site breakdown
+[14-Apr-2026 03:27:51 UTC]      Night Regular (8 hrs) at PLDT: ₱800
+[14-Apr-2026 03:27:51 UTC]      Night Overtime (4 hrs) at PLDT: ₱1040
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 03:27:51 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 03:27:58 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 03:27:58 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 12
+    [date_from] => 2026-04-01
+    [date_to] => 2026-04-30
+    [base_salary] => 4240
+    [total_deductions] => 0
+    [net_pay] => 4240
+    [total_work_hours] => 20
+    [deductions] => []
+    [salary_breakdown] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+)
+
+[14-Apr-2026 03:27:58 UTC] Employee ID: 12
+[14-Apr-2026 03:27:58 UTC] Date From: 2026-04-01
+[14-Apr-2026 03:27:58 UTC] Date To: 2026-04-30
+[14-Apr-2026 03:27:58 UTC] Base Salary: 4240
+[14-Apr-2026 03:27:58 UTC] Total Deductions: 0
+[14-Apr-2026 03:27:58 UTC] Net Pay: 4240
+[14-Apr-2026 03:27:58 UTC] Work Hours: 20
+[14-Apr-2026 03:27:58 UTC] Deductions JSON: []
+[14-Apr-2026 03:27:58 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period
+[14-Apr-2026 03:27:58 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+[14-Apr-2026 03:27:58 UTC] Bind types: issdddddssss
+[14-Apr-2026 03:27:58 UTC] Bind params: Array
+(
+    [0] => 12
+    [1] => 2026-04-01
+    [2] => 2026-04-30
+    [3] => 4240
+    [4] => 0
+    [5] => 4240
+    [6] => 20
+    [7] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+    [8] => regular
+    [9] => pending
+    [10] => 2026-04-01
+)
+
+[14-Apr-2026 03:27:58 UTC] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php:744
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\payrollList.php(744): mysqli_stmt->bind_param('issdddddssss', '12', '2026-04-01', '2026-04-30', '4240', '0', '4240', '20', '{"Main":{"hours...', 'regular', 'pending', '2026-04-01')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 744
+[14-Apr-2026 03:28:00 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 03:28:00 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 12
+    [date_from] => 2026-04-01
+    [date_to] => 2026-04-30
+    [base_salary] => 4240
+    [total_deductions] => 0
+    [net_pay] => 4240
+    [total_work_hours] => 20
+    [deductions] => []
+    [salary_breakdown] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+)
+
+[14-Apr-2026 03:28:00 UTC] Employee ID: 12
+[14-Apr-2026 03:28:00 UTC] Date From: 2026-04-01
+[14-Apr-2026 03:28:00 UTC] Date To: 2026-04-30
+[14-Apr-2026 03:28:00 UTC] Base Salary: 4240
+[14-Apr-2026 03:28:00 UTC] Total Deductions: 0
+[14-Apr-2026 03:28:00 UTC] Net Pay: 4240
+[14-Apr-2026 03:28:00 UTC] Work Hours: 20
+[14-Apr-2026 03:28:00 UTC] Deductions JSON: []
+[14-Apr-2026 03:28:00 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period
+[14-Apr-2026 03:28:00 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+[14-Apr-2026 03:28:00 UTC] Bind types: issdddddssss
+[14-Apr-2026 03:28:00 UTC] Bind params: Array
+(
+    [0] => 12
+    [1] => 2026-04-01
+    [2] => 2026-04-30
+    [3] => 4240
+    [4] => 0
+    [5] => 4240
+    [6] => 20
+    [7] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+    [8] => regular
+    [9] => pending
+    [10] => 2026-04-01
+)
+
+[14-Apr-2026 03:28:00 UTC] PHP Fatal error:  Uncaught ArgumentCountError: The number of elements in the type definition string must match the number of bind variables in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php:744
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\payrollList.php(744): mysqli_stmt->bind_param('issdddddssss', '12', '2026-04-01', '2026-04-30', '4240', '0', '4240', '20', '{"Main":{"hours...', 'regular', 'pending', '2026-04-01')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\payrollList.php on line 744
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 03:33:03 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
+[14-Apr-2026 03:33:03 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
+[14-Apr-2026 03:33:03 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
+[14-Apr-2026 03:33:03 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
+[14-Apr-2026 03:33:03 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 800.00
+[14-Apr-2026 03:33:03 UTC]      AM Session: 4 hrs at Main = ₱800
+[14-Apr-2026 03:33:03 UTC]      PM Session: 4 hrs at PGH = ₱800
+[14-Apr-2026 03:33:03 UTC]      Night hours: 12 hrs - Processing with site breakdown
+[14-Apr-2026 03:33:03 UTC]      Night Regular (8 hrs) at PLDT: ₱800
+[14-Apr-2026 03:33:03 UTC]      Night Overtime (4 hrs) at PLDT: ₱1040
+[14-Apr-2026 03:33:08 UTC] === SAVE PAYROLL START ===
+[14-Apr-2026 03:33:08 UTC] POST data: Array
+(
+    [save_payroll] => 1
+    [employee_id] => 12
+    [date_from] => 2026-04-01
+    [date_to] => 2026-04-14
+    [base_salary] => 4240
+    [total_deductions] => 0
+    [net_pay] => 4240
+    [total_work_hours] => 20
+    [deductions] => []
+    [salary_breakdown] => {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+)
+
+[14-Apr-2026 03:33:08 UTC] Employee ID: 12
+[14-Apr-2026 03:33:08 UTC] Date From: 2026-04-01
+[14-Apr-2026 03:33:08 UTC] Date To: 2026-04-14
+[14-Apr-2026 03:33:08 UTC] Base Salary: 4240
+[14-Apr-2026 03:33:08 UTC] Total Deductions: 0
+[14-Apr-2026 03:33:08 UTC] Net Pay: 4240
+[14-Apr-2026 03:33:08 UTC] Work Hours: 20
+[14-Apr-2026 03:33:08 UTC] Deductions JSON: []
+[14-Apr-2026 03:33:08 UTC] Salary Breakdown JSON: {"Main":{"hours":4,"pay":800},"PGH":{"hours":4,"pay":800},"PLDT":{"hours":12,"pay":1840}}
+[14-Apr-2026 03:33:08 UTC] Inserting new payroll record
+[14-Apr-2026 03:33:08 UTC] Existing columns: id, employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, payroll_type, status, date, pay_period
+[14-Apr-2026 03:33:08 UTC] Adding salary_breakdown column to insert
+[14-Apr-2026 03:33:08 UTC] Dynamic insert query: INSERT INTO payroll (employee_id, date_from, date_to, base_salary, total_deductions, net_pay, total_work_hours, salary_breakdown, status, date) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+[14-Apr-2026 03:33:08 UTC] Bind types: issddddss
+[14-Apr-2026 03:33:08 UTC] Bind params count: 9
+[14-Apr-2026 03:33:08 UTC] Insert successful, new ID: 17
+[14-Apr-2026 03:33:08 UTC] Cleared old deductions for payroll ID: 17
+[14-Apr-2026 03:33:08 UTC] Deductions decoded: Array
+(
+)
+
+[14-Apr-2026 03:33:08 UTC] === SAVE PAYROLL SUCCESS ===
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-14 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 07:46:21 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Regular Holiday'
+[14-Apr-2026 08:20:23 UTC] WORKDAY DEBUG: Processing workday_type: 'Regular Holiday'
+[14-Apr-2026 08:20:23 UTC] WORKDAY DEBUG: Found multipliers for: 'Regular Holiday'
+[14-Apr-2026 08:20:23 UTC]   -> PRESENT: Workday type = Regular Holiday, Employee type = regular
+[14-Apr-2026 08:20:23 UTC]      REGULAR on PAID HOLIDAY: Added guaranteed pay of 800.00
+[14-Apr-2026 08:20:23 UTC]      AM Session: 4 hrs at Main = ₱800
+[14-Apr-2026 08:20:23 UTC]      PM Session: 4 hrs at PGH = ₱800
+[14-Apr-2026 08:20:23 UTC]      Night hours: 12 hrs - Processing with site breakdown
+[14-Apr-2026 08:20:23 UTC]      Night Regular (8 hrs) at PLDT: ₱800
+[14-Apr-2026 08:20:23 UTC]      Night Overtime (4 hrs) at PLDT: ₱1040
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 08:20:23 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-10 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-14 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-15 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-16 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-17 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-18 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-19 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-20 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-21 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-22 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-23 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-24 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-25 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-26 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-27 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-28 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-29 - No attendance record
+[14-Apr-2026 09:30:22 UTC] DATE: 2026-04-30 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-10 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 09:32:06 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 09:32:06 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 09:32:06 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 09:32:06 UTC]      AM Session: 5 hrs at Activities = ₱516.875
+[14-Apr-2026 09:32:06 UTC]      Night hours: 4 hrs - Processing with site breakdown
+[14-Apr-2026 09:32:06 UTC]      Night Regular: 4 hrs at Main Office = ₱454.85
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 09:32:06 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 09:32:06 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 09:32:06 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 09:32:06 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 09:32:06 UTC]      AM Session: 4 hrs at Main = ₱413.5
+[14-Apr-2026 09:32:06 UTC]      PM Session: 4 hrs at PGH = ₱413.5
+[14-Apr-2026 09:32:06 UTC]      Night hours: 7 hrs - Processing with site breakdown
+[14-Apr-2026 09:32:06 UTC]      Night Regular: 7 hrs at PLDT = ₱795.9875
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-01 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-02 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-03 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-04 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-05 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-06 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-07 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-08 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-09 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-10 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 09:36:04 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 09:36:04 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 09:36:04 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 09:36:04 UTC]      AM Session: 5 hrs at Activities = ₱516.875
+[14-Apr-2026 09:36:04 UTC]      Night hours: 4 hrs - Processing with site breakdown
+[14-Apr-2026 09:36:04 UTC]      Night Regular: 4 hrs at Main Office = ₱454.85
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-11 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-12 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-13 - No attendance record
+[14-Apr-2026 09:36:04 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 09:36:04 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 09:36:04 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 09:36:04 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 09:36:04 UTC]      AM Session: 4 hrs at Main = ₱413.5
+[14-Apr-2026 09:36:04 UTC]      PM Session: 4 hrs at PGH = ₱413.5
+[14-Apr-2026 09:36:04 UTC]      Night hours: 7 hrs - Processing with site breakdown
+[14-Apr-2026 09:36:04 UTC]      Night Regular: 7 hrs at PLDT = ₱795.9875
+[14-Apr-2026 09:36:14 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[14-Apr-2026 09:36:14 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[14-Apr-2026 09:36:14 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[14-Apr-2026 09:36:14 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[14-Apr-2026 09:36:14 UTC]      AM Session: 4 hrs at Main = ₱413.5
+[14-Apr-2026 09:36:14 UTC]      PM Session: 4 hrs at PGH = ₱413.5
+[14-Apr-2026 09:36:14 UTC]      Night hours: 7 hrs - Processing with site breakdown
+[14-Apr-2026 09:36:14 UTC]      Night Regular: 7 hrs at PLDT = ₱795.9875
+[14-Apr-2026 09:47:44 UTC] Sending payroll data for ID 16 - Net Pay: 700.00
+[14-Apr-2026 09:47:58 UTC] Sending payroll data for ID 16 - Net Pay: 700.00
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-01 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-02 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-03 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-04 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-05 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-06 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-07 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-08 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-09 - Raw workday_type from DB: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[15-Apr-2026 01:07:32 UTC]      AM Session: 7 hrs at Main Office = ₱612.5
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-10 - Raw workday_type from DB: 'Special (Non-Working) Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Special (Non-Working) Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Special (Non-Working) Day'
+[15-Apr-2026 01:07:32 UTC]   -> PRESENT: Workday type = Special (Non-Working) Day, Employee type = regular
+[15-Apr-2026 01:07:32 UTC]      AM Session: 5 hrs at Activities = ₱568.75
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-11 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-12 - No attendance record
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-13 - Raw workday_type from DB: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[15-Apr-2026 01:07:32 UTC]      Night hours: 2 hrs - Processing with site breakdown
+[15-Apr-2026 01:07:32 UTC]      Night Regular: 2 hrs at Main = ₱192.5
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-14 - Raw workday_type from DB: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[15-Apr-2026 01:07:32 UTC]      AM Session: 4 hrs at PGH = ₱350
+[15-Apr-2026 01:07:32 UTC]      PM Session: 4 hrs at Main = ₱350
+[15-Apr-2026 01:07:32 UTC] DATE: 2026-04-15 - Raw workday_type from DB: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[15-Apr-2026 01:07:32 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[15-Apr-2026 01:07:32 UTC]      AM Session: 4 hrs at Main = ₱350
+[15-Apr-2026 01:07:32 UTC]      PM Session: 4 hrs at PGH = ₱350
+[15-Apr-2026 01:07:32 UTC]      Night hours: 7 hrs - Processing with site breakdown
+[15-Apr-2026 01:07:32 UTC]      Night Regular: 7 hrs at PLDT = ₱673.75
+[15-Apr-2026 01:08:25 UTC] DATE: 2026-04-15 - Raw workday_type from DB: 'Ordinary Working Day'
+[15-Apr-2026 01:08:25 UTC] WORKDAY DEBUG: Processing workday_type: 'Ordinary Working Day'
+[15-Apr-2026 01:08:25 UTC] WORKDAY DEBUG: Found multipliers for: 'Ordinary Working Day'
+[15-Apr-2026 01:08:25 UTC]   -> PRESENT: Workday type = Ordinary Working Day, Employee type = regular
+[15-Apr-2026 01:08:25 UTC]      AM Session: 4 hrs at Main = ₱350
+[15-Apr-2026 01:08:25 UTC]      PM Session: 4 hrs at PGH = ₱350
+[15-Apr-2026 01:08:25 UTC]      Night hours: 7 hrs - Processing with site breakdown
+[15-Apr-2026 01:08:25 UTC]      Night Regular: 7 hrs at PLDT = ₱673.75

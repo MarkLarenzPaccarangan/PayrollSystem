@@ -1,0 +1,40 @@
+[14-Apr-2026 06:35:43 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:691
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(691): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 691
+[14-Apr-2026 06:35:44 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:691
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(691): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 691
+[14-Apr-2026 06:35:44 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:691
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(691): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 691
+[14-Apr-2026 06:35:46 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:691
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(691): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 691
+[14-Apr-2026 06:36:14 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:674
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(674): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 674
+[14-Apr-2026 06:36:15 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:674
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(674): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 674
+[14-Apr-2026 06:36:15 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:674
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(674): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 674
+[14-Apr-2026 06:38:38 UTC] PHP Fatal error:  Uncaught mysqli_sql_exception: Unknown column 'status' in 'where clause' in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php:674
+Stack trace:
+#0 C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php(674): mysqli->query('SELECT id, site...')
+#1 {main}
+  thrown in C:\laragon\www\JLCPayrollManagementSystem\salarySlip.php on line 674
