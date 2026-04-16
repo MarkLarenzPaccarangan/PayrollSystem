@@ -1,0 +1,93 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+    background-color: #ffe4c4;
+}
+.content {
+    margin-left: 250px;
+    padding-top: 100px;
+    padding: 20px;
+    width: calc(100% - 250px);
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    background-color: #ffe4c4;
+}
+
+.Branch-box {
+    background-color: #ffffff;
+    padding: 20px;
+    border: 2px solid #f4a460;
+    margin-top: 100px;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.Branch-form {
+    background-color: #ffffff;
+    padding: 20px;
+    border: 1px solid #f4a460;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    margin-top: 20px;
+}
+
+.Branch-form input, .Branch-form select {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+}
+.employee-container {
+    display: flex;
+    flex-direction: row;
+    margin-top: 20px;
+}
+
+.employee-item {
+    display: flex;
+    align-items: center; /* Align checkbox and label in the center */
+    margin-bottom: 10px;
+}
+
+.employee-item input[type="checkbox"] {
+    margin-right: 10px; /* Space between checkbox and label */
+}
+
+.employee-item label {
+    font-size: 16px;
+    color: #333;
+}
+
+
+.form-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+.btn-save {
+    background-color: #ffa07a;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+.save-btn {
+    background-color: #ffa07a;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}

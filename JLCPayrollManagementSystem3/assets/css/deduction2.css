@@ -1,0 +1,528 @@
+
+
+/* Modified deduction.css - Updated to match employee layout and color palette */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Header Color Palette - Updated to match employee.css */
+    --sidebar-green: #75e6da;
+    --sidebar-dark-green: #62d4c8;
+    --header-green: #4bc4b5;
+    --light-green: #f0f9f8;
+    --accent-green: #299452;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+    --success-color: #27ae60;
+    --info-color: #2196F3;
+    --header-height: 150px; /* Increased to match header height */
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8fff8;
+    color: #333;
+    overflow-x: hidden;
+    padding-top: var(--header-height) !important;
+}
+
+/* Content Area - Updated to match employee.css */
+.content {
+    padding-top: 0 !important;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 20px;
+    width: 100%;
+    min-height: calc(100vh - var(--header-height));
+    background-color: #f8fff8;
+    position: relative;
+}
+
+.content-wrapper {
+    min-height: calc(100vh - var(--header-height) - 40px);
+    margin-top: 0;
+    padding: 0;
+}
+
+/* Deduction Box Header */
+.deduction-box {
+    background: linear-gradient(135deg, var(--sidebar-green) 0%, var(--sidebar-dark-green) 100%);
+    color: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-top: 20px;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    box-shadow: var(--box-shadow);
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Controls Container - Updated to match employee.css */
+.controls {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    padding: 15px 20px;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    border: 2px solid var(--sidebar-dark-green);
+    border-radius: 25px;
+    padding: 5px 15px;
+    background-color: white;
+    transition: var(--transition);
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-container:focus-within {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+}
+
+.search-bar {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.95rem;
+    background-color: transparent;
+    padding: 8px;
+}
+
+.search-btn {
+    background: none;
+    border: none;
+    color: var(--sidebar-green);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 5px;
+    flex-shrink: 0;
+}
+
+/* Deduction Form - Updated colors */
+.deduction-form {
+    background-color: #ffffff;
+    padding: 25px;
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 500px;
+    margin: 20px auto;
+    box-shadow: var(--box-shadow);
+    border: 1px solid #e0e0e0;
+}
+
+.deduction-form h3 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: var(--sidebar-dark-green);
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.deduction-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: var(--sidebar-dark-green);
+    font-size: 0.9rem;
+}
+
+.deduction-form input, 
+.deduction-form select {
+    width: 100%;
+    padding: 10px 12px;
+    margin: 10px 0;
+    border-radius: var(--border-radius);
+    border: 2px solid #e0e0e0;
+    font-size: 1rem;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.deduction-form input:focus,
+.deduction-form select:focus {
+    outline: none;
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+}
+
+.deduction-form button {
+    background-color: var(--sidebar-green);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 15px;
+    width: 100%;
+    transition: var(--transition);
+}
+
+.deduction-form button:hover {
+    background-color: var(--sidebar-dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom Select Box */
+.custom-select-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 15px 0;
+    padding: 15px;
+    background-color: #f8fff8;
+    border-radius: var(--border-radius);
+    border: 1px solid #e0e0e0;
+}
+
+.deduction-checkbox {
+    margin-right: 10px;
+    vertical-align: middle;
+    transform: scale(1.1);
+    accent-color: var(--accent-green);
+}
+
+.deduction-checkbox + label {
+    vertical-align: middle;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #555;
+}
+
+.custom-select-box label {
+    margin-bottom: 5px;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+/* Deduction Amounts Container */
+#deduction-amounts {
+    margin: 15px 0;
+}
+
+#deduction-amounts > div {
+    background: #f8fff8;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    border: 1px solid #e0e0e0;
+    margin-bottom: 15px;
+}
+
+#deduction-amounts label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--sidebar-dark-green);
+    font-weight: 600;
+}
+
+#deduction-amounts input[type="number"],
+#deduction-amounts input[type="date"] {
+    margin-bottom: 10px;
+}
+
+/* Form Buttons */
+.form-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.delete {
+    background-color: var(--danger-color);
+    color: white;
+    font-size: 1rem;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    transition: var(--transition);
+    flex: 1;
+}
+
+.delete:hover {
+    background-color: #c0392b;
+    transform: translateY(-2px);
+}
+
+/* Deduction Table - Updated colors */
+.deduction-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 30px;
+    font-size: 0.9rem;
+    background: white;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.deduction-table th, 
+.deduction-table td {
+    border: 1px solid #e0e0e0;
+    padding: 12px 15px;
+    text-align: center;
+}
+
+.deduction-table th {
+    background: linear-gradient(to right, var(--sidebar-green), var(--sidebar-dark-green));
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.deduction-table tbody tr {
+    transition: var(--transition);
+}
+
+.deduction-table tbody tr:hover {
+    background-color: var(--light-green);
+}
+
+.deduction-table td.amount-column {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Action buttons */
+.toggle-status, .delete-btn {
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    transition: var(--transition);
+    font-size: 0.85rem;
+    min-width: 80px;
+}
+
+.toggle-status.active {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.toggle-status.disabled {
+    background-color: var(--warning-color);
+    color: white;
+}
+
+.toggle-status:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.delete-btn {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.delete-btn:hover {
+    background-color: #c0392b;
+}
+
+/* Status badges */
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-active {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-disabled {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-green);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--sidebar-dark-green);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #7f8c8d;
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    color: #d1f0eb;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .content {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .deduction-box {
+        font-size: 1.5rem;
+        padding: 15px;
+    }
+    
+    .deduction-form {
+        padding: 20px;
+        max-width: 100%;
+    }
+    
+    .deduction-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .deduction-table th,
+    .deduction-table td {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+    
+    .custom-select-box {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .controls {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        padding: 15px;
+    }
+    
+    .search-container {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .content {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    .deduction-box {
+        font-size: 1.3rem;
+        padding: 12px;
+    }
+    
+    .deduction-form {
+        padding: 15px;
+    }
+    
+    .deduction-form h3 {
+        font-size: 1.2rem;
+    }
+    
+    .deduction-form input, 
+    .deduction-form select {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+    
+    .deduction-form button {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    
+    .toggle-status, .delete-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        min-width: 70px;
+    }
+}
+
+/* Modal Overlays */
+.overlay {
+    display: none;
+    background-color: rgba(0, 0, 0, 0.7);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(3px);
+}
+
+/* Ensure proper spacing */
+.content > *:first-child {
+    margin-top: 20px;
+}
+
+/* Success/Error messages */
+.success-message {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 12px;
+    border-radius: var(--border-radius);
+    margin: 10px 0;
+    border: 1px solid #c3e6cb;
+    display: none;
+}
+
+.error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 12px;
+    border-radius: var(--border-radius);
+    margin: 10px 0;
+    border: 1px solid #f5c6cb;
+    display: none;
+}

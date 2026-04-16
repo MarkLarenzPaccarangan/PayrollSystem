@@ -1,0 +1,2404 @@
+/* ============================================
+   ATTENDANCE CSS - MATCHING PAYROLL UI EXACTLY
+   ============================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Header Color Palette - Exact match to payrollList2.css */
+    --sidebar-green: #75e6da;
+    --sidebar-dark-green: #62d4c8;
+    --header-green: #4bc4b5;
+    --light-green: #f0f9f8;
+    --accent-green: #299452;
+    --danger-color: #e74c3c;
+    --warning-color: #f39c12;
+    --success-color: #27ae60;
+    --info-color: #2196F3;
+    --header-height: 150px;
+    --border-radius: 8px;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s ease;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8fff8;
+    color: #333;
+    overflow-x: hidden;
+    padding-top: var(--header-height) !important;
+}
+
+/* Content Area - Exact match to payrollList2.css */
+.content {
+    padding-top: 0 !important;
+    padding-left: 20px;
+    padding-right: 20px;
+    padding-bottom: 20px;
+    width: 100%;
+    min-height: calc(100vh - var(--header-height));
+    background-color: #f8fff8;
+    position: relative;
+}
+
+.content-wrapper {
+    min-height: calc(100vh - var(--header-height) - 40px);
+    margin-top: 0;
+    padding: 0;
+}
+
+/* Welcome Box - Exact match to payroll welcome-box2 */
+.welcome-box2 {
+    background: linear-gradient(135deg, var(--sidebar-green) 0%, var(--sidebar-dark-green) 100%);
+    color: white;
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 25px;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 700;
+    box-shadow: var(--box-shadow);
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.welcome-box2 i {
+    font-size: 1.8rem;
+    color: white;
+}
+
+/* Alert Messages - Keep as is but match colors */
+.alert {
+    padding: 15px 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: slideDown 0.3s ease-out;
+    box-shadow: var(--box-shadow);
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+    border-left-color: var(--success-color);
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+    border-left-color: var(--danger-color);
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Controls Container - EXACT match to payrollList2.css .controls */
+.controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    padding: 15px 20px;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+}
+
+.search-section {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.search-section form {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+/* Controls - Exact match to payroll .controls select, input */
+.date-input,
+.search-bar {
+    padding: 10px 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    font-family: inherit;
+    background: white;
+}
+
+.date-input {
+    min-width: 150px;
+    cursor: pointer;
+}
+
+.search-bar {
+    min-width: 250px;
+    flex: 1;
+}
+
+.date-input:focus,
+.search-bar:focus {
+    outline: none;
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+}
+
+.filter-label {
+    font-weight: 600;
+    color: var(--sidebar-dark-green);
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.filter-label i {
+    color: var(--sidebar-green);
+    margin-right: 5px;
+}
+
+/* Buttons - EXACT match to payroll .controls button */
+.search-btn,
+.clear-btn,
+.add-attendance-btn {
+    background-color: var(--sidebar-green);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+
+.search-btn:hover,
+.add-attendance-btn:hover {
+    background-color: var(--sidebar-dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.clear-btn {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+.clear-btn:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    color: white;
+}
+
+.add-attendance-btn {
+    background-color: var(--sidebar-green);
+    margin-left: auto;
+}
+
+/* Generate Payroll Button Style - For Add Attendance */
+.generate-payroll-btn {
+    background-color: var(--sidebar-green);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--box-shadow);
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.generate-payroll-btn:hover {
+    background-color: var(--sidebar-dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   PAYROLL TABLE - UPDATED for dual time display
+   ============================================ */
+
+.payroll-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.9rem;
+    background: white;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: var(--box-shadow);
+}
+
+.payroll-table th {
+    background: linear-gradient(to right, var(--sidebar-green), var(--sidebar-dark-green));
+    color: white;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 12px 15px;
+    text-align: left;
+    border-right: 1px solid rgba(255,255,255,0.1);
+}
+
+.payroll-table th:last-child {
+    border-right: none;
+}
+
+.payroll-table th i {
+    margin-right: 8px;
+    font-size: 0.9rem;
+}
+
+.payroll-table td {
+    border: 1px solid #e0e0e0;
+    padding: 12px 15px;
+    text-align: left;
+    color: #333;
+    vertical-align: middle;
+}
+
+.payroll-table tbody tr {
+    transition: var(--transition);
+}
+
+.payroll-table tbody tr:hover {
+    background-color: var(--light-green);
+}
+
+/* Payroll Info - EXACT match to payrollList2.css .payroll-info */
+.payroll-info {
+    display: grid;
+    gap: 4px;
+}
+
+.payroll-info strong {
+    color: var(--sidebar-dark-green);
+    font-weight: 600;
+}
+
+/* Date Range - EXACT match to payrollList2.css .date-range */
+.date-range {
+    color: #666;
+    font-size: 0.85rem;
+    font-style: italic;
+    margin-top: 4px;
+}
+
+/* Status Badges - EXACT match to payroll status badges */
+.status-present,
+.status-absent,
+.status-no-record {
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-block;
+    text-align: center;
+    min-width: 100px;
+}
+
+.status-present {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-absent {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.status-no-record {
+    background-color: #e9ecef;
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+}
+
+/* Status Badge Icons */
+.status-present i,
+.status-absent i,
+.status-no-record i {
+    margin-right: 5px;
+}
+
+/* ============================================
+   TIME DISPLAY STYLES - UPDATED for dual time
+   ============================================ */
+
+.time-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.time-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.time-label-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: white;
+    background: var(--sidebar-green);
+    padding: 2px 8px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.time-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.am-time {
+    color: var(--info-color);
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-family: 'Courier New', monospace;
+}
+
+.pm-time {
+    color: var(--warning-color);
+    font-weight: 700;
+    font-size: 0.9rem;
+    font-family: 'Courier New', monospace;
+}
+
+.absent-indicator {
+    color: var(--danger-color);
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+/* Action Buttons - EXACT match to payroll .action-buttons */
+.action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn-edit {
+    background-color: var(--info-color);
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    transition: var(--transition);
+    font-size: 0.85rem;
+    min-width: 80px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.btn-edit:hover {
+    background-color: #0b7dda;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Delete Button Style - Keep for future use */
+.delete {
+    background-color: var(--danger-color);
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    transition: var(--transition);
+    font-size: 0.85rem;
+    min-width: 80px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.delete:hover {
+    background-color: #c0392b;
+    transform: translateY(-1px);
+}
+
+/* Generate Button Style */
+.generate-btn {
+    background-color: var(--success-color);
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    text-decoration: none;
+    transition: var(--transition);
+    font-size: 0.85rem;
+    min-width: 80px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.generate-btn:hover {
+    background-color: #219653;
+    transform: translateY(-1px);
+}
+
+/* Empty State - EXACT match to payroll .empty-state */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #7f8c8d;
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    color: #d1f0eb;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    font-size: 1rem;
+}
+
+.empty-state p:last-child {
+    font-size: 0.9rem;
+    margin-top: 10px;
+    color: #95a5a6;
+}
+
+/* Month Highlight */
+.month-highlight {
+    font-weight: 600;
+    color: var(--sidebar-dark-green);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Table Responsive Container - EXACT match to payroll */
+.table-responsive {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.payroll-table-container {
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    overflow: hidden;
+}
+
+/* ============================================
+   MODAL STYLES - UPDATED with cleaner UI
+   ============================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--sidebar-green) 0%, var(--sidebar-dark-green) 100%);
+    color: white;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-close:hover {
+    color: var(--light-green);
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+}
+
+.modal-body {
+    padding: 25px;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    background-color: #f8fff8;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #e0e0e0;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+}
+
+/* Form Group */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: var(--sidebar-dark-green);
+    font-size: 0.9rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    align-items: flex-end;
+}
+
+.form-col {
+    flex: 1;
+}
+
+.form-label {
+    font-weight: 600;
+    color: var(--sidebar-dark-green);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.form-label.required::after {
+    content: " *";
+    color: var(--danger-color);
+}
+
+.form-control {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    transition: var(--transition);
+    font-family: inherit;
+    width: 100%;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+}
+
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2375e6da'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Employee ID Display */
+.employee-id-col {
+    flex: 0.5;
+}
+
+.employee-id-display {
+    padding: 12px 15px;
+    background: #f8f9fa;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+}
+
+/* Status Options - Cleaner */
+.status-options {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.status-option {
+    flex: 1;
+    min-width: 140px;
+}
+
+.status-radio {
+    display: none;
+}
+
+.status-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 500;
+    background: white;
+}
+
+.status-label:hover {
+    border-color: var(--sidebar-green);
+    background: var(--light-green);
+}
+
+.status-radio:checked + .status-label {
+    border-color: var(--accent-green);
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.status-dot.present {
+    background: linear-gradient(135deg, var(--success-color) 0%, #218838 100%);
+}
+
+.status-dot.absent {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+}
+
+/* ============================================
+   DUAL TIME SESSIONS - NEW CLEAN UI
+   ============================================ */
+
+.time-sessions-container {
+    display: flex;
+    gap: 25px;
+    margin: 25px 0;
+}
+
+.time-session {
+    flex: 1;
+    background: #f8f9fa;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.time-session:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* AM Session Header */
+.am-session .session-header {
+    background: linear-gradient(135deg, #2c7da0, #1e4a6b);
+    color: white;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* PM Session Header */
+.pm-session .session-header {
+    background: linear-gradient(135deg, #2c3e50, #1a2634);
+    color: white;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.session-icon {
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.session-icon i {
+    font-size: 1.3rem;
+}
+
+.session-title h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.session-time {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    display: block;
+    margin-top: 4px;
+}
+
+.session-body {
+    padding: 18px;
+}
+
+/* Time Entry - Clean Layout */
+.time-entry {
+    margin-bottom: 16px;
+}
+
+.time-entry:last-child {
+    margin-bottom: 0;
+}
+
+.time-entry-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #34495e;
+}
+
+.time-entry-label i {
+    color: var(--sidebar-green);
+    font-size: 0.9rem;
+}
+
+.time-entry-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Time Display Box */
+.time-display-box {
+    flex: 1;
+    padding: 10px 15px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    transition: all 0.3s;
+    min-height: 46px;
+    position: relative;
+    overflow: hidden;
+}
+
+.time-display-box:hover {
+    border-color: var(--sidebar-green);
+}
+
+.time-display-box.empty {
+    background: #f8f9fa;
+    color: #95a5a6;
+}
+
+.time-display-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-display-content i {
+    color: #95a5a6;
+    font-size: 0.85rem;
+}
+
+.time-display-content span {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+/* Time Set Button */
+.time-set-btn {
+    background: var(--sidebar-green);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: var(--border-radius);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.time-set-btn:hover {
+    background: var(--sidebar-dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.time-set-btn i {
+    font-size: 0.85rem;
+}
+
+/* Remarks Group */
+.remarks-group {
+    margin-top: 20px;
+}
+
+.remarks-group textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    resize: vertical;
+    font-family: inherit;
+    min-height: 80px;
+}
+
+.remarks-group textarea:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+    outline: none;
+}
+
+/* ============================================
+   TIME PICKER MODAL - UPDATED cleaner design
+   ============================================ */
+
+.time-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1100;
+    padding: 20px;
+}
+
+.time-modal.show {
+    display: flex;
+}
+
+.time-modal-content {
+    background: white;
+    border-radius: var(--border-radius);
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.time-modal-header {
+    background: linear-gradient(135deg, var(--sidebar-green) 0%, var(--sidebar-dark-green) 100%);
+    color: white;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.time-modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-modal-body {
+    padding: 30px 20px;
+}
+
+.time-modal-footer {
+    padding: 16px 20px;
+    background-color: #f8fff8;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid #e0e0e0;
+}
+
+/* Time Picker - Clean Design */
+.time-picker {
+    text-align: center;
+}
+
+.time-picker-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.time-picker-select {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 85px;
+    text-align: center;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2375e6da'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 35px;
+}
+
+.time-picker-select:hover {
+    border-color: var(--sidebar-green);
+}
+
+.time-picker-select:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+    outline: none;
+}
+
+.time-picker-separator {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #34495e;
+}
+
+.time-picker-period {
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    min-width: 95px;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2375e6da'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 35px;
+}
+
+.time-picker-period:hover {
+    border-color: var(--sidebar-green);
+}
+
+.time-picker-period:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+    outline: none;
+}
+
+/* Time Set Animation */
+.time-set-confirmation {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--success-color) 0%, #218838 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    animation: timeSetAnimation 2s ease-out forwards;
+    z-index: 2;
+    border-radius: var(--border-radius);
+}
+
+@keyframes timeSetAnimation {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    20% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    80% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(1.1);
+    }
+}
+
+/* ============================================
+   SEARCHABLE EMPLOYEE DROPDOWN - UPDATED
+   ============================================ */
+
+.employee-search-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.employee-search-container {
+    position: relative;
+    width: 100%;
+}
+
+.search-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.employee-search-input {
+    width: 100%;
+    padding: 12px 45px 12px 45px !important;
+    font-size: 0.95rem;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    background: white;
+}
+
+.employee-search-input:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+    outline: none;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    color: #adb5bd;
+    z-index: 1;
+}
+
+.clear-search {
+    position: absolute;
+    right: 15px;
+    color: #6c757d;
+    cursor: pointer;
+    z-index: 1;
+    font-size: 1rem;
+    padding: 5px;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+
+.clear-search:hover {
+    background: #f8f9fa;
+    color: var(--danger-color);
+}
+
+.hidden-select {
+    display: none;
+}
+
+/* Results Dropdown */
+.employee-results-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    margin-top: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-height: 400px;
+    display: flex;
+    flex-direction: column;
+    animation: slideDown 0.3s ease;
+}
+
+.results-header {
+    padding: 12px 15px;
+    border-bottom: 2px solid #f1f1f1;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    font-weight: 600;
+    color: #495057;
+}
+
+.results-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.employee-result-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.employee-result-item:last-child {
+    border-bottom: none;
+}
+
+.employee-result-item:hover {
+    background-color: var(--light-green);
+    transform: translateX(5px);
+}
+
+.employee-result-info {
+    flex: 1;
+}
+
+.employee-result-name {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+}
+
+.employee-result-name strong {
+    background: #ffeaa7;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+.employee-result-details {
+    display: flex;
+    gap: 15px;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.employee-result-id {
+    background: #f8f9fa;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.employee-result-id i {
+    margin-right: 4px;
+    color: var(--sidebar-green);
+}
+
+.no-results {
+    padding: 30px 20px;
+    text-align: center;
+    color: #6c757d;
+}
+
+.no-results i {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    color: #adb5bd;
+}
+
+.results-footer {
+    padding: 10px 15px;
+    border-top: 2px solid #f1f1f1;
+    background: #f8f9fa;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    font-size: 0.8rem;
+    color: #6c757d;
+    text-align: center;
+}
+
+/* Selected Employee Card - UPDATED with X icon on upper right */
+.selected-employee-card {
+    margin-top: 15px;
+    padding: 18px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 2px solid var(--success-color);
+    border-radius: 12px;
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+}
+
+.selected-employee-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+}
+
+.selected-employee-avatar {
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(135deg, var(--success-color) 0%, #388e3c 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+}
+
+.selected-employee-details {
+    flex: 1;
+}
+
+.selected-employee-name {
+    display: block;
+    font-weight: 700;
+    color: #1b5e20;
+    font-size: 1rem;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.selected-employee-id {
+    display: inline-block;
+    font-size: 0.8rem;
+    color: #2e7d32;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.selected-employee-id i {
+    margin-right: 5px;
+    color: var(--success-color);
+}
+
+/* X Icon on Upper Right */
+.btn-change-employee {
+    position: absolute;
+    top: -12px;
+    right: -12px;
+    background-color: #ff6b6b;
+    color: white;
+    border: 3px solid white;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.btn-change-employee:hover {
+    background-color: #e74c3c;
+    transform: scale(1.15);
+    box-shadow: 0 6px 15px rgba(231, 76, 60, 0.4);
+}
+
+.btn-change-employee i {
+    font-size: 1.1rem;
+}
+
+/* ============================================
+   CALENDAR STYLES - Keep as is
+   ============================================ */
+
+.calendar-container {
+    position: relative;
+}
+
+.calendar-wrapper {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 1000;
+    display: none;
+    margin-top: 10px;
+}
+
+.calendar-wrapper.show {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.calendar-box {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    width: 320px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.calendar-month-year {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--sidebar-dark-green);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.calendar-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.calendar-nav-btn {
+    background-color: var(--light-green);
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    color: var(--sidebar-dark-green);
+    transition: var(--transition);
+    font-weight: 700;
+}
+
+.calendar-nav-btn:hover {
+    background-color: var(--sidebar-green);
+    color: white;
+    border-color: var(--sidebar-green);
+}
+
+.calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.weekday {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #6c757d;
+    padding: 8px 0;
+    text-transform: uppercase;
+}
+
+.calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+}
+
+.calendar-day {
+    padding: 8px 0;
+    text-align: center;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    text-decoration: none;
+    color: #333;
+    background: white;
+    border: 2px solid transparent;
+    font-weight: 500;
+}
+
+.calendar-day:hover {
+    background-color: var(--light-green);
+    border-color: var(--sidebar-green);
+    transform: translateY(-2px);
+}
+
+.calendar-day.other-month {
+    color: #adb5bd;
+    background-color: #f8f9fa;
+}
+
+.calendar-day.today {
+    background-color: #fff3cd;
+    border-color: var(--warning-color);
+    color: #856404;
+    font-weight: 700;
+}
+
+.calendar-day.selected {
+    background: linear-gradient(135deg, var(--sidebar-green) 0%, var(--sidebar-dark-green) 100%);
+    color: white;
+    font-weight: 700;
+    border-color: var(--sidebar-dark-green);
+}
+
+.calendar-day.weekend {
+    color: var(--danger-color);
+}
+
+.calendar-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 2px solid #e0e0e0;
+}
+
+.calendar-action-btn {
+    padding: 8px 16px;
+    border: 2px solid #e0e0e0;
+    background-color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    text-decoration: none;
+    color: #495057;
+    font-weight: 600;
+}
+
+.calendar-action-btn:hover {
+    background-color: var(--light-green);
+    border-color: #adb5bd;
+    transform: translateY(-2px);
+}
+
+.calendar-action-btn.today {
+    background: linear-gradient(135deg, var(--success-color) 0%, #218838 100%);
+    color: white;
+    border-color: var(--success-color);
+}
+
+.calendar-action-btn.today:hover {
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+}
+
+.calendar-action-btn.clear {
+    background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.calendar-action-btn.clear:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   MODAL CALENDAR STYLES
+   ============================================ */
+
+.modal-calendar-wrapper {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    display: none;
+    width: 100%;
+}
+
+.modal-calendar-box {
+    width: 100%;
+    background: white;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.modal-calendar-header {
+    background: linear-gradient(135deg, var(--sidebar-green), var(--sidebar-dark-green));
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-calendar-month-year {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.modal-calendar-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.modal-calendar-nav-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1.2rem;
+}
+
+.modal-calendar-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.modal-calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8f9fa;
+    padding: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #2c3e50;
+}
+
+.modal-calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    padding: 10px;
+    background: white;
+}
+
+.modal-calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    text-decoration: none;
+}
+
+.modal-calendar-day:hover {
+    background: #e8f5e9;
+    color: var(--sidebar-dark-green);
+}
+
+.modal-calendar-day.selected {
+    background: var(--sidebar-green);
+    color: white;
+    font-weight: 600;
+}
+
+.modal-calendar-day.today {
+    border: 2px solid var(--sidebar-green);
+    font-weight: 600;
+}
+
+.modal-calendar-day.weekend {
+    color: var(--danger-color);
+}
+
+.modal-calendar-day.other-month {
+    color: #bdc3c7;
+}
+
+.modal-calendar-footer {
+    padding: 10px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.modal-calendar-action-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.modal-calendar-action-btn.clear {
+    background: #f8f9fa;
+    color: #7f8c8d;
+    border: 1px solid #bdc3c7;
+}
+
+.modal-calendar-action-btn.clear:hover {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.modal-calendar-action-btn.today {
+    background: var(--sidebar-green);
+    color: white;
+    border: 1px solid var(--sidebar-green);
+}
+
+.modal-calendar-action-btn.today:hover {
+    background: var(--sidebar-dark-green);
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 100px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: var(--sidebar-green);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--sidebar-dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-secondary {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #7f8c8d;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+}
+
+.btn-success:hover {
+    background-color: #219653;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-save {
+    background-color: var(--sidebar-green);
+    color: white;
+}
+
+.btn-save:hover {
+    background-color: var(--sidebar-dark-green);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-cancel {
+    background-color: #95a5a6;
+    color: white;
+}
+
+.btn-cancel:hover {
+    background-color: #7f8c8d;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* ============================================
+   MAIN DATE PICKER STYLES
+   ============================================ */
+
+.main-date-picker-wrapper {
+    position: relative;
+    width: 180px;
+}
+
+.main-date-input-group {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+}
+
+.main-date-field {
+    width: 100%;
+    padding: 10px 15px 10px 40px;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    font-size: 0.95rem;
+    transition: all 0.3s;
+    background: white;
+    cursor: pointer;
+    color: #2c3e50;
+    font-weight: 500;
+    height: 42px;
+}
+
+.main-date-field:hover {
+    border-color: var(--sidebar-green);
+}
+
+.main-date-field:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 3px rgba(41, 148, 82, 0.1);
+    outline: none;
+}
+
+.main-date-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--sidebar-green);
+    font-size: 1rem;
+    pointer-events: none;
+}
+
+.main-calendar-dropdown-btn {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #95a5a6;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.main-calendar-dropdown-btn:hover {
+    color: var(--sidebar-green);
+}
+
+/* Main Calendar Dropdown */
+.main-calendar-wrapper {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+    z-index: 2000;
+    display: none;
+    width: 320px;
+}
+
+.main-calendar-wrapper.show {
+    display: block;
+}
+
+.main-calendar-box {
+    width: 100%;
+    background: white;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+}
+
+.main-calendar-header {
+    background: linear-gradient(135deg, var(--sidebar-green), var(--sidebar-dark-green));
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.main-calendar-month-year {
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.main-calendar-nav {
+    display: flex;
+    gap: 10px;
+}
+
+.main-calendar-nav-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 1.2rem;
+}
+
+.main-calendar-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.main-calendar-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background: #f8f9fa;
+    padding: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #2c3e50;
+}
+
+.main-calendar-days-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    padding: 10px;
+    background: white;
+}
+
+.main-calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    text-decoration: none;
+    border: none;
+    background: none;
+    width: 100%;
+}
+
+.main-calendar-day:hover {
+    background: #e8f5e9;
+    color: var(--sidebar-dark-green);
+}
+
+.main-calendar-day.selected {
+    background: var(--sidebar-green);
+    color: white;
+    font-weight: 600;
+}
+
+.main-calendar-day.today {
+    border: 2px solid var(--sidebar-green);
+    font-weight: 600;
+}
+
+.main-calendar-day.weekend {
+    color: var(--danger-color);
+}
+
+.main-calendar-day.other-month {
+    color: #bdc3c7;
+}
+
+.main-calendar-footer {
+    padding: 10px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.main-calendar-action-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border: none;
+}
+
+.main-calendar-action-btn.clear {
+    background: #f8f9fa;
+    color: #7f8c8d;
+    border: 1px solid #bdc3c7;
+}
+
+.main-calendar-action-btn.clear:hover {
+    background: var(--danger-color);
+    color: white;
+    border-color: var(--danger-color);
+}
+
+.main-calendar-action-btn.today {
+    background: var(--sidebar-green);
+    color: white;
+    border: 1px solid var(--sidebar-green);
+}
+
+.main-calendar-action-btn.today:hover {
+    background: var(--sidebar-dark-green);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN - UPDATED for dual time
+   ============================================ */
+
+@media (max-width: 768px) {
+    .content {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+    
+    .welcome-box2 {
+        font-size: 1.5rem;
+        padding: 15px;
+    }
+    
+    .controls-container {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+        padding: 15px;
+    }
+    
+    .search-section {
+        width: 100%;
+    }
+    
+    .search-section form {
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .filter-label {
+        width: 100%;
+    }
+    
+    .date-input,
+    .search-bar,
+    .search-btn,
+    .clear-btn,
+    .add-attendance-btn {
+        width: 100%;
+        min-width: auto;
+        justify-content: center;
+    }
+    
+    .add-attendance-btn {
+        margin-left: 0;
+    }
+    
+    .payroll-table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .payroll-table th,
+    .payroll-table td {
+        padding: 10px;
+        font-size: 0.85rem;
+    }
+    
+    .payroll-table thead {
+        display: none;
+    }
+    
+    .payroll-table tbody tr {
+        display: block;
+        margin-bottom: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: var(--border-radius);
+        padding: 15px;
+        background: white;
+        box-shadow: var(--box-shadow);
+    }
+    
+    .payroll-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding: 10px 12px;
+        border-bottom: 1px solid #f1f1f1;
+        position: relative;
+        width: 100% !important;
+        border: none;
+        border-bottom: 1px solid #f1f1f1;
+    }
+    
+    .payroll-table td:last-child {
+        border-bottom: none;
+    }
+    
+    .payroll-table td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--sidebar-dark-green);
+        font-size: 0.85rem;
+        text-align: left;
+    }
+    
+    .payroll-table td .time-container {
+        align-items: flex-end;
+        flex-direction: row;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    
+    .status-present,
+    .status-absent,
+    .status-no-record {
+        padding: 4px 10px;
+        font-size: 0.75rem;
+        min-width: auto;
+    }
+    
+    /* Modal Responsive */
+    .modal-content {
+        max-width: 95%;
+        margin: 10px;
+        max-height: 85vh;
+    }
+    
+    .modal {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: calc(var(--header-height) + 20px);
+    }
+    
+    .form-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .form-col {
+        width: 100%;
+    }
+    
+    .employee-id-col {
+        flex: 1;
+    }
+    
+    .status-options {
+        flex-direction: column;
+    }
+    
+    .status-option {
+        min-width: 100%;
+    }
+    
+    /* Time Sessions Responsive */
+    .time-sessions-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .time-session {
+        width: 100%;
+    }
+    
+    .time-entry-controls {
+        flex-wrap: wrap;
+    }
+    
+    .time-set-btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .calendar-wrapper,
+    .main-calendar-wrapper {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 320px;
+    }
+    
+    .employee-results-dropdown {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 400px;
+        max-height: 80vh;
+    }
+    
+    .selected-employee-info {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .selected-employee-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .btn-change-employee {
+        top: -10px;
+        right: -10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .content {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+    
+    .welcome-box2 {
+        font-size: 1.3rem;
+        padding: 12px;
+    }
+    
+    .controls-container {
+        padding: 12px;
+    }
+    
+    .modal-content {
+        max-width: 100%;
+        margin: 5px;
+        max-height: 95vh;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .modal-footer {
+        padding: 12px 15px;
+    }
+    
+    .btn {
+        padding: 8px 16px;
+        font-size: 0.9rem;
+        min-width: 80px;
+    }
+    
+    .calendar-box,
+    .main-calendar-box {
+        width: 280px;
+        padding: 15px;
+    }
+    
+    .time-modal-content {
+        max-width: 95%;
+    }
+    
+    .time-picker-controls {
+        flex-wrap: wrap;
+    }
+    
+    .time-picker-select,
+    .time-picker-period {
+        min-width: 70px;
+        padding: 10px;
+    }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.modal-open {
+    overflow: hidden;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--accent-green);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--sidebar-dark-green);
+}
+
+/* Animation Keyframes */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-results {
+    text-align: center;
+    padding: 20px;
+    color: #7f8c8d;
+}
+
+.loading-results i {
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+}
