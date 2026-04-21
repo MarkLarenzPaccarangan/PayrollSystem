@@ -39,7 +39,7 @@ $full_name = $employee['first_name'] . ' ' .
             $employee['last_name'];
 $position = $employee['position'] ?? 'N/A';
 
-// Get all attendance records for the selected month and year
+// Get all attendance records for the selected month and year - ADDED site assignment columns
 $att_sql = "SELECT * FROM attendance 
             WHERE employee_id = ? 
             AND MONTH(date) = ? 
@@ -75,7 +75,6 @@ while ($row = $att_result->fetch_assoc()) {
     }
 }
 
-// Function to format time
 // Function to format time - FIXED to handle 00:00:00 (midnight)
 function formatTimeForMonthDownload($time) {
     if (empty($time) || $time === null) {
@@ -188,13 +187,12 @@ foreach ($all_dates as $date => $data) {
             $total_leave_days++;
         } else {
             // If status not set but has time, consider present
-            // AFTER - Fixed to include 12:00 AM (00:00:00) as valid time
-$has_time = (!empty($att['time_in_am']) && $att['time_in_am'] !== '') ||
-            (!empty($att['time_out_am']) && $att['time_out_am'] !== '') ||
-            (!empty($att['time_in_pm']) && $att['time_in_pm'] !== '') ||
-            (!empty($att['time_out_pm']) && $att['time_out_pm'] !== '') ||
-            (!empty($att['time_in_night']) && $att['time_in_night'] !== '') ||
-            (!empty($att['time_out_night']) && $att['time_out_night'] !== '');
+            $has_time = (!empty($att['time_in_am']) && $att['time_in_am'] !== '') ||
+                        (!empty($att['time_out_am']) && $att['time_out_am'] !== '') ||
+                        (!empty($att['time_in_pm']) && $att['time_in_pm'] !== '') ||
+                        (!empty($att['time_out_pm']) && $att['time_out_pm'] !== '') ||
+                        (!empty($att['time_in_night']) && $att['time_in_night'] !== '') ||
+                        (!empty($att['time_out_night']) && $att['time_out_night'] !== '');
             if ($has_time) {
                 $present_count++;
                 $total_present_days++;
@@ -252,24 +250,6 @@ echo '<meta name="Generator" content="PHP">';
             margin: 0 0 10px 0;
         }
         
-        .header h2 {
-            color: #1B5E20;
-            font-size: 24px;
-            margin: 5px 0;
-        }
-
-        .header h3 {
-            color: #2E7D32;
-            font-size: 20px;
-            margin: 5px 0;
-        }
-        
-        .header p {
-            color: #666;
-            font-size: 14px;
-            margin: 5px 0;
-        }
-        
         /* Employee Info Section */
         .info-section {
             background: #f5f5f5;
@@ -309,7 +289,7 @@ echo '<meta name="Generator" content="PHP">';
             width: 100%;
             border-collapse: collapse;
             margin-top: 30px;
-            font-size: 13px;
+            font-size: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
@@ -317,14 +297,14 @@ echo '<meta name="Generator" content="PHP">';
             background: #2E7D32;
             color: white;
             font-weight: 600;
-            padding: 15px 10px;
+            padding: 12px 8px;
             text-align: center;
             border: 1px solid #1B5E20;
-            font-size: 14px;
+            font-size: 13px;
         }
         
         td {
-            padding: 12px 8px;
+            padding: 10px 6px;
             border: 1px solid #ddd;
             text-align: center;
             vertical-align: middle;
@@ -338,41 +318,55 @@ echo '<meta name="Generator" content="PHP">';
             background-color: #f1f8e9;
         }
         
+        /* Bold text for specific columns */
+        td.day-column,
+        td.morning-column,
+        td.afternoon-column,
+        td.night-column,
+        td.leave-type-column,
+        td.site-column {
+            font-weight: 700;
+        }
+        
         /* Status Styles */
         .status-present {
             color: #28a745;
             font-weight: 700;
             background-color: #e8f5e9;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 20px;
             display: inline-block;
+            font-size: 11px;
         }
         
         .status-absent {
             color: #dc3545;
             font-weight: 700;
             background-color: #fef5f5;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 20px;
             display: inline-block;
+            font-size: 11px;
         }
         
         .status-leave {
-            color: #ffc107;
+            color: #856404;
             font-weight: 700;
             background-color: #fff9e6;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 20px;
             display: inline-block;
+            font-size: 11px;
         }
         
         .status-no-record {
             color: #6c757d;
             font-weight: 700;
             background-color: #f0f0f0;
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-radius: 20px;
             display: inline-block;
+            font-size: 11px;
         }
         
         /* Weekend Style */
@@ -400,6 +394,7 @@ echo '<meta name="Generator" content="PHP">';
         .time-display {
             font-family: 'Courier New', monospace;
             font-weight: 600;
+            font-size: 11px;
         }
         
         /* Leave Type Badge */
@@ -407,7 +402,7 @@ echo '<meta name="Generator" content="PHP">';
             display: inline-block;
             padding: 3px 8px;
             border-radius: 12px;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 600;
         }
         
@@ -426,6 +421,37 @@ echo '<meta name="Generator" content="PHP">';
             color: #856404;
         }
         
+        /* Site Assignment Styles */
+        .site-assignment-cell {
+            font-size: 10px;
+            line-height: 1.4;
+            text-align: left;
+        }
+        
+        .site-assignment-cell div {
+            margin: 2px 0;
+            font-weight: 700;
+        }
+        
+        .site-label {
+            font-weight: 600;
+            display: inline-block;
+            min-width: 38px;
+            font-size: 9px;
+        }
+        
+        .site-label.am {
+            color: #75e6da;
+        }
+        
+        .site-label.pm {
+            color: #f39c12;
+        }
+        
+        .site-label.night {
+            color: #9b59b6;
+        }
+        
         /* Text Alignment */
         .text-center {
             text-align: center;
@@ -439,35 +465,17 @@ echo '<meta name="Generator" content="PHP">';
             text-align: right;
         }
         
-        /* Column Widths */
-        .col-date { width: 10%; }
-        .col-day { width: 6%; }
-        .col-status { width: 8%; }
-        .col-time { width: 7%; }
-        .col-leave { width: 8%; }
-        .col-hours { width: 6%; }
-        .col-remarks { width: 12%; }
-        
         /* Night Shift Style */
         .night-shift {
             background-color: #e3f2fd;
         }
-        
-        .night-shift-label {
-            font-size: 10px;
-            color: #0d47a1;
-            font-weight: normal;
-            display: block;
-        }
     </style>
 </head>
 <body>
-    <!-- Header -->
+    <!-- Header - Removed employee name and generation date -->
     <div class="header">
         <h1>MONTHLY ATTENDANCE RECORD</h1>
-        <h2><?= htmlspecialchars($full_name) ?></h2>
         <h3><?= $month_name ?> <?= $selected_year ?></h3>
-        <p>Generated on: <?= date('F j, Y \a\t h:i A') ?></p>
     </div>
     
     <!-- Employee Information -->
@@ -492,29 +500,28 @@ echo '<meta name="Generator" content="PHP">';
         </div>
     </div>
     
-    <!-- SUMMARY CARDS SECTION - REMOVED as requested -->
-    
-    <!-- Attendance Table -->
+    <!-- Attendance Table - ADDED Site Assignment column with bold styling for specific columns -->
     <table>
         <thead>
             <tr>
-                <th class="col-date" rowspan="2">Date</th>
-                <th class="col-day" rowspan="2">Day</th>
-                <th class="col-status" rowspan="2">Status</th>
+                <th rowspan="2">Date</th>
+                <th rowspan="2">Day</th>
+                <th rowspan="2">Status</th>
                 <th colspan="2">Morning Shift</th>
                 <th colspan="2">Afternoon Shift</th>
                 <th colspan="2">Night Shift</th>
-                <th class="col-hours" rowspan="2">Total Hours</th>
-                <th class="col-leave" rowspan="2">Leave Type</th>
-                <th class="col-remarks" rowspan="2">Remarks</th>
+                <th rowspan="2">Total Hours</th>
+                <th rowspan="2">Leave Type</th>
+                <th rowspan="2">Site Assignment</th>
+                <th rowspan="2">Remarks</th>
             </tr>
             <tr>
-                <th class="col-time">Time In</th>
-                <th class="col-time">Time Out</th>
-                <th class="col-time">Time In</th>
-                <th class="col-time">Time Out</th>
-                <th class="col-time">Time In</th>
-                <th class="col-time">Time Out</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Time In</th>
+                <th>Time Out</th>
+                <th>Time In</th>
+                <th>Time Out</th>
             </tr>
         </thead>
         <tbody>
@@ -574,73 +581,86 @@ echo '<meta name="Generator" content="PHP">';
                     // Check if night shift has data
                     $has_night = (!empty($att['time_in_night']) && $att['time_in_night'] != '00:00:00') ||
                                  (!empty($att['time_out_night']) && $att['time_out_night'] != '00:00:00');
+                    
+                    // Get site assignments
+                    $site_am = !empty($att['site_assignment_am']) ? $att['site_assignment_am'] : '';
+                    $site_pm = !empty($att['site_assignment_pm']) ? $att['site_assignment_pm'] : '';
+                    $site_night = !empty($att['site_assignment_night']) ? $att['site_assignment_night'] : '';
+                    $has_site = ($site_am != '' || $site_pm != '' || $site_night != '');
             ?>
             <tr class="<?= $row_class ?><?= $has_night ? ' night-shift' : '' ?>">
                 <td class="text-center"><strong><?= date('M d, Y', strtotime($date)) ?></strong></td>
-                <td class="text-center"><?= substr($data['day_name'], 0, 3) ?></td>
+                <td class="text-center day-column"><strong><?= substr($data['day_name'], 0, 3) ?></strong></td>
                 <td class="text-center"><span class="<?= $status_class ?>"><?= $status_display ?></span></td>
-                <td class="text-center time-display"><?= formatTimeForMonthDownload($att['time_in_am']) ?></td>
-                <td class="text-center time-display"><?= formatTimeForMonthDownload($att['time_out_am']) ?></td>
-                <td class="text-center time-display"><?= formatTimeForMonthDownload($att['time_in_pm']) ?></td>
-                <td class="text-center time-display"><?= formatTimeForMonthDownload($att['time_out_pm']) ?></td>
-                <td class="text-center time-display">
-                    <?= formatTimeForMonthDownload($att['time_in_night']) ?>
-                    <?php if($has_night): ?>
-                        <span class="night-shift-label">Night</span>
-                    <?php endif; ?>
-                </td>
-                <td class="text-center time-display">
-                    <?= formatTimeForMonthDownload($att['time_out_night']) ?>
-                    <?php if($has_night): ?>
-                        <span class="night-shift-label">Night</span>
-                    <?php endif; ?>
-                </td>
+                <td class="text-center time-display morning-column"><strong><?= formatTimeForMonthDownload($att['time_in_am']) ?></strong></td>
+                <td class="text-center time-display morning-column"><strong><?= formatTimeForMonthDownload($att['time_out_am']) ?></strong></td>
+                <td class="text-center time-display afternoon-column"><strong><?= formatTimeForMonthDownload($att['time_in_pm']) ?></strong></td>
+                <td class="text-center time-display afternoon-column"><strong><?= formatTimeForMonthDownload($att['time_out_pm']) ?></strong></td>
+                <td class="text-center time-display night-column"><strong><?= formatTimeForMonthDownload($att['time_in_night']) ?></strong></td>
+                <td class="text-center time-display night-column"><strong><?= formatTimeForMonthDownload($att['time_out_night']) ?></strong></td>
                 <td class="text-center"><strong><?= number_format($daily_hours, 2) ?></strong></td>
-                <td class="text-center">
+                <td class="text-center leave-type-column">
                     <?php if (!empty($att['leave_type']) && $att['leave_type'] != 'None'): ?>
-                        <span class="leave-type-badge <?= $leave_type_class ?? '' ?>">
+                        <strong><span class="leave-type-badge <?= $leave_type_class ?? '' ?>">
                             <?= htmlspecialchars($att['leave_type']) ?>
-                        </span>
+                        </span></strong>
                     <?php else: ?>
-                        -
+                        <strong>-</strong>
                     <?php endif; ?>
-                </td>
-                <td class="text-left"><?= !empty($att['remarks']) ? htmlspecialchars($att['remarks']) : '-' ?></td>
-            </tr>
+                 </td>
+                <!-- Site Assignment Column with bold text -->
+                <td class="site-assignment-cell site-column">
+                    <?php if ($has_site): ?>
+                        <?php if ($site_am != ''): ?>
+                            <div><strong><span class="site-label am">AM:</span> <?= htmlspecialchars($site_am) ?></strong></div>
+                        <?php endif; ?>
+                        <?php if ($site_pm != ''): ?>
+                            <div><strong><span class="site-label pm">PM:</span> <?= htmlspecialchars($site_pm) ?></strong></div>
+                        <?php endif; ?>
+                        <?php if ($site_night != ''): ?>
+                            <div><strong><span class="site-label night">Night:</span> <?= htmlspecialchars($site_night) ?></strong></div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <strong>-</strong>
+                    <?php endif; ?>
+                 </td>
+                <td class="text-left"><?= !empty($att['remarks']) ? htmlspecialchars($att['remarks']) : '-' ?> </td>
+             </tr>
             <?php else: ?>
             <tr class="<?= $row_class ?>">
                 <td class="text-center"><strong><?= date('M d, Y', strtotime($date)) ?></strong></td>
-                <td class="text-center"><?= substr($data['day_name'], 0, 3) ?></td>
+                <td class="text-center day-column"><strong><?= substr($data['day_name'], 0, 3) ?></strong></td>
                 <td class="text-center">
                     <?php if($data['is_weekend']): ?>
                         <span class="status-no-record">Weekend</span>
                     <?php else: ?>
                         <span class="status-absent">Absent</span>
                     <?php endif; ?>
-                </td>
-                <td class="text-center">-</td>
-                <td class="text-center">-</td>
-                <td class="text-center">-</td>
-                <td class="text-center">-</td>
-                <td class="text-center">-</td>
-                <td class="text-center">-</td>
-                <td class="text-center">0.00</td>
-                <td class="text-center">-</td>
+                 </td>
+                <td class="text-center morning-column"><strong>-</strong></td>
+                <td class="text-center morning-column"><strong>-</strong></td>
+                <td class="text-center afternoon-column"><strong>-</strong></td>
+                <td class="text-center afternoon-column"><strong>-</strong></td>
+                <td class="text-center night-column"><strong>-</strong></td>
+                <td class="text-center night-column"><strong>-</strong></td>
+                <td class="text-center"><strong>0.00</strong></td>
+                <td class="text-center leave-type-column"><strong>-</strong></td>
+                <td class="text-center site-column"><strong>-</strong></td>
                 <td class="text-left">-</td>
             </tr>
             <?php endif; ?>
             <?php endforeach; ?>
             
-            <!-- Monthly Total Row -->
+            <!-- Monthly Total Row - Updated colspan -->
             <tr class="total-row">
-                <td colspan="9" class="text-right"><strong>MONTHLY TOTAL:</strong></td>
+                <td colspan="10" class="text-right"><strong>MONTHLY TOTAL:</strong></td>
                 <td class="text-center"><strong><?= number_format($monthly_total_hours, 2) ?> hrs</strong></td>
-                <td colspan="2"></td>
+                <td colspan="2"> </td>
             </tr>
         </tbody>
     </table>
     
-    <!-- Summary Information - KEPT as requested -->
+    <!-- Summary Information - Removed Average per Day section -->
     <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
         <div style="display: flex; flex-wrap: wrap; gap: 30px;">
             <div style="flex: 1; min-width: 200px;">
@@ -692,25 +712,8 @@ echo '<meta name="Generator" content="PHP">';
                     </tr>
                 </table>
             </div>
-            
-            <div style="flex: 1; min-width: 200px;">
-                <h4 style="color: #2E7D32; margin-bottom: 15px;">Average per Day</h4>
-                <?php 
-                $avg_hours_per_day = ($total_present_days > 0) ? round($monthly_total_hours / $total_present_days, 2) : 0;
-                ?>
-                <table style="width: 100%; border: none; margin: 0;">
-                    <tr>
-                        <td style="border: none; padding: 5px;"><strong>Average Hours/Day:</strong></td>
-                        <td style="border: none; padding: 5px;"><?= number_format($avg_hours_per_day, 2) ?> hrs</td>
-                    </tr>
-                </table>
-            </div>
         </div>
     </div>
-    
-    <!-- SHIFT LEGEND SECTION - REMOVED as requested -->
-    
-    <!-- FOOTER SECTION - REMOVED as requested -->
     
 </body>
 </html>

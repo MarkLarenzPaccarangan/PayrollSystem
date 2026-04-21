@@ -16,7 +16,8 @@
     --warning-color: #f39c12;
     --success-color: #27ae60;
     --info-color: #2196F3;
-    --header-height: 150px; /* Increased to match header height */
+    --header-height: 150px;
+    /* Increased to match header height */
     --border-radius: 8px;
     --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
@@ -155,6 +156,7 @@ body {
         opacity: 0;
         transform: translateY(-10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -262,7 +264,9 @@ body {
     margin-top: 20px;
 }
 
-.view, .edit, .delete {
+.view,
+.edit,
+.delete {
     padding: 8px 16px;
     border: none;
     cursor: pointer;
@@ -341,6 +345,7 @@ body {
         opacity: 0;
         transform: translateY(-50px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -482,7 +487,8 @@ body {
     justify-content: center;
 }
 
-.confirm-btn, .cancel-btn {
+.confirm-btn,
+.cancel-btn {
     font-weight: 700;
     padding: 12px 30px;
     border: none;
@@ -544,56 +550,58 @@ body {
         padding-left: 15px;
         padding-right: 15px;
     }
-    
+
     .welcome-box2 {
         font-size: 1.5rem;
         padding: 15px;
     }
-    
+
     .profile-container {
         padding: 20px;
         margin: 15px auto;
     }
-    
+
     .profile-container h2 {
         font-size: 1.5rem;
     }
-    
+
     .profile-info {
         grid-template-columns: 1fr;
         gap: 15px;
         padding: 15px;
     }
-    
+
     .action-buttons {
         flex-direction: column;
         align-items: stretch;
         gap: 8px;
     }
-    
-    .view, .edit, .delete {
+
+    .view,
+    .edit,
+    .delete {
         width: 100%;
         justify-content: center;
         height: 36px;
     }
-    
+
     .modal-content {
         max-width: 95%;
         margin: 10px;
         max-height: 85vh;
     }
-    
+
     .modal {
         padding: 10px;
         align-items: flex-start;
         padding-top: var(--header-height);
     }
-    
+
     .logout-content {
         width: 90%;
         padding: 25px;
     }
-    
+
     .logout-header {
         font-size: 1.6rem;
     }
@@ -604,44 +612,44 @@ body {
         padding-left: 10px;
         padding-right: 10px;
     }
-    
+
     .welcome-box2 {
         font-size: 1.3rem;
         padding: 12px;
     }
-    
+
     .profile-container {
         padding: 15px;
     }
-    
+
     .profile-container h2 {
         font-size: 1.3rem;
     }
-    
+
     .profile-container input {
         padding: 10px 12px;
         font-size: 0.9rem;
     }
-    
+
     .profile-container button {
         padding: 10px 15px;
         font-size: 0.9rem;
     }
-    
+
     .modal-content {
         max-width: 100%;
         margin: 5px;
         max-height: 95vh;
     }
-    
+
     .modal-body {
         padding: 15px;
     }
-    
+
     .modal-footer {
         padding: 12px 15px;
     }
-    
+
     .btn {
         padding: 8px 16px;
         font-size: 0.9rem;
@@ -649,7 +657,7 @@ body {
 }
 
 /* Ensure proper spacing */
-.content > *:first-child {
+.content>*:first-child {
     margin-top: 20px;
 }
 
@@ -692,9 +700,17 @@ body {
 
 /* Success Animation */
 @keyframes successPulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .success-pulse {

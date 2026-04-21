@@ -26,7 +26,6 @@ if ($check_column->num_rows == 0) {
 $month = isset($_GET['month']) ? $_GET['month'] : date('m');
 $year = isset($_GET['year']) ? $_GET['year'] : date('Y');
 $employee_filter = isset($_GET['employee_id']) ? $_GET['employee_id'] : '';
-$site_filter = isset($_GET['site_id']) ? $_GET['site_id'] : '';
 $search_term = isset($_GET['search']) ? $_GET['search'] : '';
 
 // FIXED: Define workday type multipliers with standardized keys matching attendance.php values
@@ -158,36 +157,7 @@ function calculateHours($time_in, $time_out) {
     return $hours;
 }
 
-// Handle Delete Payroll - Modified to also delete associated records when employee is deleted
-if (isset($_GET['delete_id'])) {
-    $payrollId = $_GET['delete_id'];
-    
-    // Start transaction
-    $conn->begin_transaction();
-    
-    try {
-        // Delete from payroll_deductions first
-        $stmt1 = $conn->prepare("DELETE FROM payroll_deductions WHERE payroll_id = ?");
-        $stmt1->bind_param("i", $payrollId);
-        $stmt1->execute();
-        $stmt1->close();
-        
-        // Then delete payroll
-        $stmt2 = $conn->prepare("DELETE FROM payroll WHERE id = ?");
-        $stmt2->bind_param("i", $payrollId);
-        $stmt2->execute();
-        $stmt2->close();
-        
-        $conn->commit();
-        
-        echo "<script>alert('Payroll record deleted successfully'); window.location.href='payrollList.php';</script>";
-    } catch (Exception $e) {
-        $conn->rollback();
-        error_log("Delete error: " . $e->getMessage());
-        echo "<script>alert('Error deleting payroll record');</script>";
-    }
-    exit;
-}
+// OLD DELETE LOGIC REMOVED - NOW HANDLED VIA AJAX BELOW
 
 // Handle Generate Payroll via AJAX
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_payroll_ajax'])) {
@@ -258,19 +228,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['generate_payroll_ajax
         $days_present = 0;
         $days_on_leave = 0;
         $attendance_records = [];
-        $salary_breakdown = []; 
         
         // Track attendance by workday type
         $workday_type_summary = [];
         
-      // Get attendance records for the period including night shift, workday_type, AND SITE ASSIGNMENTS
-$attendance_query = "SELECT date, status, pm_status, night_status, leave_type, workday_type, 
-                            time_in_am, time_out_am, 
-                            time_in_pm, time_out_pm,
-                            time_in_night, time_out_night,
-                            site_assignment_am, site_assignment_pm, site_assignment_night
-                     FROM attendance 
-                     WHERE employee_id = ? AND date BETWEEN ? AND ?";
+        // Get attendance records for the period including night shift and workday_type
+        $attendance_query = "SELECT date, status, pm_status, night_status, leave_type, workday_type, 
+                                    time_in_am, time_out_am, 
+                                    time_in_pm, time_out_pm,
+                                    time_in_night, time_out_night
+                             FROM attendance 
+                             WHERE employee_id = ? AND date BETWEEN ? AND ?";
         $attendance_stmt = $conn->prepare($attendance_query);
         $attendance_stmt->bind_param("iss", $employee_id, $date_from, $date_to);
         $attendance_stmt->execute();
@@ -326,53 +294,53 @@ $attendance_query = "SELECT date, status, pm_status, night_status, leave_type, w
                     $am_hours = ($am_out - $am_in) / 3600;
                 }
                 
-             // Calculate PM hours if present - FIXED to include 12:00 AM (00:00:00)
-if (!empty($record['time_in_pm']) && !empty($record['time_out_pm'])) {
-    $pm_in = $record['time_in_pm'];
-    $pm_out = $record['time_out_pm'];
-    
-    // Handle midnight (12:00 AM) specially
-    if ($pm_out == '00:00:00') {
-        // Convert to timestamps for calculation
-        $pm_in_ts = strtotime($pm_in);
-        $date_of_pm_in = date('Y-m-d', $pm_in_ts);
-        $next_day = strtotime('+1 day', strtotime($date_of_pm_in));
-        $pm_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-        $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
-        error_log("PM MIDNIGHT CALC: in=$pm_in, out=$pm_out, hours=$pm_hours");
-    } else {
-        $pm_in_ts = strtotime($pm_in);
-        $pm_out_ts = strtotime($pm_out);
-        if ($pm_out_ts < $pm_in_ts) $pm_out_ts += 86400;
-        $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
-    }
-    
-    // Ensure positive hours
-    $pm_hours = max(0, $pm_hours);
-}
+                // Calculate PM hours if present - FIXED to include 12:00 AM (00:00:00)
+                if (!empty($record['time_in_pm']) && !empty($record['time_out_pm'])) {
+                    $pm_in = $record['time_in_pm'];
+                    $pm_out = $record['time_out_pm'];
+                    
+                    // Handle midnight (12:00 AM) specially
+                    if ($pm_out == '00:00:00') {
+                        // Convert to timestamps for calculation
+                        $pm_in_ts = strtotime($pm_in);
+                        $date_of_pm_in = date('Y-m-d', $pm_in_ts);
+                        $next_day = strtotime('+1 day', strtotime($date_of_pm_in));
+                        $pm_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
+                        $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
+                        error_log("PM MIDNIGHT CALC: in=$pm_in, out=$pm_out, hours=$pm_hours");
+                    } else {
+                        $pm_in_ts = strtotime($pm_in);
+                        $pm_out_ts = strtotime($pm_out);
+                        if ($pm_out_ts < $pm_in_ts) $pm_out_ts += 86400;
+                        $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
+                    }
+                    
+                    // Ensure positive hours
+                    $pm_hours = max(0, $pm_hours);
+                }
                 
-               // Calculate Night hours if present - FIXED to include 12:00 AM (00:00:00)
-if (!empty($record['time_in_night']) && !empty($record['time_out_night'])) {
-    $night_in = $record['time_in_night'];
-    $night_out = $record['time_out_night'];
-    
-    // Handle midnight (12:00 AM) specially
-    if ($night_out == '00:00:00') {
-        $night_in_ts = strtotime($night_in);
-        $date_of_night_in = date('Y-m-d', $night_in_ts);
-        $next_day = strtotime('+1 day', strtotime($date_of_night_in));
-        $night_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-        $night_hours = ($night_out_ts - $night_in_ts) / 3600;
-        error_log("NIGHT MIDNIGHT CALC: in=$night_in, out=$night_out, hours=$night_hours");
-    } else {
-        $night_in_ts = strtotime($night_in);
-        $night_out_ts = strtotime($night_out);
-        if ($night_out_ts < $night_in_ts) $night_out_ts += 86400;
-        $night_hours = ($night_out_ts - $night_in_ts) / 3600;
-    }
-    
-    $night_hours = max(0, $night_hours);
-}
+                // Calculate Night hours if present - FIXED to include 12:00 AM (00:00:00)
+                if (!empty($record['time_in_night']) && !empty($record['time_out_night'])) {
+                    $night_in = $record['time_in_night'];
+                    $night_out = $record['time_out_night'];
+                    
+                    // Handle midnight (12:00 AM) specially
+                    if ($night_out == '00:00:00') {
+                        $night_in_ts = strtotime($night_in);
+                        $date_of_night_in = date('Y-m-d', $night_in_ts);
+                        $next_day = strtotime('+1 day', strtotime($date_of_night_in));
+                        $night_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
+                        $night_hours = ($night_out_ts - $night_in_ts) / 3600;
+                        error_log("NIGHT MIDNIGHT CALC: in=$night_in, out=$night_out, hours=$night_hours");
+                    } else {
+                        $night_in_ts = strtotime($night_in);
+                        $night_out_ts = strtotime($night_out);
+                        if ($night_out_ts < $night_in_ts) $night_out_ts += 86400;
+                        $night_hours = ($night_out_ts - $night_in_ts) / 3600;
+                    }
+                    
+                    $night_hours = max(0, $night_hours);
+                }
                 
                 $day_regular_hours = $am_hours + $pm_hours; // Only AM+PM for regular pay
                 
@@ -414,114 +382,61 @@ if (!empty($record['time_in_night']) && !empty($record['time_out_night'])) {
                         error_log("     REGULAR on PAID HOLIDAY: Added guaranteed pay of " . $employee['daily_salary']);
                     }
                     
-                    // ============================================
-// DAY SESSION CALCULATION - WITH SITE BREAKDOWN
-// ============================================
-if ($day_regular_hours > 0) {
-    // Get site assignments from attendance record
-    $am_site = $record['site_assignment_am'] ?? 'Main Office';
-    $pm_site = $record['site_assignment_pm'] ?? $am_site;
-    
-    // Calculate AM session hours (already computed earlier as $am_hours)
-    if ($am_hours > 0) {
-        if (!isset($salary_breakdown[$am_site])) {
-            $salary_breakdown[$am_site] = ['hours' => 0, 'pay' => 0];
-        }
-        
-        $salary_breakdown[$am_site]['hours'] += $am_hours;
-        $session_pay = $am_hours * $hourly_rate * $multipliers['basic'];
-        $salary_breakdown[$am_site]['pay'] += $session_pay;
-        
-        $regular_hours += $am_hours;
-        $regular_pay += $session_pay;
-        
-        error_log("     AM Session: {$am_hours} hrs at {$am_site} = ₱{$session_pay}");
-    }
-    
-    // Calculate PM session hours
-    if ($pm_hours > 0) {
-        if (!isset($salary_breakdown[$pm_site])) {
-            $salary_breakdown[$pm_site] = ['hours' => 0, 'pay' => 0];
-        }
-        
-        $salary_breakdown[$pm_site]['hours'] += $pm_hours;
-        $session_pay = $pm_hours * $hourly_rate * $multipliers['basic'];
-        $salary_breakdown[$pm_site]['pay'] += $session_pay;
-        
-        $regular_hours += $pm_hours;
-        $regular_pay += $session_pay;
-        
-        error_log("     PM Session: {$pm_hours} hrs at {$pm_site} = ₱{$session_pay}");
-    }
-    
-    // Handle overtime if total day hours exceed 8
-    if ($day_regular_hours > 8) {
-        $overtime_hours_for_day = $day_regular_hours - 8;
-        // Attribute overtime to PM site (or you can make it configurable)
-        $overtime_site = $pm_site;
-        
-        if (!isset($salary_breakdown[$overtime_site])) {
-            $salary_breakdown[$overtime_site] = ['hours' => 0, 'pay' => 0];
-        }
-        
-        $salary_breakdown[$overtime_site]['hours'] += $overtime_hours_for_day;
-        $overtime_pay_for_day = $overtime_hours_for_day * $hourly_rate * $multipliers['overtime'];
-        $salary_breakdown[$overtime_site]['pay'] += $overtime_pay_for_day;
-        
-        $overtime_hours += $overtime_hours_for_day;
-        $overtime_pay += $overtime_pay_for_day;
-        
-        error_log("     Overtime: {$overtime_hours_for_day} hrs at {$overtime_site} = ₱{$overtime_pay_for_day}");
-    }
-}
+                    // DAY SESSION CALCULATION (AM+PM) - Treat independently with its own 8-hour quota
+                    if ($day_regular_hours > 0) {
+                        if ($day_regular_hours <= 8) {
+                            // All day hours are regular
+                            $regular_hours += $day_regular_hours;
+                            // For regular employees on paid holidays, use basic multiplier (1.0) for hours worked
+                            if ($is_paid_holiday_for_regular) {
+                                $regular_pay += $day_regular_hours * $hourly_rate * 1.0;
+                                error_log("     Day Regular (<=8) for Regular on Paid Holiday: " . $day_regular_hours . " hrs × " . $hourly_rate . " × 1.0 = " . ($day_regular_hours * $hourly_rate * 1.0));
+                            } else {
+                                $regular_pay += $day_regular_hours * $hourly_rate * $multipliers['basic'];
+                                error_log("     Day Regular (<=8): " . $day_regular_hours . " hrs × " . $hourly_rate . " × " . $multipliers['basic'] . " = " . ($day_regular_hours * $hourly_rate * $multipliers['basic']));
+                            }
+                        } else {
+                            // Split day hours into regular (8) and overtime (excess)
+                            $regular_hours += 8;
+                            $overtime_hours += ($day_regular_hours - 8);
+                            
+                            // For regular employees on paid holidays, use basic multiplier (1.0) for regular hours
+                            if ($is_paid_holiday_for_regular) {
+                                $regular_pay += 8 * $hourly_rate * 1.0;
+                                error_log("     Day Regular (8) for Regular on Paid Holiday: 8 hrs × " . $hourly_rate . " × 1.0 = " . (8 * $hourly_rate * 1.0));
+                            } else {
+                                $regular_pay += 8 * $hourly_rate * $multipliers['basic'];
+                                error_log("     Day Regular (8): 8 hrs × " . $hourly_rate . " × " . $multipliers['basic'] . " = " . (8 * $hourly_rate * $multipliers['basic']));
+                            }
+                            
+                            // Overtime always uses overtime multiplier
+                            $overtime_pay += ($day_regular_hours - 8) * $hourly_rate * $multipliers['overtime'];
+                            error_log("     Day Overtime: " . ($day_regular_hours - 8) . " hrs × " . $hourly_rate . " × " . $multipliers['overtime'] . " = " . (($day_regular_hours - 8) * $hourly_rate * $multipliers['overtime']));
+                        }
+                    }
                     
-// ============================================
-// NIGHT SESSION CALCULATION - WITH SITE BREAKDOWN
-// ============================================
-if ($night_hours > 0) {
-    error_log("     Night hours: " . $night_hours . " hrs - Processing with site breakdown");
-    
-    // Get night site assignment
-    $night_site = $record['site_assignment_night'] ?? ($pm_site ?? 'Main Office');
-    
-    if (!isset($salary_breakdown[$night_site])) {
-        $salary_breakdown[$night_site] = ['hours' => 0, 'pay' => 0];
-    }
-    
-    if ($night_hours <= 8) {
-        // All night hours are regular night
-        $regular_night_hours += $night_hours;
-        
-        // CHANGED: Always use night multiplier (removed paid holiday condition)
-        $night_pay = $night_hours * $hourly_rate * $multipliers['night'];
-        $regular_night_pay += $night_pay;
-        
-        $salary_breakdown[$night_site]['hours'] += $night_hours;
-        $salary_breakdown[$night_site]['pay'] += $night_pay;
-        
-        error_log("     Night Regular: {$night_hours} hrs at {$night_site} = ₱{$night_pay}");
-        
-    } else {
-        // Split night hours into regular (8) and overtime (excess)
-        $regular_night_hours += 8;
-        $night_shift_overtime_hours += ($night_hours - 8);
-        
-        // CHANGED: Always use night multiplier for regular night hours (first 8 hours)
-        $regular_night_pay_for_day = 8 * $hourly_rate * $multipliers['night'];
-        $regular_night_pay += $regular_night_pay_for_day;
-        
-        // Overtime night pay (unchanged - uses overtime multiplier)
-        $night_overtime_pay_for_day = ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
-        $night_shift_overtime_pay += $night_overtime_pay_for_day;
-        
-        // Add to breakdown
-        $salary_breakdown[$night_site]['hours'] += $night_hours;
-        $salary_breakdown[$night_site]['pay'] += ($regular_night_pay_for_day + $night_overtime_pay_for_day);
-        
-        error_log("     Night Regular (8 hrs) at {$night_site}: ₱{$regular_night_pay_for_day}");
-        error_log("     Night Overtime (" . ($night_hours - 8) . " hrs) at {$night_site}: ₱{$night_overtime_pay_for_day}");
-    }
-}
+                    // NIGHT SESSION CALCULATION - Treat independently with its own 8-hour quota
+                    if ($night_hours > 0) {
+                        error_log("     Night hours: " . $night_hours . " hrs - Treating independently with its own 8-hour quota");
+                        
+                        if ($night_hours <= 8) {
+                            $regular_night_hours += $night_hours;
+                            // FIXED: Use night multiplier for both regular and paid holiday employees
+                            $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
+                            error_log("     All night hours: " . $night_hours . " hrs × " . $hourly_rate . " × " . $multipliers['night'] . " = " . ($night_hours * $hourly_rate * $multipliers['night']));
+                        } else {
+                            $regular_night_hours += 8;
+                            $night_shift_overtime_hours += ($night_hours - 8);
+                            
+                            // FIXED: Use night multiplier for regular night hours (first 8 hours)
+                            $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
+                            error_log("     Night Regular (8): 8 hrs × " . $hourly_rate . " × " . $multipliers['night'] . " = " . (8 * $hourly_rate * $multipliers['night']));
+                            
+                            // Night overtime uses the same overtime multiplier as day
+                            $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
+                            error_log("     Night Overtime: " . ($night_hours - 8) . " hrs × " . $hourly_rate . " × " . $multipliers['overtime'] . " = " . (($night_hours - 8) * $hourly_rate * $multipliers['overtime']));
+                        }
+                    }
                 }
                 else if ($is_absent) {
                     // Absent employee
@@ -571,10 +486,8 @@ if ($night_hours > 0) {
         
         $response['success'] = true;
         $response['payroll'] = [
-            
             'employee' => $employee,
             'date_from' => $date_from,
-            'salary_breakdown' => $salary_breakdown,
             'date_to' => $date_to,
             'total_days' => $total_days,
             'days_present' => $days_present,
@@ -608,11 +521,6 @@ if ($night_hours > 0) {
 
 // Handle Save Payroll
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
-    // Clear any previous output buffers
-    while (ob_get_level()) {
-        ob_end_clean();
-    }
-    
     header('Content-Type: application/json');
     
     $response = ['success' => false, 'message' => ''];
@@ -622,33 +530,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
         error_log("=== SAVE PAYROLL START ===");
         error_log("POST data: " . print_r($_POST, true));
         
-        // Check if required fields exist
-        if (!isset($_POST['employee_id']) || !isset($_POST['date_from']) || !isset($_POST['date_to'])) {
-            throw new Exception("Missing required fields: employee_id, date_from, date_to");
-        }
-        
         $employee_id = $_POST['employee_id'];
         $date_from = $_POST['date_from'];
         $date_to = $_POST['date_to'];
-        $base_salary = isset($_POST['base_salary']) ? floatval($_POST['base_salary']) : 0;
-        $total_deductions = isset($_POST['total_deductions']) ? floatval($_POST['total_deductions']) : 0;
-        $net_pay = isset($_POST['net_pay']) ? floatval($_POST['net_pay']) : 0;
-        $total_work_hours = isset($_POST['total_work_hours']) ? floatval($_POST['total_work_hours']) : 0;
-        $deductions_json = isset($_POST['deductions']) ? $_POST['deductions'] : '[]';
-        $salary_breakdown_json = isset($_POST['salary_breakdown']) ? $_POST['salary_breakdown'] : '{}';
+        $base_salary = $_POST['base_salary'];
+        $total_deductions = $_POST['total_deductions'];
+        $net_pay = $_POST['net_pay'];
+        $total_work_hours = $_POST['total_work_hours'];
+        $deductions_json = $_POST['deductions'];
         
         error_log("Employee ID: $employee_id");
         error_log("Date From: $date_from");
         error_log("Date To: $date_to");
         error_log("Base Salary: $base_salary");
-        error_log("Total Deductions: $total_deductions");
+        error_Log("Total Deductions: $total_deductions");
         error_log("Net Pay: $net_pay");
         error_log("Work Hours: $total_work_hours");
         error_log("Deductions JSON: $deductions_json");
-        error_log("Salary Breakdown JSON: $salary_breakdown_json");
         
-        if (!$employee_id || !$date_from || !$date_to) {
-            $response['message'] = 'Employee ID and dates are required';
+        if (!$employee_id || !$date_from || !$date_to || !$base_salary || !$net_pay) {
+            $response['message'] = 'All fields are required';
             echo json_encode($response);
             exit;
         }
@@ -665,31 +566,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
         
         $payroll_id = null;
         
-        // Start transaction
-        $conn->begin_transaction();
-        
         if ($check_result->num_rows > 0) {
             // Update existing
             $row = $check_result->fetch_assoc();
             $payroll_id = $row['id'];
             error_log("Updating existing payroll ID: $payroll_id");
             
-            $update_query = "UPDATE payroll SET base_salary = ?, total_deductions = ?, net_pay = ?, total_work_hours = ?, salary_breakdown = ?, status = 'pending' WHERE id = ?";
+            $update_query = "UPDATE payroll SET base_salary = ?, total_deductions = ?, net_pay = ?, total_work_hours = ?, status = 'pending' WHERE id = ?";
             $update_stmt = $conn->prepare($update_query);
             if (!$update_stmt) {
                 throw new Exception("Prepare update failed: " . $conn->error);
             }
-            $update_stmt->bind_param("ddddssi", $base_salary, $total_deductions, $net_pay, $total_work_hours, $salary_breakdown_json, $payroll_id);
+            $update_stmt->bind_param("ddddsi", $base_salary, $total_deductions, $net_pay, $total_work_hours, $payroll_id);
             if (!$update_stmt->execute()) {
                 throw new Exception('Error updating payroll: ' . $update_stmt->error);
             }
             $update_stmt->close();
             error_log("Update successful");
         } else {
-            // Insert new
-            error_log("Inserting new payroll record");
-            
-            // Get table columns
+            // Insert new - let's first check what columns actually exist
             $columns_query = "SHOW COLUMNS FROM payroll";
             $columns_result = $conn->query($columns_query);
             $existing_columns = [];
@@ -698,29 +593,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
             }
             error_log("Existing columns: " . implode(", ", $existing_columns));
             
-            // Check if salary_breakdown column exists
-            if (!in_array('salary_breakdown', $existing_columns)) {
-                error_log("WARNING: salary_breakdown column does not exist in payroll table!");
-                // You may want to add it: ALTER TABLE payroll ADD COLUMN salary_breakdown TEXT NULL;
-            }
-            
+            // Build dynamic INSERT query based on existing columns
             $insert_columns = ['employee_id', 'date_from', 'date_to', 'base_salary', 'total_deductions', 'net_pay', 'total_work_hours'];
             $insert_values = ['?', '?', '?', '?', '?', '?', '?'];
             $bind_types = "issdddd";
             $bind_params = [$employee_id, $date_from, $date_to, $base_salary, $total_deductions, $net_pay, $total_work_hours];
             
-            // Add salary_breakdown if column exists
-            if (in_array('salary_breakdown', $existing_columns)) {
-                $insert_columns[] = 'salary_breakdown';
+            // Add optional columns if they exist
+            if (in_array('payroll_type', $existing_columns)) {
+                $insert_columns[] = 'payroll_type';
                 $insert_values[] = '?';
                 $bind_types .= "s";
-                $bind_params[] = $salary_breakdown_json;
-                error_log("Adding salary_breakdown column to insert");
-            } else {
-                error_log("salary_breakdown column not found, skipping");
+                $bind_params[] = 'regular';
             }
             
-            // Add status column if exists
             if (in_array('status', $existing_columns)) {
                 $insert_columns[] = 'status';
                 $insert_values[] = '?';
@@ -728,11 +614,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
                 $bind_params[] = 'pending';
             }
             
-            // Add date column if exists
             if (in_array('date', $existing_columns)) {
                 $insert_columns[] = 'date';
                 $insert_values[] = 'NOW()';
                 // NOW() doesn't need a parameter
+            }
+            
+            if (in_array('pay_period', $existing_columns)) {
+                $insert_columns[] = 'pay_period';
+                $insert_values[] = '?';
+                $bind_types .= "s";
+                $pay_period = date('Y-m-01', strtotime($date_from));
+                $bind_params[] = $pay_period;
             }
             
             // Build the query
@@ -741,7 +634,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
             
             error_log("Dynamic insert query: " . $insert_query);
             error_log("Bind types: " . $bind_types);
-            error_log("Bind params count: " . count($bind_params));
+            error_log("Bind params: " . print_r($bind_params, true));
             
             $insert_stmt = $conn->prepare($insert_query);
             if (!$insert_stmt) {
@@ -778,9 +671,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
         if (!empty($deductions) && is_array($deductions)) {
             // Check if payroll_deductions table exists
             $table_check = $conn->query("SHOW TABLES LIKE 'payroll_deductions'");
-            if ($table_check && $table_check->num_rows > 0) {
+            if ($table_check->num_rows > 0) {
                 
-                // Insert new payroll_deductions
+                // Insert new payroll_deductions - FIX: Only insert if deduction_id > 0
                 $insert_deduction_stmt = $conn->prepare("INSERT INTO payroll_deductions (payroll_id, deduction_id, deduction_name, amount) VALUES (?, ?, ?, ?)");
                 if (!$insert_deduction_stmt) {
                     throw new Exception("Prepare insert deductions failed: " . $conn->error);
@@ -791,12 +684,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
                     $deduction_name = isset($deduction['deduction_name']) ? $deduction['deduction_name'] : '';
                     $amount = isset($deduction['amount']) ? floatval($deduction['amount']) : 0;
                     
-                    $insert_deduction_stmt->bind_param("iisd", $payroll_id, $deduction_id, $deduction_name, $amount);
-                    if (!$insert_deduction_stmt->execute()) {
-                        error_log("Error inserting deduction: " . $insert_deduction_stmt->error);
-                    } else {
-                        error_log("Inserted deduction: $deduction_name - $amount with ID: $deduction_id");
+                    // FIX: Skip deductions with ID 0 (custom deductions that don't exist in deduction table)
+                    if ($deduction_id == 0) {
+                        error_log("Skipping deduction with ID 0: $deduction_name - $amount (doesn't exist in deduction table)");
+                        continue;
                     }
+                    
+                    // Verify that the deduction_id exists in the deduction table
+                    $verify_query = "SELECT id FROM deduction WHERE id = ?";
+                    $verify_stmt = $conn->prepare($verify_query);
+                    $verify_stmt->bind_param("i", $deduction_id);
+                    $verify_stmt->execute();
+                    $verify_result = $verify_stmt->get_result();
+                    
+                    if ($verify_result->num_rows > 0) {
+                        // Deduction exists, safe to insert
+                        $insert_deduction_stmt->bind_param("iisd", $payroll_id, $deduction_id, $deduction_name, $amount);
+                        if (!$insert_deduction_stmt->execute()) {
+                            error_log("Error inserting deduction: " . $insert_deduction_stmt->error);
+                            // Continue with other deductions even if one fails
+                        } else {
+                            error_log("Inserted deduction: $deduction_name - $amount with ID: $deduction_id");
+                        }
+                    } else {
+                        error_log("Skipping deduction with non-existent ID: $deduction_id - $deduction_name");
+                    }
+                    $verify_stmt->close();
                 }
                 $insert_deduction_stmt->close();
             } else {
@@ -820,18 +733,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_payroll'])) {
         error_log("Stack trace: " . $e->getTraceAsString());
     }
     
-    // Ensure clean JSON output
-    $json_output = json_encode($response);
-    if ($json_output === false) {
-        error_log("JSON encode error: " . json_last_error_msg());
-        $json_output = json_encode(['success' => false, 'message' => 'JSON encoding error: ' . json_last_error_msg()]);
-    }
-    echo $json_output;
+    echo json_encode($response);
     exit;
 }
 
-// Handle Recalculate Payroll for Edit
-// Handle Recalculate Payroll for Edit
+// Handle AJAX request to delete payroll
+if (isset($_POST['ajax']) && $_POST['ajax'] == 'delete_payroll') {
+    header('Content-Type: application/json');
+    
+    $payroll_id = $_POST['payroll_id'];
+    
+    // Start transaction
+    $conn->begin_transaction();
+    
+    try {
+        // Delete from payroll_deductions first (child records)
+        $stmt1 = $conn->prepare("DELETE FROM payroll_deductions WHERE payroll_id = ?");
+        $stmt1->bind_param("i", $payroll_id);
+        $stmt1->execute();
+        $stmt1->close();
+        
+        // Then delete from payroll (parent record)
+        $stmt2 = $conn->prepare("DELETE FROM payroll WHERE id = ?");
+        $stmt2->bind_param("i", $payroll_id);
+        $stmt2->execute();
+        $stmt2->close();
+        
+        $conn->commit();
+        
+        echo json_encode(['success' => true, 'message' => 'Payroll record deleted successfully!']);
+        
+    } catch (Exception $e) {
+        $conn->rollback();
+        echo json_encode(['success' => false, 'message' => 'Error deleting payroll record: ' . $e->getMessage()]);
+    }
+    exit;
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['recalculate_payroll'])) {
     header('Content-Type: application/json');
     
@@ -884,18 +821,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['recalculate_payroll']
         $days_present = 0;
         $days_on_leave = 0;
         $attendance_records = [];
-       $salary_breakdown = []; // Initialize site-based breakdown array
         
         // Track attendance by workday type
         $workday_type_summary = [];
         
-      $attendance_query = "SELECT date, status, pm_status, night_status, leave_type, workday_type, 
-                            time_in_am, time_out_am, 
-                            time_in_pm, time_out_pm,
-                            time_in_night, time_out_night,
-                            site_assignment_am, site_assignment_pm, site_assignment_night
-                     FROM attendance 
-                     WHERE employee_id = ? AND date BETWEEN ? AND ?";
+        // Get attendance records for the period including night shift and workday_type
+        $attendance_query = "SELECT date, status, pm_status, night_status, leave_type, workday_type, 
+                                    time_in_am, time_out_am, 
+                                    time_in_pm, time_out_pm,
+                                    time_in_night, time_out_night
+                             FROM attendance 
+                             WHERE employee_id = ? AND date BETWEEN ? AND ?";
         $attendance_stmt = $conn->prepare($attendance_query);
         $attendance_stmt->bind_param("iss", $employee_id, $date_from, $date_to);
         $attendance_stmt->execute();
@@ -1065,25 +1001,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['recalculate_payroll']
                             $overtime_pay += ($day_regular_hours - 8) * $hourly_rate * $multipliers['overtime'];
                         }
                     }
+                    
                     // NIGHT SESSION CALCULATION - Treat independently with its own 8-hour quota
-if ($night_hours > 0) {
-    if ($night_hours <= 8) {
-        // All night hours are regular night
-        $regular_night_hours += $night_hours;
-        // FIXED: Use night multiplier for both regular and paid holiday employees
-        $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
-    } else {
-        // Split night hours into regular (8) and overtime (excess)
-        $regular_night_hours += 8;
-        $night_shift_overtime_hours += ($night_hours - 8);
-        
-        // FIXED: Use night multiplier for regular night hours (first 8 hours)
-        $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
-        
-        // Night overtime uses the same overtime multiplier as day
-        $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
-    }
-}
+                    if ($night_hours > 0) {
+                        if ($night_hours <= 8) {
+                            $regular_night_hours += $night_hours;
+                            // FIXED: Use night multiplier for both regular and paid holiday employees
+                            $regular_night_pay += $night_hours * $hourly_rate * $multipliers['night'];
+                        } else {
+                            $regular_night_hours += 8;
+                            $night_shift_overtime_hours += ($night_hours - 8);
+                            
+                            // FIXED: Use night multiplier for regular night hours (first 8 hours)
+                            $regular_night_pay += 8 * $hourly_rate * $multipliers['night'];
+                            
+                            $night_shift_overtime_pay += ($night_hours - 8) * $hourly_rate * $multipliers['overtime'];
+                        }
+                    }
                 }
                 else if ($is_absent) {
                     // Absent employee
@@ -1116,7 +1050,6 @@ if ($night_hours > 0) {
         $response['payroll'] = [
             'total_days' => $total_days,
             'days_present' => $days_present,
-            'salary_breakdown' => $salary_breakdown,  // ADD THIS LINE
             'days_on_leave' => $days_on_leave,
             'total_work_hours' => round($total_work_hours, 2),
             'regular_hours' => round($regular_hours, 2),
@@ -1308,8 +1241,6 @@ if (isset($_GET['get_payroll'])) {
             $response['success'] = true;
             $response['data'] = $payroll;
             $response['timestamp'] = $timestamp;
-                // Decode salary_breakdown JSON
-    $payroll['salary_breakdown'] = json_decode($payroll['salary_breakdown'] ?? '{}', true);
         } else {
             $response['message'] = 'Payroll not found';
         }
@@ -1452,16 +1383,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_edited_payroll']
         }
         $check_stmt->close();
         
-       $update_query = "UPDATE payroll SET 
-    date_from = ?, 
-    date_to = ?, 
-    base_salary = ?, 
-    total_deductions = ?, 
-    net_pay = ?, 
-    total_work_hours = ?, 
-    salary_breakdown = ?,
-    status = ? 
-    WHERE id = ?";
+        // Update payroll with all changes - ensure all fields are updated correctly
+        $update_query = "UPDATE payroll SET 
+            date_from = ?, 
+            date_to = ?, 
+            base_salary = ?, 
+            total_deductions = ?, 
+            net_pay = ?, 
+            total_work_hours = ?, 
+            status = ? 
+            WHERE id = ?";
             
         $update_stmt = $conn->prepare($update_query);
         if (!$update_stmt) {
@@ -1474,18 +1405,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_edited_payroll']
         error_log("Total Deductions: $total_deductions");
         error_log("Net Pay: $net_pay");
         error_log("Work Hours: $total_work_hours");
-        $salary_breakdown_json = isset($_POST['salary_breakdown']) ? $_POST['salary_breakdown'] : '{}';
-      $update_stmt->bind_param("ssddddssi", 
-    $date_from, 
-    $date_to, 
-    $base_salary, 
-    $total_deductions, 
-    $net_pay, 
-    $total_work_hours,
-    $salary_breakdown_json,
-    $status, 
-    $payroll_id
-);
+        
+        $update_stmt->bind_param("ssddddsi", 
+            $date_from, 
+            $date_to, 
+            $base_salary, 
+            $total_deductions, 
+            $net_pay, 
+            $total_work_hours, 
+            $status, 
+            $payroll_id
+        );
         
         if (!$update_stmt->execute()) {
             throw new Exception('Error updating payroll: ' . $update_stmt->error);
@@ -1666,11 +1596,7 @@ $custom_deductions_result = $conn->query($custom_deductions_query);
 $employees_filter_query = "SELECT id, first_name, last_name FROM employees WHERE status = 'active' ORDER BY first_name";
 $employees_filter_result = $conn->query($employees_filter_query);
 
-// Get all sites for filter dropdown
-$sites_query = "SELECT id, site_name FROM site_monitoring ORDER BY site_name";
-$sites_result = $conn->query($sites_query);
-
-// Build the main query with filters
+// Build the main query with filters (site filter removed)
 $sql = "
     SELECT p.id, p.date_from, p.date_to, 
            COALESCE(p.base_salary, 0) as base_salary, 
@@ -1682,12 +1608,9 @@ $sql = "
            COALESCE(e.position, 'N/A') as position, 
            e.id as employee_id, 
            COALESCE(e.daily_salary, 0) as daily_salary,
-           COALESCE(e.contact_num, 'N/A') as contact_num,
-           COALESCE(s.site_name, 'N/A') as site_name
+           COALESCE(e.contact_num, 'N/A') as contact_num
     FROM payroll p
     LEFT JOIN employees e ON e.id = p.employee_id
-    LEFT JOIN site_employee se ON se.employee_id = e.id
-    LEFT JOIN site_monitoring s ON s.id = se.site_id
     WHERE MONTH(p.date_from) = ? AND YEAR(p.date_from) = ?
 ";
 
@@ -1698,12 +1621,6 @@ $types = "ii";
 if (!empty($employee_filter)) {
     $sql .= " AND e.id = ?";
     $params[] = $employee_filter;
-    $types .= "i";
-}
-
-if (!empty($site_filter)) {
-    $sql .= " AND s.id = ?";
-    $params[] = $site_filter;
     $types .= "i";
 }
 
@@ -1750,7 +1667,6 @@ $employees_query = "SELECT id, first_name, last_name, position, COALESCE(daily_s
 $employees_result = $conn->query($employees_query);
 ?>
 
-<!-- The rest of your HTML and JavaScript remains exactly the same - only the displayPayrollSummary function below is modified to show separate rows for Day Overtime, Regular Night, and Night Overtime -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2102,88 +2018,68 @@ $employees_result = $conn->query($employees_query);
         border: 1px solid #f5c6cb;
     }
     
- /* Action Buttons - Square Shape */
-.action-buttons {
-    display: flex;
-    flex-direction: column;  /* Vertical layout */
-    gap: 6px;
-    justify-content: center;
-    align-items: center;
-}
-
-.action-btn {
-    padding: 0;  /* Remove padding para square */
-    border: none;
-    border-radius: 8px;  /* Slightly rounded corners, pwede ring 0 for perfect square */
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    transition: all 0.3s;
-    white-space: nowrap;
-    width: 40px;  /* Fixed width */
-    height: 40px;  /* Fixed height - same as width para square */
-    min-width: 40px;
-    max-width: 40px;
-}
-
-/* Optional: Kung gusto mong bilog (circle) instead of square, gamitin ito:
-.action-btn {
-    border-radius: 50%;
-}
-*/
-
-.action-btn.view {
-    background: linear-gradient(135deg, #75e6da, #62d4c8);
-    color: white;
-    box-shadow: 0 2px 6px rgba(117, 230, 218, 0.3);
-}
-
-.action-btn.view:hover {
-    background: linear-gradient(135deg, #62d4c8, #4fb3aa);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(117, 230, 218, 0.4);
-}
-
-.action-btn.edit {
-    background: linear-gradient(135deg, #4CAF50, #2E7D32);
-    color: white;
-    box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
-}
-
-.action-btn.edit:hover {
-    background: linear-gradient(135deg, #2E7D32, #1B5E20);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
-}
-
-.action-btn.delete {
-    background: linear-gradient(135deg, #f44336, #d32f2f);
-    color: white;
-    box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
-}
-
-.action-btn.delete:hover {
-    background: linear-gradient(135deg, #d32f2f, #b71c1c);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(244, 67, 54, 0.4);
-}
-
-/* Hide text on small screens (icon only) */
-@media (max-width: 768px) {
-    .action-btn span {
-        display: none;
+    /* Action Buttons - MODIFIED: Changed to vertical layout */
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        justify-content: center;
+        align-items: center;
+        flex-wrap: wrap;
     }
     
     .action-btn {
-        width: 35px;
-        height: 35px;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 8px;
         font-size: 0.8rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        transition: all 0.3s;
+        white-space: nowrap;
+        width: 100%;
+        justify-content: center;
     }
-}
+    
+    .action-btn.view {
+        background: linear-gradient(135deg, #75e6da, #62d4c8);
+        color: white;
+        box-shadow: 0 2px 6px rgba(117, 230, 218, 0.3);
+    }
+    
+    .action-btn.view:hover {
+        background: linear-gradient(135deg, #62d4c8, #4fb3aa);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(117, 230, 218, 0.4);
+    }
+    
+    .action-btn.edit {
+        background: linear-gradient(135deg, #4CAF50, #2E7D32);
+        color: white;
+        box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+    }
+    
+    .action-btn.edit:hover {
+        background: linear-gradient(135deg, #2E7D32, #1B5E20);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
+    }
+    
+    .action-btn.delete {
+        background: linear-gradient(135deg, #f44336, #d32f2f);
+        color: white;
+        box-shadow: 0 2px 6px rgba(244, 67, 54, 0.3);
+    }
+    
+    .action-btn.delete:hover {
+        background: linear-gradient(135deg, #d32f2f, #b71c1c);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(244, 67, 54, 0.4);
+    }
+    
     /* Modal Styles */
     .modal {
         display: none;
@@ -3819,7 +3715,7 @@ $employees_result = $conn->query($employees_query);
                 Filter Payroll Records
             </div>
             <form method="GET" action="payrollList.php" id="filterForm">
-                <div class="filter-grid" style="grid-template-columns: 1fr 1fr 1fr auto;">
+                <div class="filter-grid">
                     <div class="filter-group">
                         <label for="month">Month</label>
                         <select name="month" id="month" class="filter-control">
@@ -3851,8 +3747,6 @@ $employees_result = $conn->query($employees_query);
                         </select>
                     </div>
                     
-                    
-                    
                     <div class="filter-group search-group">
                         <label for="search">Search</label>
                         <input type="text" name="search" id="search" class="filter-control" placeholder="Search by name, position" value="<?php echo htmlspecialchars($search_term); ?>">
@@ -3882,7 +3776,6 @@ $employees_result = $conn->query($employees_query);
                     <thead>
                         <tr>
                             <th>Employee Information</th>
-                            
                             <th>Days Worked</th>
                             <th>Hours Worked</th>
                             <th>Gross Salary</th>
@@ -3933,13 +3826,12 @@ $employees_result = $conn->query($employees_query);
                                                 <span><i class="fas fa-phone"></i> <?php echo htmlspecialchars($row['contact_num'] ?? 'N/A'); ?></span>
                                             </div>
                                         </div>
-                                    </td>
-                                   
-                                    <td><?php echo $days_worked; ?></td>
-                                    <td><?php echo number_format(floatval($row['total_work_hours']), 2); ?></td>
-                                    <td>₱<?php echo number_format(floatval($row['base_salary']), 2); ?></td>
-                                    <td>₱<?php echo number_format(floatval($row['total_deductions']), 2); ?></td>
-                                    <td class="net-pay-highlight">₱<?php echo number_format(floatval($row['net_pay']), 2); ?></td>
+                                    </div>
+                                    <td><?php echo $days_worked; ?></div>
+                                    <td><?php echo number_format(floatval($row['total_work_hours']), 2); ?></div>
+                                    <td>₱<?php echo number_format(floatval($row['base_salary']), 2); ?></div>
+                                    <td>₱<?php echo number_format(floatval($row['total_deductions']), 2); ?></div>
+                                    <td class="net-pay-highlight">₱<?php echo number_format(floatval($row['net_pay']), 2); ?></div>
                                     <td>
                                         <div>
                                             <div><?php echo $date_from; ?></div>
@@ -3948,13 +3840,13 @@ $employees_result = $conn->query($employees_query);
                                                 <?php echo date('F', mktime(0,0,0,$month,10)) . ' ' . $year; ?>
                                             </div>
                                         </div>
-                                    </td>
+                                    </div>
                                     <td>
                                         <span class="status-badge <?php echo $statusClass; ?>">
                                             <i class="fas <?php echo $statusIcon; ?>"></i>
                                             <?php echo ucfirst($status); ?>
                                         </span>
-                                    </td>
+                                    </div>
                                     <td>
                                         <div class="action-buttons">
                                             <button onclick="viewPayroll(<?php echo $row['id']; ?>)" class="action-btn view" title="View Details">
@@ -3968,21 +3860,21 @@ $employees_result = $conn->query($employees_query);
                                                 <i class="fas fa-trash-alt"></i>
                                             </button>
                                         </div>
-                                    </td>
+                                    </div>
                                 </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
                             <tr>
-                                <td colspan="10">
+                                <td colspan="9">
                                     <div class="empty-state">
                                         <i class="fas fa-money-bill-wave"></i>
                                         <p>No payroll records found for the selected filters</p>
                                     </div>
-                                </td>
-                            </tr>
+                                </div>
+                            </div>
                         <?php endif; ?>
                     </tbody>
-                </table>
+                </div>
             </div>
         </div>
     </div>
@@ -4689,7 +4581,6 @@ $employees_result = $conn->query($employees_query);
         document.getElementById('month').value = '<?php echo date('m'); ?>';
         document.getElementById('year').value = '<?php echo date('Y'); ?>';
         document.getElementById('employee_id').value = '';
-        document.getElementById('site_id').value = '';
         document.getElementById('search').value = '';
         document.getElementById('filterForm').submit();
     }
@@ -5201,242 +5092,282 @@ $employees_result = $conn->query($employees_query);
             hideLoading();
         }
     }
-function displayPayrollSummary(data) {
-    const container = document.getElementById('payrollSummary');
-    const emp = data.employee;
-    
-    const dateFrom = formatDateToLong(data.date_from);
-    const dateTo = formatDateToLong(data.date_to);
-    
-    // Calculate total regular day hours (AM + PM only, not night)
-    const totalRegularHours = parseFloat(data.regular_hours) || 0;
-    const totalRegularPay = parseFloat(data.regular_pay) || 0;
-    
-    // Build breakdown HTML from salary_breakdown data (by site)
-    let siteBreakdownHtml = '';
-    let hasBreakdown = data.salary_breakdown && Object.keys(data.salary_breakdown).length > 0;
-    
-    if (hasBreakdown) {
-        // Display each site with its hours and pay
-        for (const [site, breakdown] of Object.entries(data.salary_breakdown)) {
-            if (breakdown.hours > 0) {
-                siteBreakdownHtml += `
-                    <div class="breakdown-row">
+
+    // Display payroll summary (Enhanced UI) - MODIFIED TO SHOW SEPARATE ROWS FOR DAY OVERTIME, REGULAR NIGHT, AND NIGHT OVERTIME
+    function displayPayrollSummary(data) {
+        const container = document.getElementById('payrollSummary');
+        const emp = data.employee;
+        
+        // Format dates to Month Day, Year format
+        const dateFrom = formatDateToLong(data.date_from);
+        const dateTo = formatDateToLong(data.date_to);
+        
+        // Build workday type summary table HTML - ONLY SHOW WORKDAY TYPES THAT HAVE RECORDS
+        let workdaySummaryHtml = '';
+        if (data.workday_type_summary && Object.keys(data.workday_type_summary).length > 0) {
+            workdaySummaryHtml = `
+                <div class="workday-summary">
+                    <div class="workday-header">
+                        <i class="fas fa-calendar-alt"></i>
+                        Attendance Summary by Workday Type
+                    </div>
+                    <table class="workday-table">
+                        <thead>
+                            <tr>
+                                <th>Workday Type</th>
+                                <th>Total Days</th>
+                                <th>Present</th>
+                                <th>Absent</th>
+                                <th>On Leave</th>
+                                <th>Total Hours</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            // Define preferred order for workday types
+            const workdayOrder = [
+                'Ordinary Working Day',
+                'Rest Day / Sunday',
+                'Special (Non-Working) Day',
+                'Special Day that falls on Rest Day',
+                'Regular Holiday',
+                'Regular Holiday on the Rest Day',
+                'Double Holiday',
+                'Double Holiday on the Rest Day'
+            ];
+            
+            // Get all workday types that exist in the data
+            const existingTypes = Object.keys(data.workday_type_summary);
+            
+            // Sort them according to the preferred order
+            const sortedTypes = workdayOrder.filter(type => existingTypes.includes(type));
+            
+            // Add any types that might not be in the predefined order (if any)
+            existingTypes.forEach(type => {
+                if (!workdayOrder.includes(type)) {
+                    sortedTypes.push(type);
+                }
+            });
+            
+            sortedTypes.forEach(type => {
+                const summary = data.workday_type_summary[type];
+                workdaySummaryHtml += `
+                    <tr>
+                        <td class="workday-type-name">${type}</td>
+                        <td class="workday-count">${summary.count}</td>
+                        <td class="workday-present">${summary.present_count}</td>
+                        <td class="workday-absent">${summary.absent_count}</td>
+                        <td class="workday-leave">${summary.leave_count}</td>
+                        <td>${summary.total_hours.toFixed(2)}</div>
+                    </tr>
+                `;
+            });
+            
+            workdaySummaryHtml += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // Build deductions HTML for salary breakdown
+        let deductionsBreakdownHtml = '';
+        if (data.deductions && data.deductions.length > 0) {
+            data.deductions.forEach(d => {
+                deductionsBreakdownHtml += `
+                    <div class="breakdown-row total-deductions">
                         <div class="breakdown-label">
-                            <i class="fas fa-building"></i>
-                            ${escapeHtml(site)}
-                            <span class="badge">${breakdown.hours.toFixed(2)} hrs</span>
+                            <i class="fas fa-minus-circle"></i>
+                            ${d.deduction_name}
                         </div>
-                        <div class="breakdown-value">₱${breakdown.pay.toFixed(2)}</div>
+                        <div class="breakdown-value">- ₱${parseFloat(d.amount).toFixed(2)}</div>
                     </div>
                 `;
-            }
+            });
         }
-    }
-    
-    // Build workday type summary table HTML
-    let workdaySummaryHtml = '';
-    if (data.workday_type_summary && Object.keys(data.workday_type_summary).length > 0) {
-        workdaySummaryHtml = `
-            <div class="workday-summary">
-                <div class="workday-header">
-                    <i class="fas fa-calendar-alt"></i>
-                    Attendance Summary by Workday Type
-                </div>
-                <table class="workday-table">
-                    <thead>
-                        <tr><th>Workday Type</th><th>Total</th><th>Present</th><th>Absent</th><th>Leave</th><th>Hours</th></tr>
-                    </thead>
-                    <tbody>
-        `;
         
-        for (const [type, summary] of Object.entries(data.workday_type_summary)) {
-            workdaySummaryHtml += `
-                <tr>
-                    <td class="workday-type-name">${type}</td>
-                    <td class="workday-count">${summary.count}</td>
-                    <td class="workday-present">${summary.present_count}</td>
-                    <td class="workday-absent">${summary.absent_count}</td>
-                    <td class="workday-leave">${summary.leave_count}</td>
-                    <td>${summary.total_hours.toFixed(2)}</td>
-                </tr>
+        // Add holiday guaranteed pay if any
+        let holidayGuaranteedHtml = '';
+        if (data.holiday_guaranteed_pay > 0) {
+            holidayGuaranteedHtml = `
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <i class="fas fa-gift"></i>
+                        Holiday Guaranteed Pay (Absent on Paid Holidays)
+                    </div>
+                    <div class="breakdown-value">₱${parseFloat(data.holiday_guaranteed_pay).toFixed(2)}</div>
+                </div>
             `;
         }
         
-        workdaySummaryHtml += `</tbody></table></div>`;
-    }
-    
-    // Build deductions HTML
-    let deductionsBreakdownHtml = '';
-    if (data.deductions && data.deductions.length > 0) {
-        data.deductions.forEach(d => {
-            deductionsBreakdownHtml += `
-                <div class="breakdown-row total-deductions">
-                    <div class="breakdown-label"><i class="fas fa-minus-circle"></i> ${d.deduction_name}</div>
-                    <div class="breakdown-value">- ₱${parseFloat(d.amount).toFixed(2)}</div>
-                </div>
-            `;
-        });
-    }
-    
-    let holidayGuaranteedHtml = '';
-    if (data.holiday_guaranteed_pay > 0) {
-        holidayGuaranteedHtml = `
-            <div class="breakdown-row">
-                <div class="breakdown-label"><i class="fas fa-gift"></i> Holiday Guaranteed Pay</div>
-                <div class="breakdown-value">₱${parseFloat(data.holiday_guaranteed_pay).toFixed(2)}</div>
-            </div>
-        `;
-    }
-    
-    // Add day overtime row (separate from night overtime)
-    let dayOvertimeHtml = '';
-    if (data.overtime_hours && data.overtime_hours > 0) {
-        dayOvertimeHtml = `
-            <div class="breakdown-row">
-                <div class="breakdown-label">
-                    <i class="fas fa-clock"></i>
-                    Day Overtime Hours
-                    <span class="badge">${parseFloat(data.overtime_hours).toFixed(2)} hrs</span>
-                </div>
-                <div class="breakdown-value highlight">₱${parseFloat(data.overtime_pay).toFixed(2)}</div>
-            </div>
-        `;
-    }
-    
-    // Add regular night hours row
-    let regularNightHtml = '';
-    if (data.regular_night_hours && data.regular_night_hours > 0) {
-        regularNightHtml = `
-            <div class="breakdown-row">
-                <div class="breakdown-label">
-                    <i class="fas fa-moon"></i>
-                    Regular Night Hours
-                    <span class="badge">${parseFloat(data.regular_night_hours).toFixed(2)} hrs</span>
-                </div>
-                <div class="breakdown-value highlight">₱${parseFloat(data.regular_night_pay).toFixed(2)}</div>
-            </div>
-        `;
-    }
-    
-    // Add night overtime row
-    let nightOvertimeHtml = '';
-    if (data.night_shift_overtime_hours && data.night_shift_overtime_hours > 0) {
-        nightOvertimeHtml = `
-            <div class="breakdown-row">
-                <div class="breakdown-label">
-                    <i class="fas fa-moon"></i>
-                    Night Overtime Hours
-                    <span class="badge">${parseFloat(data.night_shift_overtime_hours).toFixed(2)} hrs</span>
-                </div>
-                <div class="breakdown-value highlight">₱${parseFloat(data.night_shift_overtime_pay).toFixed(2)}</div>
-            </div>
-        `;
-    }
-    
-    const html = `
-        <div class="payroll-summary-container">
-            <div class="summary-header">
-                <h4><i class="fas fa-file-invoice"></i> Payroll Summary</h4>
-                <div class="employee-badge">
-                    <i class="fas fa-user-circle"></i> ${emp.first_name} ${emp.last_name}
-                    <span class="employment-type-badge ${emp.employment_type === 'regular' ? 'regular' : 'non-regular'}">${emp.employment_type === 'regular' ? 'Regular' : 'Non Regular'}</span>
-                </div>
-            </div>
-            
-            <div style="background: #e6f7f5; padding: 10px 15px; border-radius: 40px; margin-bottom: 20px; display: inline-block;">
-                <i class="fas fa-calendar-alt" style="color: #00838f; margin-right: 8px;"></i>
-                <span style="font-weight: 600; color: #006064;">${dateFrom} - ${dateTo}</span>
-            </div>
-            
-            <div class="attendance-stats">
-                <div class="stat-card"><div class="stat-icon"><i class="fas fa-calendar-day"></i></div><div class="stat-value">${data.total_days}</div><div class="stat-label">Total Days</div></div>
-                <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-circle"></i></div><div class="stat-value">${data.days_present}</div><div class="stat-label">Present</div></div>
-                <div class="stat-card"><div class="stat-icon"><i class="fas fa-umbrella-beach"></i></div><div class="stat-value">${data.days_on_leave}</div><div class="stat-label">On Leave</div></div>
-                <div class="stat-card"><div class="stat-icon"><i class="fas fa-clock"></i></div><div class="stat-value">${parseFloat(data.total_work_hours).toFixed(1)}</div><div class="stat-label">Work Hours</div></div>
-            </div>
-            
-            ${workdaySummaryHtml}
-            
-            <div class="salary-breakdown">
-                <div class="breakdown-header"><i class="fas fa-coins"></i> Salary Computation</div>
-                
-                <!-- Total Work Hours Row -->
+        // Add day overtime row (separate from night overtime)
+        let dayOvertimeHtml = '';
+        if (data.overtime_hours && data.overtime_hours > 0) {
+            dayOvertimeHtml = `
                 <div class="breakdown-row">
                     <div class="breakdown-label">
                         <i class="fas fa-clock"></i>
-                        Total Work Hours
-                        <span class="badge">${parseFloat(data.total_work_hours).toFixed(2)} hrs</span>
+                        Day Overtime Hours
+                        <span class="badge">${parseFloat(data.overtime_hours).toFixed(2)} hrs</span>
                     </div>
-                    <div class="breakdown-value">-</div>
+                    <div class="breakdown-value highlight">₱${parseFloat(data.overtime_pay).toFixed(2)}</div>
                 </div>
-                
-                <!-- Regular Day Hours Summary (OLD FORMAT - KEEP THIS) -->
+            `;
+        }
+        
+        // Add regular night hours row
+        let regularNightHtml = '';
+        if (data.regular_night_hours && data.regular_night_hours > 0) {
+            regularNightHtml = `
                 <div class="breakdown-row">
                     <div class="breakdown-label">
-                        <i class="fas fa-sun"></i>
-                        Regular Day Hours
-                        <span class="badge">${totalRegularHours.toFixed(2)} hrs</span>
+                        <i class="fas fa-moon"></i>
+                        Regular Night Hours
+                        <span class="badge">${parseFloat(data.regular_night_hours).toFixed(2)} hrs</span>
                     </div>
-                    <div class="breakdown-value">₱${totalRegularPay.toFixed(2)}</div>
+                    <div class="breakdown-value highlight">₱${parseFloat(data.regular_night_pay).toFixed(2)}</div>
+                </div>
+            `;
+        }
+        
+        // Add night overtime row
+        let nightOvertimeHtml = '';
+        if (data.night_shift_overtime_hours && data.night_shift_overtime_hours > 0) {
+            nightOvertimeHtml = `
+                <div class="breakdown-row">
+                    <div class="breakdown-label">
+                        <i class="fas fa-moon"></i>
+                        Night Overtime Hours
+                        <span class="badge">${parseFloat(data.night_shift_overtime_hours).toFixed(2)} hrs</span>
+                    </div>
+                    <div class="breakdown-value highlight">₱${parseFloat(data.night_shift_overtime_pay).toFixed(2)}</div>
+                </div>
+            `;
+        }
+        
+        const html = `
+            <div class="payroll-summary-container">
+                <div class="summary-header">
+                    <h4>
+                        <i class="fas fa-file-invoice"></i>
+                        Payroll Summary
+                    </h4>
+                    <div class="employee-badge">
+                        <i class="fas fa-user-circle"></i>
+                        ${emp.first_name} ${emp.last_name}
+                        <span class="employment-type-badge ${emp.employment_type === 'regular' ? 'regular' : 'non-regular'}">
+                            ${emp.employment_type === 'regular' ? 'Regular' : 'Non Regular'}
+                        </span>
+                    </div>
                 </div>
                 
-                <!-- Site Breakdown (NEW - Shows Main Office and Site A separately) -->
-                ${siteBreakdownHtml}
-                
-                <!-- Overtime and Night Rows -->
-                ${dayOvertimeHtml}
-                ${regularNightHtml}
-                ${nightOvertimeHtml}
-                ${holidayGuaranteedHtml}
-                
-                <!-- Deductions -->
-                ${deductionsBreakdownHtml}
-                
-                <!-- Total Deductions -->
-                <div class="breakdown-row total-deductions">
-                    <div class="breakdown-label">
-                        <i class="fas fa-calculator"></i>
-                        Total Deductions
-                    </div>
-                    <div class="breakdown-value">- ₱${parseFloat(data.total_deductions).toFixed(2)}</div>
+                <!-- Period Info -->
+                <div style="background: #e6f7f5; padding: 10px 15px; border-radius: 40px; margin-bottom: 20px; display: inline-block;">
+                    <i class="fas fa-calendar-alt" style="color: #00838f; margin-right: 8px;"></i>
+                    <span style="font-weight: 600; color: #006064;">${dateFrom} - ${dateTo}</span>
                 </div>
                 
-                <!-- Net Pay -->
-                <div class="breakdown-row net-pay">
-                    <div class="breakdown-label">
-                        <i class="fas fa-check-circle"></i>
-                        Net Pay
+                <!-- Attendance Stats Cards -->
+                <div class="attendance-stats">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+                        <div class="stat-value">${data.total_days}</div>
+                        <div class="stat-label">Total Days</div>
                     </div>
-                    <div class="breakdown-value">₱${parseFloat(data.net_pay).toFixed(2)}</div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-value">${data.days_present}</div>
+                        <div class="stat-label">Present</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-umbrella-beach"></i></div>
+                        <div class="stat-value">${data.days_on_leave}</div>
+                        <div class="stat-label">On Leave</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-value">${parseFloat(data.total_work_hours).toFixed(1)}</div>
+                        <div class="stat-label">Work Hours</div>
+                    </div>
+                </div>
+                
+                <!-- Workday Type Summary -->
+                ${workdaySummaryHtml}
+                
+                <!-- Salary Breakdown -->
+                <div class="salary-breakdown">
+                    <div class="breakdown-header">
+                        <i class="fas fa-coins"></i>
+                        Salary Computation
+                    </div>
+                    
+                    <div class="breakdown-row">
+                        <div class="breakdown-label">
+                            <i class="fas fa-clock"></i>
+                            Total Work Hours
+                            <span class="badge">${parseFloat(data.total_work_hours).toFixed(2)} hrs</span>
+                        </div>
+                        <div class="breakdown-value">-</div>
+                    </div>
+                    
+                    <div class="breakdown-row">
+                        <div class="breakdown-label">
+                            <i class="fas fa-clock"></i>
+                            Regular Day Hours
+                            <span class="badge">${parseFloat(data.regular_hours).toFixed(2)} hrs</span>
+                        </div>
+                        <div class="breakdown-value">₱${parseFloat(data.regular_pay).toFixed(2)}</div>
+                    </div>
+                    
+                    <!-- Day Overtime Row (Separate) -->
+                    ${dayOvertimeHtml}
+                    
+                    <!-- Regular Night Row -->
+                    ${regularNightHtml}
+                    
+                    <!-- Night Overtime Row -->
+                    ${nightOvertimeHtml}
+                    
+                    ${holidayGuaranteedHtml}
+                    
+                    ${deductionsBreakdownHtml}
+                    
+                    <div class="breakdown-row total-deductions">
+                        <div class="breakdown-label">
+                            <i class="fas fa-calculator"></i>
+                            Total Deductions
+                        </div>
+                        <div class="breakdown-value">- ₱${parseFloat(data.total_deductions).toFixed(2)}</div>
+                    </div>
+                    
+                    <div class="breakdown-row net-pay">
+                        <div class="breakdown-label">
+                            <i class="fas fa-check-circle"></i>
+                            Net Pay
+                        </div>
+                        <div class="breakdown-value">₱${parseFloat(data.net_pay).toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <!-- Hourly Rate Info -->
+                <div class="hourly-rate-info">
+                    <span><i class="fas fa-tag"></i> <strong>Hourly Rate:</strong> ₱${parseFloat(data.hourly_rate).toFixed(2)}</span>
+                    <span class="rate-value"><i class="fas fa-calendar"></i> Daily Rate: ₱${parseFloat(data.employee.daily_salary).toFixed(2)}</span>
                 </div>
             </div>
-            
-            <div class="hourly-rate-info">
-                <span><i class="fas fa-tag"></i> <strong>Hourly Rate:</strong> ₱${parseFloat(data.hourly_rate).toFixed(2)}</span>
-                <span class="rate-value"><i class="fas fa-calendar"></i> Daily Rate: ₱${parseFloat(data.employee.daily_salary).toFixed(2)}</span>
-            </div>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-    
-    document.getElementById('currentBaseSalary').value = data.base_salary;
-    document.getElementById('currentTotalDeductions').value = data.total_deductions;
-    document.getElementById('currentNetPay').value = data.net_pay;
-    document.getElementById('currentWorkHours').value = data.total_work_hours;
-    
-    updateDeductionsList();
-    updateTotalSummaryCard();
-}
-
-// Helper function
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+        `;
+        
+        container.innerHTML = html;
+        
+        document.getElementById('currentBaseSalary').value = data.base_salary;
+        document.getElementById('currentTotalDeductions').value = data.total_deductions;
+        document.getElementById('currentNetPay').value = data.net_pay;
+        document.getElementById('currentWorkHours').value = data.total_work_hours;
+        
+        updateDeductionsList();
+        updateTotalSummaryCard();
+    }
 
     // Update deductions list
     function updateDeductionsList() {
@@ -5684,76 +5615,65 @@ function escapeHtml(text) {
         displayPayrollSummary(currentPayrollData);
     }
 
-   // Save payroll
-async function savePayroll() {
-    const employeeId = document.getElementById('currentEmployeeId').value;
-    const dateFrom = document.getElementById('payroll_date_from').value;
-    const dateTo = document.getElementById('payroll_date_to').value;
-    const baseSalary = document.getElementById('currentBaseSalary').value;
-    const totalDeductions = document.getElementById('currentTotalDeductions').value;
-    const netPay = document.getElementById('currentNetPay').value;
-    const workHours = document.getElementById('currentWorkHours').value;
-    
-    if (!employeeId) {
-        showNotificationModal('Employee ID missing', 'error');
-        return;
-    }
-    
-    showLoading();
-    
-    try {
-        const formData = new URLSearchParams();
-        formData.append('save_payroll', '1');
-        formData.append('employee_id', employeeId);
-        formData.append('date_from', dateFrom);
-        formData.append('date_to', dateTo);
-        formData.append('base_salary', baseSalary);
-        formData.append('total_deductions', totalDeductions);
-        formData.append('net_pay', netPay);
-        formData.append('total_work_hours', workHours);
-        formData.append('deductions', JSON.stringify(currentDeductions));
+    // Save payroll
+    async function savePayroll() {
+        const employeeId = document.getElementById('currentEmployeeId').value;
+        const dateFrom = document.getElementById('payroll_date_from').value;
+        const dateTo = document.getElementById('payroll_date_to').value;
+        const baseSalary = document.getElementById('currentBaseSalary').value;
+        const totalDeductions = document.getElementById('currentTotalDeductions').value;
+        const netPay = document.getElementById('currentNetPay').value;
+        const workHours = document.getElementById('currentWorkHours').value;
         
-        // Make sure salary_breakdown exists and is valid
-        if (currentPayrollData && currentPayrollData.salary_breakdown) {
-            formData.append('salary_breakdown', JSON.stringify(currentPayrollData.salary_breakdown));
-            console.log('Salary breakdown saved:', currentPayrollData.salary_breakdown);
-        } else {
-            formData.append('salary_breakdown', '{}');
+        if (!employeeId) {
+            showNotificationModal('Employee ID missing', 'error');
+            return;
         }
         
-        console.log('Sending payroll data:', Object.fromEntries(formData));
-        
-        const response = await fetch('payrollList.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: formData
-        });
-        
-        const text = await response.text();
-        console.log('Raw response:', text);
+        showLoading();
         
         try {
-            const data = JSON.parse(text);
+            const formData = new URLSearchParams();
+            formData.append('save_payroll', '1');
+            formData.append('employee_id', employeeId);
+            formData.append('date_from', dateFrom);
+            formData.append('date_to', dateTo);
+            formData.append('base_salary', baseSalary);
+            formData.append('total_deductions', totalDeductions);
+            formData.append('net_pay', netPay);
+            formData.append('total_work_hours', workHours);
+            formData.append('deductions', JSON.stringify(currentDeductions));
             
-            if (data.success) {
-                closeModal('generatePayrollModal');
-                showSuccessModal('Payroll saved successfully!');
-            } else {
-                showNotificationModal(data.message, 'error');
+            const response = await fetch('payrollList.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: formData
+            });
+            
+            const text = await response.text();
+            
+            try {
+                const data = JSON.parse(text);
+                
+                if (data.success) {
+                    closeModal('generatePayrollModal');
+                    showSuccessModal('Payroll saved successfully!');
+                } else {
+                    showNotificationModal(data.message, 'error');
+                }
+            } catch (e) {
+                console.error('Failed to parse JSON:', text);
+                showNotificationModal('Server returned invalid response. Check console for details.', 'error');
             }
-        } catch (e) {
-            console.error('Failed to parse JSON:', text);
-            showNotificationModal('Server returned invalid response: ' + text.substring(0, 200), 'error');
+        } catch (error) {
+            console.error('Error:', error);
+            showNotificationModal('Error saving payroll: ' + error.message, 'error');
+        } finally {
+            hideLoading();
         }
-    } catch (error) {
-        console.error('Error:', error);
-        showNotificationModal('Error saving payroll: ' + error.message, 'error');
-    } finally {
-        hideLoading();
     }
-}
 
     // Show success modal
     function showSuccessModal(message) {
@@ -6557,7 +6477,6 @@ async function savePayroll() {
             formData.append('total_work_hours', workHours);
             formData.append('status', status);
             formData.append('deductions', JSON.stringify(editDeductions));
-                formData.append('salary_breakdown', JSON.stringify(currentPayrollData.salary_breakdown || {}));
             
             const response = await fetch('payrollList.php', {
                 method: 'POST',
@@ -6621,9 +6540,49 @@ async function savePayroll() {
     }
 
     // Confirm delete payroll
-    function confirmDeletePayroll() {
+    async function confirmDeletePayroll() {
         if (!currentDeletePayrollId) return;
-        window.location.href = 'payrollList.php?delete_id=' + currentDeletePayrollId;
+        
+        showLoading();
+        closeModal('deletePayrollModal');
+        
+        try {
+            const formData = new URLSearchParams();
+            formData.append('ajax', '1');
+            formData.append('ajax_action', 'delete_payroll'); // Consistent with other handlers
+            // Actually I named it check for 'delete_payroll' directly in the PHP
+            // Let's check my PHP logic again. 
+            // if (isset($_POST['ajax']) && $_POST['ajax'] == 'delete_payroll')
+            
+            const postData = new URLSearchParams();
+            postData.append('ajax', 'delete_payroll');
+            postData.append('payroll_id', currentDeletePayrollId);
+            
+            const response = await fetch('payrollList.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: postData
+            });
+            
+            const data = await response.json();
+            hideLoading();
+            
+            if (data.success) {
+                showNotificationModal(data.message, 'success');
+                // Refresh the page after a short delay
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            } else {
+                showNotificationModal(data.message, 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('Error:', error);
+            showNotificationModal('Error deleting payroll record: ' + error.message, 'error');
+        }
     }
 
     // Reset deduction modal
@@ -6651,19 +6610,12 @@ async function savePayroll() {
         document.getElementById('loadingOverlay').style.display = 'none';
     }
 
-    // Close modal when clicking outside
+    // Close modal when clicking outside - Disabled
+    /*
     window.addEventListener('click', function(event) {
-        const modals = ['generatePayrollModal', 'editPayrollModal', 'viewPayrollModal', 
-                       'generateSuccessModal', 'addDeductionModal', 'deletePayrollModal', 
-                       'notificationModal', 'existingPayrollModal', 'editAddDeductionModal'];
-        
-        modals.forEach(modalId => {
-            const modal = document.getElementById(modalId);
-            if (event.target === modal) {
-                closeModal(modalId);
-            }
-        });
+        ...
     });
+    */
 
     // Handle escape key
     document.addEventListener('keydown', function(event) {

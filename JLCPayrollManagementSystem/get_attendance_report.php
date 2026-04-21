@@ -13,40 +13,60 @@ include_once("connection.php");
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 $employee_id = isset($_GET['employee_id']) ? intval($_GET['employee_id']) : 0;
+$site_id = isset($_GET['site_id']) ? intval($_GET['site_id']) : 0;
 
 if (empty($date_from) || empty($date_to)) {
     echo json_encode(['success' => false, 'message' => 'Date range is required']);
     exit;
 }
 
-// Get all distinct sites that have attendance records within the date range
-$sites_query = "SELECT DISTINCT site_name 
-                FROM (
-                    SELECT site_assignment_am as site_name FROM attendance 
-                    WHERE date BETWEEN ? AND ? AND site_assignment_am IS NOT NULL AND site_assignment_am != ''
-                    UNION
-                    SELECT site_assignment_pm as site_name FROM attendance 
-                    WHERE date BETWEEN ? AND ? AND site_assignment_pm IS NOT NULL AND site_assignment_pm != ''
-                    UNION
-                    SELECT site_assignment_night as site_name FROM attendance 
-                    WHERE date BETWEEN ? AND ? AND site_assignment_night IS NOT NULL AND site_assignment_night != ''
-                ) AS sites
-                ORDER BY site_name";
-
-$sites_stmt = $conn->prepare($sites_query);
-$sites_stmt->bind_param("ssssss", $date_from, $date_to, $date_from, $date_to, $date_from, $date_to);
-$sites_stmt->execute();
-$sites_result = $sites_stmt->get_result();
-
-$sites = [];
-while ($site_row = $sites_result->fetch_assoc()) {
-    $sites[] = $site_row['site_name'];
+// Get site name if filtered
+$selected_site_name = '';
+if ($site_id > 0) {
+    $site_query = "SELECT site_name FROM site_monitoring WHERE id = ?";
+    $site_stmt = $conn->prepare($site_query);
+    $site_stmt->bind_param("i", $site_id);
+    $site_stmt->execute();
+    $site_result = $site_stmt->get_result();
+    if ($site_row = $site_result->fetch_assoc()) {
+        $selected_site_name = $site_row['site_name'];
+    }
+    $site_stmt->close();
 }
-$sites_stmt->close();
+
+// If site is selected, only get that site
+if ($site_id > 0 && !empty($selected_site_name)) {
+    $sites = [$selected_site_name];
+} else {
+    // Get all distinct sites that have attendance records within the date range
+    $sites_query = "SELECT DISTINCT site_name 
+                    FROM (
+                        SELECT site_assignment_am as site_name FROM attendance 
+                        WHERE date BETWEEN ? AND ? AND site_assignment_am IS NOT NULL AND site_assignment_am != ''
+                        UNION
+                        SELECT site_assignment_pm as site_name FROM attendance 
+                        WHERE date BETWEEN ? AND ? AND site_assignment_pm IS NOT NULL AND site_assignment_pm != ''
+                        UNION
+                        SELECT site_assignment_night as site_name FROM attendance 
+                        WHERE date BETWEEN ? AND ? AND site_assignment_night IS NOT NULL AND site_assignment_night != ''
+                    ) AS sites
+                    ORDER BY site_name";
+
+    $sites_stmt = $conn->prepare($sites_query);
+    $sites_stmt->bind_param("ssssss", $date_from, $date_to, $date_from, $date_to, $date_from, $date_to);
+    $sites_stmt->execute();
+    $sites_result = $sites_stmt->get_result();
+
+    $sites = [];
+    while ($site_row = $sites_result->fetch_assoc()) {
+        $sites[] = $site_row['site_name'];
+    }
+    $sites_stmt->close();
+}
 
 // For each site, get attendance records
 $site_data = [];
-$all_records_flat = []; // FOR BACKWARD COMPATIBILITY - keeps original flat structure
+$all_records_flat = [];
 $grand_total_records = 0;
 $grand_total_hours = 0;
 $grand_present_count = 0;
@@ -122,14 +142,25 @@ foreach ($sites as $site_name) {
         $row['time_in_night_display'] = formatTimeForAPI($row['time_in_night']);
         $row['time_out_night_display'] = formatTimeForAPI($row['time_out_night']);
         
-        // Calculate total hours for this record
-        $total = calculateTotalHoursAPI(
-            $row['time_in_am'], $row['time_out_am'],
-            $row['time_in_pm'], $row['time_out_pm'],
-            $row['time_in_night'], $row['time_out_night']
-        );
-        $row['total_hours'] = $total;
-        $site_total_hours += floatval($total);
+        // Calculate total hours for THIS SITE only (only sessions assigned to this site)
+        $is_am_assigned = ($row['site_assignment_am'] == $site_name);
+        $is_pm_assigned = ($row['site_assignment_pm'] == $site_name);
+        $is_night_assigned = ($row['site_assignment_night'] == $site_name);
+        
+        $site_specific_hours = 0;
+        
+        if ($is_am_assigned && !empty($row['time_in_am']) && !empty($row['time_out_am'])) {
+            $site_specific_hours += floatval(calculateHoursAPI($row['time_in_am'], $row['time_out_am']));
+        }
+        if ($is_pm_assigned && !empty($row['time_in_pm']) && !empty($row['time_out_pm'])) {
+            $site_specific_hours += floatval(calculateHoursAPI($row['time_in_pm'], $row['time_out_pm']));
+        }
+        if ($is_night_assigned && !empty($row['time_in_night']) && !empty($row['time_out_night'])) {
+            $site_specific_hours += floatval(calculateHoursAPI($row['time_in_night'], $row['time_out_night']));
+        }
+        
+        $row['total_hours_for_site'] = number_format($site_specific_hours, 2);
+        $site_total_hours += $site_specific_hours;
         
         // Format employee name
         $row['employee_name'] = trim($row['first_name'] . ' ' . ($row['middle_name'] ?? '') . ' ' . $row['last_name']);
@@ -145,46 +176,55 @@ foreach ($sites as $site_name) {
         
         // Determine which session(s) this employee attended at this site
         $assigned_sessions = [];
-        if ($row['site_assignment_am'] == $site_name) {
+        if ($is_am_assigned) {
             $assigned_sessions[] = 'AM';
         }
-        if ($row['site_assignment_pm'] == $site_name) {
+        if ($is_pm_assigned) {
             $assigned_sessions[] = 'PM';
         }
-        if ($row['site_assignment_night'] == $site_name) {
+        if ($is_night_assigned) {
             $assigned_sessions[] = 'Night';
         }
         $row['assigned_sessions'] = $assigned_sessions;
+        $row['is_am_assigned'] = $is_am_assigned;
+        $row['is_pm_assigned'] = $is_pm_assigned;
+        $row['is_night_assigned'] = $is_night_assigned;
         
-        // ============================================
-        // FIXED STATUS LOGIC - Checks ALL THREE SESSIONS
-        // ============================================
-        
-        // Check if ON LEAVE first (highest priority)
+        // Determine overall status for this record at this site
         $is_on_leave = (!empty($row['leave_type']) && $row['leave_type'] != 'None' && $row['leave_type'] != '');
         
-        // Check if PRESENT in ANY session (AM, PM, or Night)
-        $is_present = ($row['status'] == 'Present' || $row['pm_status'] == 'Present' || $row['night_status'] == 'Present');
-        
-        // Determine final status
         if ($is_on_leave) {
             $row['overall_status'] = 'On Leave';
             $site_leave_count++;
-        } elseif ($is_present) {
-            $row['overall_status'] = 'Present';
-            $site_present_count++;
         } else {
-            $row['overall_status'] = 'Absent';
-            $site_absent_count++;
+            $has_present = false;
+            $has_absent = false;
+            
+            if ($is_am_assigned && $row['status'] == 'Present') $has_present = true;
+            if ($is_pm_assigned && $row['pm_status'] == 'Present') $has_present = true;
+            if ($is_night_assigned && $row['night_status'] == 'Present') $has_present = true;
+            
+            if ($is_am_assigned && $row['status'] == 'Absent') $has_absent = true;
+            if ($is_pm_assigned && $row['pm_status'] == 'Absent') $has_absent = true;
+            if ($is_night_assigned && $row['night_status'] == 'Absent') $has_absent = true;
+            
+            if ($has_present) {
+                $row['overall_status'] = 'Present';
+                $site_present_count++;
+            } elseif ($has_absent) {
+                $row['overall_status'] = 'Absent';
+                $site_absent_count++;
+            } else {
+                $row['overall_status'] = 'No Record';
+            }
         }
         
         $site_records[] = $row;
         
-        // ============================================
-        // ALSO ADD TO FLAT ARRAY FOR BACKWARD COMPATIBILITY
-        // ============================================
+        // Add to flat array for backward compatibility
         $flat_row = $row;
         $flat_row['site_name'] = $site_name;
+        $flat_row['total_hours'] = $row['total_hours_for_site'];
         $all_records_flat[] = $flat_row;
     }
     
@@ -215,23 +255,6 @@ $grand_present_rate = ($grand_total_accounted > 0) ? round(($grand_present_count
 $grand_absent_rate = ($grand_total_accounted > 0) ? round(($grand_absent_count / $grand_total_accounted) * 100, 2) : 0;
 $grand_leave_rate = ($grand_total_accounted > 0) ? round(($grand_leave_count / $grand_total_accounted) * 100, 2) : 0;
 
-// Calculate totals for flat records (for backward compatibility)
-$flat_total_hours = 0;
-$flat_present_count = 0;
-$flat_absent_count = 0;
-$flat_leave_count = 0;
-
-foreach ($all_records_flat as $record) {
-    $flat_total_hours += floatval($record['total_hours']);
-    if ($record['overall_status'] == 'Present') {
-        $flat_present_count++;
-    } elseif ($record['overall_status'] == 'Absent') {
-        $flat_absent_count++;
-    } elseif ($record['overall_status'] == 'On Leave') {
-        $flat_leave_count++;
-    }
-}
-
 echo json_encode([
     'success' => true,
     'grouped_by_site' => true,
@@ -248,16 +271,13 @@ echo json_encode([
         'absent_rate' => $grand_absent_rate,
         'leave_rate' => $grand_leave_rate
     ],
-    // ============================================
-    // BACKWARD COMPATIBILITY - Original flat structure
-    // The existing displayReportPreview() in attendance.php expects this
-    // ============================================
+    // Backward compatibility
     'records' => $all_records_flat,
-    'total_hours' => number_format($flat_total_hours, 2),
+    'total_hours' => number_format($grand_total_hours, 2),
     'record_count' => count($all_records_flat),
-    'present_count' => $flat_present_count,
-    'absent_count' => $flat_absent_count,
-    'leave_count' => $flat_leave_count
+    'present_count' => $grand_present_count,
+    'absent_count' => $grand_absent_count,
+    'leave_count' => $grand_leave_count
 ]);
 
 $conn->close();
@@ -270,7 +290,6 @@ function formatTimeForAPI($time) {
     if (empty($time) || $time === null) {
         return '-';
     }
-    // Handle midnight (12:00 AM) specially
     if ($time == '00:00:00') {
         return '12:00 AM';
     }
@@ -278,15 +297,12 @@ function formatTimeForAPI($time) {
 }
 
 function calculateHoursAPI($time_in, $time_out) {
-    // Check if times are empty
     if (empty($time_in) || empty($time_out)) {
         return 0;
     }
     
-    // Special handling for midnight (12:00 AM) as time_out
     $is_midnight_out = ($time_out == '00:00:00');
     
-    // Convert to timestamps
     $time_in_ts = strtotime($time_in);
     
     if ($time_in_ts === false) {
@@ -294,60 +310,29 @@ function calculateHoursAPI($time_in, $time_out) {
     }
     
     if ($is_midnight_out) {
-        // For midnight (12:00 AM) as time_out, calculate hours until midnight of the same day
         $date_of_time_in = date('Y-m-d', $time_in_ts);
         $next_day = strtotime('+1 day', strtotime($date_of_time_in));
         $time_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-        
-        // Calculate hours from time_in to midnight
         $hours = round(($time_out_ts - $time_in_ts) / 3600, 2);
         return max(0, $hours);
     }
     
-    // Regular time calculation (not midnight)
     $time_out_ts = strtotime($time_out);
     
     if ($time_out_ts === false) {
         return 0;
     }
     
-    // If time_out is less than time_in, it means it's next day
     if ($time_out_ts < $time_in_ts) {
-        $time_out_ts += 86400; // Add 24 hours
+        $time_out_ts += 86400;
     }
     
-    // Calculate hours
     $hours = round(($time_out_ts - $time_in_ts) / 3600, 2);
     
-    // Prevent negative hours
     if ($hours < 0) {
         $hours = 0;
     }
     
     return $hours;
-}
-
-function calculateTotalHoursAPI($time_in_am, $time_out_am, $time_in_pm, $time_out_pm, $time_in_night, $time_out_night) {
-    $total = 0;
-    
-    // Calculate AM hours
-    if (!empty($time_in_am) && !empty($time_out_am)) {
-        $am_hours = calculateHoursAPI($time_in_am, $time_out_am);
-        $total += floatval($am_hours);
-    }
-    
-    // Calculate PM hours
-    if (!empty($time_in_pm) && !empty($time_out_pm)) {
-        $pm_hours = calculateHoursAPI($time_in_pm, $time_out_pm);
-        $total += floatval($pm_hours);
-    }
-    
-    // Calculate Night hours
-    if (!empty($time_in_night) && !empty($time_out_night)) {
-        $night_hours = calculateHoursAPI($time_in_night, $time_out_night);
-        $total += floatval($night_hours);
-    }
-    
-    return number_format($total, 2);
 }
 ?>

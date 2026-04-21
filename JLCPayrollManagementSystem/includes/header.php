@@ -956,13 +956,12 @@ $page_title = isset($page_titles[$current_page]) ? $page_titles[$current_page] :
             document.getElementById('logoutOverlay').style.display = 'none';
         }
         
-        // Close modal when clicking outside
+        // Close modal when clicking outside - Disabled
+        /*
         window.onclick = function(event) {
-            const modal = document.getElementById('logoutOverlay');
-            if (event.target === modal) {
-                cancelLogout();
-            }
+            ...
         }
+        */
         
         // Ensure content starts below header
         document.addEventListener('DOMContentLoaded', function() {

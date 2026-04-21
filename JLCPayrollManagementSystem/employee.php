@@ -1382,7 +1382,7 @@ $total_employees = $conn->query("SELECT COUNT(*) as total FROM employees")->fetc
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Employee Management</title>
-    <link rel="stylesheet" href="./assets/css/employee2.css">
+    <link rel="stylesheet" href="./assets/css/employee.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Additional styles specific to employee.php */
@@ -5266,24 +5266,12 @@ $total_employees = $conn->query("SELECT COUNT(*) as total FROM employees")->fetc
             });
         }
 
-        // Close modal when clicking outside
+        // Close modal when clicking outside - Disabled
+        /*
         window.onclick = function(event) {
-            const addModal = document.getElementById('addEmployeeModal');
-            const viewModal = document.getElementById('viewEmployeeModal');
-            const editModal = document.getElementById('editEmployeeModal');
-            const positionModal = document.getElementById('positionModal');
-            const editPositionModal = document.getElementById('editPositionModal');
-            const deleteModal = document.getElementById('deleteConfirmModal');
-            const statusModal = document.getElementById('statusConfirmModal');
-            
-            if (event.target === addModal) closeAddEmployeeModal();
-            if (event.target === viewModal) closeViewEmployeeModal();
-            if (event.target === editModal) closeEditEmployeeModal();
-            if (event.target === positionModal) closePositionModal();
-            if (event.target === editPositionModal) closeEditPositionModal();
-            if (event.target === deleteModal) closeDeleteModal();
-            if (event.target === statusModal) closeStatusModal();
+            ...
         }
+        */
     </script>
 </body>
 </html>

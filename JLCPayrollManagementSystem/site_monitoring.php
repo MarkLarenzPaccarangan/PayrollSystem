@@ -443,7 +443,7 @@ if ($sites_result) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Site Monitoring</title>
-    <link rel="stylesheet" href="./assets/css/site_monitoring.css">
+    <link rel="stylesheet" href="./assets/css/site_monitoring1.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* ============================================ */
@@ -2305,18 +2305,13 @@ if ($sites_result) {
         generateCalendarDays();
     });
     
-    // Close modals when clicking outside
+    // Close modals when clicking outside disabled
+    /*
     window.onclick = function(event) {
-        const addModal = document.getElementById('addSiteModal');
-        const editModal = document.getElementById('editSiteModal');
-        const viewModal = document.getElementById('viewEmployeesModal');
-        const deleteModal = document.getElementById('deleteConfirmModal');
-        
-        if (event.target === addModal) closeAddSiteModal();
-        if (event.target === editModal) closeEditSiteModal();
-        if (event.target === viewModal) closeViewEmployeesModal();
-        if (event.target === deleteModal) closeDeleteModal();
+        ...
     }
+    */
+
     
     // Close modals with Escape key
     document.addEventListener('keydown', function(event) {

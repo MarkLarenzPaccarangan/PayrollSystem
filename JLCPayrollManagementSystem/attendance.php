@@ -3175,6 +3175,7 @@ function formatTimeForDownload($time) {
             color: #95a5a6;
             font-size: 0.8rem;
             transition: transform 0.3s;
+   
         }
 
         .calendar-dropdown {
@@ -4044,9 +4045,9 @@ include("./includes/header.php");
                             </select>
                             
                             <!-- SELECTED EMPLOYEE CARD -->
-                            <div class="selected-employee-card" id="selectedEmployeeCard" style="display: none;">
+                            <div class="selected-employee-card" id="selectedEmployeeCard" style="background: #f8f9fa; border-color: #75e6da;">
                                 <div class="selected-employee-info">
-                                    <div class="selected-employee-avatar">
+                                  <div class="selected-employee-avatar" style="background: linear-gradient(135deg, #75e6da, #5fd9c9);">
                                         <i class="fas fa-user-circle"></i>
                                     </div>
                                     <div class="selected-employee-details">
@@ -4204,7 +4205,7 @@ include("./includes/header.php");
 <div class="time-section">
     <div class="time-section-header">
         <i class="fas fa-sun"></i>
-        <h4>Morning Session</h4>
+        <h4>AM SHIFT</h4>
     </div>
     
     <!-- AM Status - Without On Leave option -->
@@ -4299,7 +4300,7 @@ include("./includes/header.php");
 <div class="time-section">
     <div class="time-section-header">
         <i class="fas fa-moon"></i>
-        <h4>Afternoon Session</h4>
+        <h4>PM SHIFT</h4>
     </div>
     
     <!-- PM Status - Without On Leave option -->
@@ -4371,7 +4372,7 @@ include("./includes/header.php");
     </div>
     
 <!-- PM Site Assignment -->
-<div class="site-assignment-container" id="pmSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #f39c12;">
+<div class="site-assignment-container" id="pmSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
     <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
         <i class="fas fa-building"></i> Site Assignment (PM) <span style="color: #e74c3c;" class="required-star">*</span>
     </label>
@@ -4394,7 +4395,7 @@ include("./includes/header.php");
 <div class="time-section">
     <div class="time-section-header">
         <i class="fas fa-star"></i>
-        <h4>Night Session <span>(Optional)</span></h4>
+        <h4>Night SHIFT <span>(Optional)</span></h4>
     </div>
     
     <!-- Night Status - Without On Leave option -->
@@ -4466,7 +4467,7 @@ include("./includes/header.php");
     </div>
     
 <!-- Night Site Assignment -->
-<div class="site-assignment-container" id="nightSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #9b59b6;">
+<div class="site-assignment-container" id="nightSiteContainer" style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #75e6da;">
     <label class="site-assignment-label" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50; font-size: 0.9rem;">
         <i class="fas fa-building"></i> Site Assignment (Night) <span style="color: #e74c3c;" class="required-star">*</span>
     </label>
@@ -4580,19 +4581,19 @@ include("./includes/header.php");
                     </div>
                     
                  <!-- Workday Type Display -->
-<div id="viewWorkdayContainer" style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 12px; border: 1px solid #bbdefb; display: none;">
+<div id="viewWorkdayContainer" style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 12px; border: 1px solid #f8f9fa; display: none;">
     <div style="display: flex; align-items: center; gap: 10px;">
-        <span class="status-dot" style="width: 12px; height: 12px; background-color: #1976d2;"></span>
-        <span style="font-weight: 600; color: #1976d2;">Workday Type</span>
-        <span id="viewWorkdayType" style="background: #bbdefb; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; color: #1976d2;"></span>
+        <span class="status-dot" style="width: 12px; height: 12px; background-color: #75e6da;"></span>
+        <span style="font-weight: 600; color: #060606;">Workday Type</span>
+        <span id="viewWorkdayType" style="background: #f8f9fa; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; color: #1976d2;"></span>
     </div>
 </div>
 
 <!-- Site Assignment Display - NEW -->
-<div id="viewSiteAssignmentContainer" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; border: 1px solid #a5d6a7; display: none;">
+<div id="viewSiteAssignmentContainer" style="margin-bottom: 20px; padding: 15px; background: linear-gradient(135deg, #f8f9fa, #f8f9fa); border-radius: 12px; border: 1px solid #f8f9fa; display: none;">
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-        <i class="fas fa-building" style="color: #2e7d32;"></i>
-        <span style="font-weight: 600; color: #2e7d32;">Site Assignments</span>
+        <i class="fas fa-building" style="color: #75e6da;"></i>
+        <span style="font-weight: 600; color: #060606;">Site Assignments</span>
     </div>
     <div style="display: flex; flex-direction: column; gap: 8px;">
         <div id="viewAmSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
@@ -4600,11 +4601,11 @@ include("./includes/header.php");
             <span id="viewAmSiteValue">--</span>
         </div>
         <div id="viewPmSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
-            <span style="font-weight: 600; color: #f39c12; min-width: 60px;">PM:</span>
+            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">PM:</span>
             <span id="viewPmSiteValue">--</span>
         </div>
         <div id="viewNightSite" style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
-            <span style="font-weight: 600; color: #9b59b6; min-width: 60px;">Night:</span>
+            <span style="font-weight: 600; color: #75e6da; min-width: 60px;">Night:</span>
             <span id="viewNightSiteValue">--</span>
         </div>
     </div>
@@ -4663,7 +4664,7 @@ include("./includes/header.php");
                             <h4>Afternoon & Night Sessions</h4>
                         </div>
                         
-                        <div class="pm-status-container" style="border-left-color: #f39c12;">
+                        <div class="pm-status-container" style="border-left-color: #75e6da;">
                             <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="status-dot present" id="viewPmStatusDot" style="display: none;"></span>
@@ -4683,7 +4684,7 @@ include("./includes/header.php");
                         <!-- PM Times -->
                         <div style="margin-bottom: 15px;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i class="fas fa-sun" style="color: #f39c12;"></i>
+                                <i class="fas fa-sun" style="color: #75e6da;"></i>
                                 <span style="font-weight: 600;">Afternoon Session</span>
                             </div>
                             <div class="time-input-row">
@@ -4712,7 +4713,7 @@ include("./includes/header.php");
                         <!-- Night Times -->
                         <div>
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                                <i class="fas fa-moon" style="color: #9b59b6;"></i>
+                                <i class="fas fa-moon" style="color: #75e6da;"></i>
                                 <span style="font-weight: 600;">Night Session</span>
                             </div>
                             <div class="time-input-row">
@@ -4858,138 +4859,135 @@ include("./includes/header.php");
                     <div class="filter-section" style="background: linear-gradient(135deg, #f8f9fa, #ffffff); border-radius: 16px; padding: 25px; margin-bottom: 25px; border: 1px solid #e0e0e0; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
                         <div style="display: flex; gap: 25px; flex-wrap: wrap; align-items: flex-end;">
                             
-                            <!-- DATE FROM - Custom Calendar -->
-                            <div style="flex: 1; min-width: 200px;">
-                                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                    <i class="fas fa-calendar-alt" style="margin-right: 8px; color: #75e6da;"></i> DATE FROM
-                                </label>
-                                
-                                <!-- Custom Date Picker -->
-                                <div class="custom-date-picker">
-                                    <div class="date-input-group" onclick="toggleFromCalendar()">
-                                      
-                                        <input type="text" id="reportDateFromDisplay" class="date-display" 
-                                               value="<?= date('m/d/Y', strtotime($selected_date)) ?>" 
-                                               readonly placeholder="MM/DD/YYYY">
-                                        <i class="fas fa-chevron-down dropdown-icon"></i>
-                                    </div>
-                                    <input type="hidden" id="reportDateFrom" value="<?= $selected_date ?>">
-                                    
-                                    <!-- From Calendar Dropdown -->
-                                    <div class="calendar-dropdown" id="fromCalendar">
-                                        <div class="calendar-header">
-                                            <span class="month-year" id="fromMonthYear"><?= date('F Y', strtotime($selected_date)) ?></span>
-                                            <div class="nav-buttons">
-                                                <button type="button" class="nav-btn" onclick="navigateFromMonth(-1)">‹</button>
-                                                <button type="button" class="nav-btn" onclick="navigateFromMonth(1)">›</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="calendar-selectors">
-                                            <select id="fromMonthSelect" class="month-select" onchange="changeFromMonthYear()">
-                                                <option value="0">January</option>
-                                                <option value="1">February</option>
-                                                <option value="2">March</option>
-                                                <option value="3">April</option>
-                                                <option value="4">May</option>
-                                                <option value="5">June</option>
-                                                <option value="6">July</option>
-                                                <option value="7">August</option>
-                                                <option value="8">September</option>
-                                                <option value="9">October</option>
-                                                <option value="10">November</option>
-                                                <option value="11">December</option>
-                                            </select>
-                                            
-                                            <select id="fromYearSelect" class="year-select" onchange="changeFromMonthYear()">
-                                                <?php for($y = date('Y') - 5; $y <= date('Y') + 5; $y++): ?>
-                                                    <option value="<?= $y ?>" <?= $y == date('Y', strtotime($selected_date)) ? 'selected' : '' ?>><?= $y ?></option>
-                                                <?php endfor; ?>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="calendar-weekdays">
-                                            <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
-                                        </div>
-                                        
-                                        <div class="calendar-days" id="fromCalendarDays">
-                                            <!-- Days will be populated by JavaScript -->
-                                        </div>
-                                        
-                                        <div class="calendar-footer">
-                                            <button type="button" class="btn-today" onclick="setFromToday()">Today</button>
-                                            <button type="button" class="btn-clear" onclick="clearFromDate()">Clear</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- DATE TO - Custom Calendar -->
-                            <div style="flex: 1; min-width: 200px;">
-                                <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
-                                    <i class="fas fa-calendar-alt" style="margin-right: 8px; color: #75e6da;"></i> DATE TO
-                                </label>
-                                
-                                <!-- Custom Date Picker -->
-                                <div class="custom-date-picker">
-                                    <div class="date-input-group" onclick="toggleToCalendar()">
-                                      
-                                        <input type="text" id="reportDateToDisplay" class="date-display" 
-                                               value="<?= date('m/d/Y', strtotime($selected_date)) ?>" 
-                                               readonly placeholder="MM/DD/YYYY">
-                                        <i class="fas fa-chevron-down dropdown-icon"></i>
-                                    </div>
-                                    <input type="hidden" id="reportDateTo" value="<?= $selected_date ?>">
-                                    
-                                    <!-- To Calendar Dropdown -->
-                                    <div class="calendar-dropdown" id="toCalendar">
-                                        <div class="calendar-header">
-                                            <span class="month-year" id="toMonthYear"><?= date('F Y', strtotime($selected_date)) ?></span>
-                                            <div class="nav-buttons">
-                                                <button type="button" class="nav-btn" onclick="navigateToMonth(-1)">‹</button>
-                                                <button type="button" class="nav-btn" onclick="navigateToMonth(1)">›</button>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="calendar-selectors">
-                                            <select id="toMonthSelect" class="month-select" onchange="changeToMonthYear()">
-                                                <option value="0">January</option>
-                                                <option value="1">February</option>
-                                                <option value="2">March</option>
-                                                <option value="3">April</option>
-                                                <option value="4">May</option>
-                                                <option value="5">June</option>
-                                                <option value="6">July</option>
-                                                <option value="7">August</option>
-                                                <option value="8">September</option>
-                                                <option value="9">October</option>
-                                                <option value="10">November</option>
-                                                <option value="11">December</option>
-                                            </select>
-                                            
-                                            <select id="toYearSelect" class="year-select" onchange="changeToMonthYear()">
-                                                <?php for($y = date('Y') - 5; $y <= date('Y') + 5; $y++): ?>
-                                                    <option value="<?= $y ?>" <?= $y == date('Y', strtotime($selected_date)) ? 'selected' : '' ?>><?= $y ?></option>
-                                                <?php endfor; ?>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="calendar-weekdays">
-                                            <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
-                                        </div>
-                                        
-                                        <div class="calendar-days" id="toCalendarDays">
-                                            <!-- Days will be populated by JavaScript -->
-                                        </div>
-                                        
-                                        <div class="calendar-footer">
-                                            <button type="button" class="btn-today" onclick="setToToday()">Today</button>
-                                            <button type="button" class="btn-clear" onclick="clearToDate()">Clear</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
+                           <!-- DATE FROM - Custom Calendar (Arrow overlapping text more) -->
+<div style="flex: 1; min-width: 200px;">
+    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fas fa-calendar-alt" style="margin-right: 8px; color: #75e6da;"></i> DATE FROM
+    </label>
+    
+    <!-- Custom Date Picker -->
+    <div class="custom-date-picker">
+        <div onclick="toggleFromCalendar()" style="display: flex; align-items: center; background: white; border: 2px solid #e0e0e0; border-radius: 10px; height: 45px; padding: 0 15px; cursor: pointer; box-sizing: border-box;">
+            <input type="text" id="reportDateFromDisplay" 
+                   value="<?= date('m/d/Y', strtotime($selected_date)) ?>" 
+                   readonly placeholder="MM/DD/YYYY" 
+                   style="border: none; background: transparent; font-size: 0.95rem; cursor: pointer; outline: none; flex: 1;">
+            <i class="fas fa-chevron-down" style="color: #95a5a6; font-size: 0.9rem; margin-left: -25px;"></i>
+        </div>
+        <input type="hidden" id="reportDateFrom" value="<?= $selected_date ?>">
+        
+        <div class="calendar-dropdown" id="fromCalendar">
+            <div class="calendar-header">
+                <span class="month-year" id="fromMonthYear"><?= date('F Y', strtotime($selected_date)) ?></span>
+                <div class="nav-buttons">
+                    <button type="button" class="nav-btn" onclick="navigateFromMonth(-1)">‹</button>
+                    <button type="button" class="nav-btn" onclick="navigateFromMonth(1)">›</button>
+                </div>
+            </div>
+            
+            <div class="calendar-selectors">
+                <select id="fromMonthSelect" class="month-select" onchange="changeFromMonthYear()">
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                </select>
+                
+                <select id="fromYearSelect" class="year-select" onchange="changeFromMonthYear()">
+                    <?php for($y = date('Y') - 5; $y <= date('Y') + 5; $y++): ?>
+                        <option value="<?= $y ?>" <?= $y == date('Y', strtotime($selected_date)) ? 'selected' : '' ?>><?= $y ?></option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+            
+            <div class="calendar-weekdays">
+                <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+            </div>
+            
+            <div class="calendar-days" id="fromCalendarDays">
+                <!-- Days will be populated by JavaScript -->
+            </div>
+            
+            <div class="calendar-footer">
+                <button type="button" class="btn-today" onclick="setFromToday()">Today</button>
+                <button type="button" class="btn-clear" onclick="clearFromDate()">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DATE TO - Custom Calendar (Arrow overlapping text more) -->
+<div style="flex: 1; min-width: 200px;">
+    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fas fa-calendar-alt" style="margin-right: 8px; color: #75e6da;"></i> DATE TO
+    </label>
+    
+    <!-- Custom Date Picker -->
+    <div class="custom-date-picker">
+        <div onclick="toggleToCalendar()" style="display: flex; align-items: center; background: white; border: 2px solid #e0e0e0; border-radius: 10px; height: 45px; padding: 0 15px; cursor: pointer; box-sizing: border-box;">
+            <input type="text" id="reportDateToDisplay" 
+                   value="<?= date('m/d/Y', strtotime($selected_date)) ?>" 
+                   readonly placeholder="MM/DD/YYYY" 
+                   style="border: none; background: transparent; font-size: 0.95rem; cursor: pointer; outline: none; flex: 1;">
+            <i class="fas fa-chevron-down" style="color: #95a5a6; font-size: 0.9rem; margin-left: -25px;"></i>
+        </div>
+        <input type="hidden" id="reportDateTo" value="<?= $selected_date ?>">
+        
+        <div class="calendar-dropdown" id="toCalendar">
+            <div class="calendar-header">
+                <span class="month-year" id="toMonthYear"><?= date('F Y', strtotime($selected_date)) ?></span>
+                <div class="nav-buttons">
+                    <button type="button" class="nav-btn" onclick="navigateToMonth(-1)">‹</button>
+                    <button type="button" class="nav-btn" onclick="navigateToMonth(1)">›</button>
+                </div>
+            </div>
+            
+            <div class="calendar-selectors">
+                <select id="toMonthSelect" class="month-select" onchange="changeToMonthYear()">
+                    <option value="0">January</option>
+                    <option value="1">February</option>
+                    <option value="2">March</option>
+                    <option value="3">April</option>
+                    <option value="4">May</option>
+                    <option value="5">June</option>
+                    <option value="6">July</option>
+                    <option value="7">August</option>
+                    <option value="8">September</option>
+                    <option value="9">October</option>
+                    <option value="10">November</option>
+                    <option value="11">December</option>
+                </select>
+                
+                <select id="toYearSelect" class="year-select" onchange="changeToMonthYear()">
+                    <?php for($y = date('Y') - 5; $y <= date('Y') + 5; $y++): ?>
+                        <option value="<?= $y ?>" <?= $y == date('Y', strtotime($selected_date)) ? 'selected' : '' ?>><?= $y ?></option>
+                    <?php endfor; ?>
+                </select>
+            </div>
+            
+            <div class="calendar-weekdays">
+                <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+            </div>
+            
+            <div class="calendar-days" id="toCalendarDays">
+                <!-- Days will be populated by JavaScript -->
+            </div>
+            
+            <div class="calendar-footer">
+                <button type="button" class="btn-today" onclick="setToToday()">Today</button>
+                <button type="button" class="btn-clear" onclick="clearToDate()">Clear</button>
+            </div>
+        </div>
+    </div>
+</div>
                             <!-- EMPLOYEE Dropdown -->
                             <div style="flex: 1.5; min-width: 250px;">
                                 <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
@@ -5014,6 +5012,27 @@ include("./includes/header.php");
                                 </div>
                             </div>
                             
+                            <!-- NEW: SITE Dropdown - Add this after Employee -->
+<!-- ============================================ -->
+<div style="flex: 1.5; min-width: 250px;">
+    <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2c3e50; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fas fa-building" style="margin-right: 8px; color: #75e6da;"></i> SITE
+    </label>
+    <div class="site-select-wrapper">
+        <select id="reportSiteId" class="filter-input" style="height: 45px; padding: 0 15px;">
+            <option value="0">All Sites</option>
+            <?php 
+            $sites_dropdown = $conn->query("SELECT id, site_name FROM site_monitoring ORDER BY site_name");
+            if ($sites_dropdown && $sites_dropdown->num_rows > 0) {
+                while($site = $sites_dropdown->fetch_assoc()) {
+                    echo '<option value="' . $site['id'] . '">' . htmlspecialchars($site['site_name']) . '</option>';
+                }
+            }
+            ?>
+        </select>
+    </div>
+</div>
+
                             <!-- GENERATE Button -->
                             <div style="flex: 0.8; min-width: 120px;">
                                 <button class="btn-preview" onclick="loadReportData()" style="height: 45px;">
@@ -5054,7 +5073,6 @@ include("./includes/header.php");
 </main>
 
 <?php include("./includes/footer.php"); ?>
-
 <script>
 // ============================================
 // GLOBAL VARIABLES
@@ -5084,6 +5102,57 @@ let toSelectedDate = '<?= $selected_date ?>';
 // ============================================
 // SITE ASSIGNMENT FUNCTIONS
 // ============================================
+
+// Load sites from database
+async function loadSites() {
+    try {
+        const response = await fetch('get_sites.php');
+        const data = await response.json();
+        
+        if (data.success && data.sites && data.sites.length > 0) {
+            // Populate AM Site dropdown
+            const amSiteSelect = document.getElementById('siteAssignmentAm');
+            const pmSiteSelect = document.getElementById('siteAssignmentPm');
+            const nightSiteSelect = document.getElementById('siteAssignmentNight');
+            
+            if (amSiteSelect) {
+                amSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
+                data.sites.forEach(site => {
+                    const option = document.createElement('option');
+                    option.value = site.site_name;
+                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
+                    amSiteSelect.appendChild(option);
+                });
+            }
+            
+            if (pmSiteSelect) {
+                pmSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
+                data.sites.forEach(site => {
+                    const option = document.createElement('option');
+                    option.value = site.site_name;
+                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
+                    pmSiteSelect.appendChild(option);
+                });
+            }
+            
+            if (nightSiteSelect) {
+                nightSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
+                data.sites.forEach(site => {
+                    const option = document.createElement('option');
+                    option.value = site.site_name;
+                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
+                    nightSiteSelect.appendChild(option);
+                });
+            }
+            
+            console.log('Sites loaded successfully:', data.sites.length);
+        } else {
+            console.warn('No sites found in database');
+        }
+    } catch (error) {
+        console.error('Error loading sites:', error);
+    }
+}
 
 // Reset site assignment for a specific session
 function resetSiteAssignment(session) {
@@ -5119,6 +5188,7 @@ function resetSiteAssignment(session) {
         }
     }
 }
+
 // Disable/enable site assignment for a session
 function disableSiteAssignment(session, disabled) {
     if (session === 'am') {
@@ -5128,10 +5198,17 @@ function disableSiteAssignment(session, disabled) {
             if (disabled) {
                 amSite.style.backgroundColor = '#f0f0f0';
                 amSite.style.cursor = 'not-allowed';
+                amSite.style.opacity = '0.6';
             } else {
                 amSite.style.backgroundColor = 'white';
                 amSite.style.cursor = 'pointer';
+                amSite.style.opacity = '1';
             }
+        }
+        // Show/hide required star based on disabled state
+        const requiredStar = document.querySelector('#amSiteContainer .required-star');
+        if (requiredStar) {
+            requiredStar.style.display = disabled ? 'none' : 'inline';
         }
     } else if (session === 'pm') {
         const pmSite = document.getElementById('siteAssignmentPm');
@@ -5140,10 +5217,16 @@ function disableSiteAssignment(session, disabled) {
             if (disabled) {
                 pmSite.style.backgroundColor = '#f0f0f0';
                 pmSite.style.cursor = 'not-allowed';
+                pmSite.style.opacity = '0.6';
             } else {
                 pmSite.style.backgroundColor = 'white';
                 pmSite.style.cursor = 'pointer';
+                pmSite.style.opacity = '1';
             }
+        }
+        const requiredStar = document.querySelector('#pmSiteContainer .required-star');
+        if (requiredStar) {
+            requiredStar.style.display = disabled ? 'none' : 'inline';
         }
     } else if (session === 'night') {
         const nightSite = document.getElementById('siteAssignmentNight');
@@ -5152,14 +5235,21 @@ function disableSiteAssignment(session, disabled) {
             if (disabled) {
                 nightSite.style.backgroundColor = '#f0f0f0';
                 nightSite.style.cursor = 'not-allowed';
+                nightSite.style.opacity = '0.6';
             } else {
                 nightSite.style.backgroundColor = 'white';
                 nightSite.style.cursor = 'pointer';
+                nightSite.style.opacity = '1';
             }
+        }
+        const requiredStar = document.querySelector('#nightSiteContainer .required-star');
+        if (requiredStar) {
+            requiredStar.style.display = disabled ? 'none' : 'inline';
         }
     }
 }
-// Validate site assignment for a specific session - ALWAYS REQUIRED
+
+// Validate site assignment for a specific session
 function validateSiteAssignment(session) {
     let siteValue = '';
     let errorElement = null;
@@ -5179,7 +5269,6 @@ function validateSiteAssignment(session) {
         selectElement = document.getElementById('siteAssignmentNight');
     }
     
-    // Site Assignment is required ONLY for this session
     if (!siteValue || siteValue === '') {
         if (errorElement) {
             errorElement.style.display = 'flex';
@@ -5199,6 +5288,7 @@ function validateSiteAssignment(session) {
         return true;
     }
 }
+
 // Clear validation errors for site assignment
 function clearSiteAssignmentErrors() {
     const errors = ['amSiteError', 'pmSiteError', 'nightSiteError'];
@@ -5215,7 +5305,7 @@ function clearSiteAssignmentErrors() {
 }
 
 // ============================================
-// SIMPLIFIED WORKDAY FUNCTIONS
+// WORKDAY FUNCTIONS
 // ============================================
 function clearWorkdayInput() {
     const select = document.getElementById('workdayType');
@@ -5493,10 +5583,9 @@ function clearToDate() {
 }
 
 // ============================================
-// REPORT MODAL FUNCTIONS - AUTO LOAD
+// REPORT MODAL FUNCTIONS
 // ============================================
 function openReportModal(event) {
-    // Prevent any default behavior and stop propagation
     if (event) {
         event.preventDefault();
         event.stopPropagation();
@@ -5506,9 +5595,8 @@ function openReportModal(event) {
     if (modal) {
         modal.style.display = 'flex';
         modal.classList.add('show');
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        document.body.style.overflow = 'hidden';
         
-        // Reset calendar dates
         const currentDate = '<?= $selected_date ?>';
         const dateObj = new Date(currentDate);
         const formattedDisplay = dateObj.toLocaleDateString('en-US', {
@@ -5527,14 +5615,9 @@ function openReportModal(event) {
         fromSelectedDate = currentDate;
         toSelectedDate = currentDate;
         
-        // Auto-load report data for current date
         setTimeout(() => {
             loadReportData();
-        }, 100); // Small delay to ensure modal is rendered
-        
-        console.log('Report modal opened - auto-loading data');
-    } else {
-        console.error('Report modal not found!');
+        }, 100);
     }
 }
 
@@ -5543,30 +5626,26 @@ function closeReportModal() {
     if (modal) {
         modal.style.display = 'none';
         modal.classList.remove('show');
-        document.body.style.overflow = 'auto'; // Restore scrolling
+        document.body.style.overflow = 'auto';
         
-        // Close any open calendars
         const fromCalendar = document.getElementById('fromCalendar');
         const toCalendar = document.getElementById('toCalendar');
         if (fromCalendar) fromCalendar.classList.remove('show');
         if (toCalendar) toCalendar.classList.remove('show');
-        
-        console.log('Report modal closed');
     }
 }
 
-// Load Report Data Function
 function loadReportData() {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
     const employeeId = document.getElementById('reportEmployeeId').value;
+    const siteId = document.getElementById('reportSiteId').value;
     
     if (!dateFrom || !dateTo) {
         alert('Please select both From and To dates');
         return;
     }
     
-    // Show loading
     document.getElementById('reportPreviewContainer').innerHTML = `
         <div style="text-align: center; padding: 50px;">
             <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #75e6da;"></i>
@@ -5574,12 +5653,10 @@ function loadReportData() {
         </div>
     `;
     
-    // Update download link
     const downloadLink = document.getElementById('downloadExcelLink');
-    downloadLink.href = `download_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}`;
+    downloadLink.href = `download_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}&site_id=${siteId}`;
     
-    // AJAX call to get report data
-    fetch(`get_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}`)
+    fetch(`get_attendance_report.php?date_from=${dateFrom}&date_to=${dateTo}&employee_id=${employeeId}&site_id=${siteId}`)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -5606,13 +5683,16 @@ function loadReportData() {
         });
 }
 
-// Display Report Preview
+// Display Report Preview - Grouped by Site
 function displayReportPreview(data) {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
     const employeeId = document.getElementById('reportEmployeeId').value;
     const employeeSelect = document.getElementById('reportEmployeeId');
     const employeeName = employeeSelect.options[employeeSelect.selectedIndex].text;
+    const siteId = document.getElementById('reportSiteId').value;
+    const siteSelect = document.getElementById('reportSiteId');
+    const selectedSiteName = siteId != 0 ? siteSelect.options[siteSelect.selectedIndex]?.text || 'All Sites' : 'All Sites';
     
     let html = `
         <div class="report-header">
@@ -5626,40 +5706,223 @@ function displayReportPreview(data) {
         
         <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 12px; display: flex; gap: 25px; flex-wrap: wrap; border: 1px solid #e0e0e0;">
             <div><strong style="color: #2c3e50;">Employee:</strong> <span style="color: #75e6da; font-weight: 600;">${employeeName}</span></div>
-            <div><strong style="color: #2c3e50;">Total Records:</strong> <span style="font-weight: 600;">${data.records.length}</span></div>
-            <div><strong style="color: #2c3e50;">Total Hours:</strong> <span style="color: #27ae60; font-weight: 600;">${data.total_hours} hrs</span></div>
-            <div><strong style="color: #2c3e50;">Present:</strong> <span style="color: #28a745; font-weight: 600;">${data.present_count || 0}</span></div>
-            <div><strong style="color: #2c3e50;">Absent:</strong> <span style="color: #dc3545; font-weight: 600;">${data.absent_count || 0}</span></div>
-            <div><strong style="color: #2c3e50;">On Leave:</strong> <span style="color: #ffc107; font-weight: 600;">${data.leave_count || 0}</span></div>
+            <div><strong style="color: #2c3e50;">Site:</strong> <span style="color: #75e6da; font-weight: 600;">${selectedSiteName}</span></div>
         </div>
     `;
     
-    if (data.records.length > 0) {
-        html += `
-            <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
-                    <thead>
-                        <tr style="background: linear-gradient(135deg, #75e6da, #5fd9c9); color: white;">
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Employee</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Date</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">AM Status</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">AM In</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">AM Out</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">PM Status</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">PM/Night In</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">PM/Night Out</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Night Status</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Leave</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Workday Type</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Total Hrs</th>
-                            <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Remarks</th>
+    if (data.grouped_by_site && data.sites && data.sites.length > 0) {
+        for (let siteIdx = 0; siteIdx < data.sites.length; siteIdx++) {
+            const site = data.sites[siteIdx];
+            const siteRecords = site.records;
+            
+            html += `
+                <div style="margin-top: 30px; margin-bottom: 20px;">
+                    <div style="background: linear-gradient(135deg, #2E7D32, #1B5E20); color: white; padding: 12px 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1.2rem;">
+                            <i class="fas fa-building"></i> ${escapeHtml(site.site_name)}
+                        </h3>
+                        <div style="font-size: 0.85rem;">
+                            <span style="background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px;">
+                                Total: ${site.summary.total_hours} hrs | 
+                                Present: ${site.summary.present_count} | 
+                                Absent: ${site.summary.absent_count} | 
+                                Leave: ${site.summary.leave_count}
+                            </span>
+                        </div>
+                    </div>
+            `;
+            
+            if (siteRecords.length > 0) {
+                html += `
+                    <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                            <thead>
+                                <tr style="background: #f8f9fa; border-bottom: 2px solid #75e6da;">
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Employee</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Date</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">AM Status</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">AM Time In</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">AM Time Out</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">PM Status</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">PM Time In</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">PM Time Out</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Night Status</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Night Time In</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Night Time Out</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Leave Type</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Workday Type</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Total Hours</th>
+                                    <th style="padding: 12px 8px; border: 1px solid #e0e0e0;">Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+                
+                for (let i = 0; i < siteRecords.length; i++) {
+                    const record = siteRecords[i];
+                    const siteName = site.site_name;
+                    
+                    const isAmAssigned = (record.site_assignment_am == siteName);
+                    const isPmAssigned = (record.site_assignment_pm == siteName);
+                    const isNightAssigned = (record.site_assignment_night == siteName);
+                    
+                    let amStatusClass = 'status-no-record';
+                    let amStatusText = 'No Record';
+                    if (isAmAssigned) {
+                        if (record.status === 'Present') {
+                            amStatusClass = 'status-present';
+                            amStatusText = 'Present';
+                        } else if (record.status === 'Absent') {
+                            amStatusClass = 'status-absent';
+                            amStatusText = 'Absent';
+                        } else if (record.status === 'On Leave') {
+                            amStatusClass = 'status-leave';
+                            amStatusText = 'On Leave';
+                        }
+                    }
+                    
+                    let pmStatusClass = 'status-no-record';
+                    let pmStatusText = 'No Record';
+                    if (isPmAssigned) {
+                        if (record.pm_status === 'Present') {
+                            pmStatusClass = 'status-present';
+                            pmStatusText = 'Present';
+                        } else if (record.pm_status === 'Absent') {
+                            pmStatusClass = 'status-absent';
+                            pmStatusText = 'Absent';
+                        } else if (record.pm_status === 'On Leave') {
+                            pmStatusClass = 'status-leave';
+                            pmStatusText = 'On Leave';
+                        }
+                    }
+                    
+                    let nightStatusClass = 'status-no-record';
+                    let nightStatusText = 'No Record';
+                    if (isNightAssigned) {
+                        if (record.night_status === 'Present') {
+                            nightStatusClass = 'status-present';
+                            nightStatusText = 'Present';
+                        } else if (record.night_status === 'Absent') {
+                            nightStatusClass = 'status-absent';
+                            nightStatusText = 'Absent';
+                        } else if (record.night_status === 'On Leave') {
+                            nightStatusClass = 'status-leave';
+                            nightStatusText = 'On Leave';
+                        }
+                    }
+                    
+                    const timeInAmDisplay = (isAmAssigned && record.time_in_am_display && record.time_in_am_display !== '-') ? record.time_in_am_display : '-';
+                    const timeOutAmDisplay = (isAmAssigned && record.time_out_am_display && record.time_out_am_display !== '-') ? record.time_out_am_display : '-';
+                    const timeInPmDisplay = (isPmAssigned && record.time_in_pm_display && record.time_in_pm_display !== '-') ? record.time_in_pm_display : '-';
+                    const timeOutPmDisplay = (isPmAssigned && record.time_out_pm_display && record.time_out_pm_display !== '-') ? record.time_out_pm_display : '-';
+                    const timeInNightDisplay = (isNightAssigned && record.time_in_night_display && record.time_in_night_display !== '-') ? record.time_in_night_display : '-';
+                    const timeOutNightDisplay = (isNightAssigned && record.time_out_night_display && record.time_out_night_display !== '-') ? record.time_out_night_display : '-';
+                    
+                    let totalHours = 0;
+                    if (isAmAssigned && record.time_in_am && record.time_out_am) {
+                        totalHours += parseFloat(calculateHoursForReport(record.time_in_am, record.time_out_am));
+                    }
+                    if (isPmAssigned && record.time_in_pm && record.time_out_pm) {
+                        totalHours += parseFloat(calculateHoursForReport(record.time_in_pm, record.time_out_pm));
+                    }
+                    if (isNightAssigned && record.time_in_night && record.time_out_night) {
+                        totalHours += parseFloat(calculateHoursForReport(record.time_in_night, record.time_out_night));
+                    }
+                    
+                    html += `
+                        <tr style="border-bottom: 1px solid #e0e0e0; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">
+                                ${escapeHtml(record.employee_name)}<br>
+                                <small style="color: #666;">ID: ${record.employee_id}</small>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
+                                ${formatDate(record.date)}<br>
+                                <small>${record.day_of_week || ''}</small>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
+                                <span class="${amStatusClass}" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; font-weight: 600;">${amStatusText}</span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${timeInAmDisplay}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${timeOutAmDisplay}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
+                                <span class="${pmStatusClass}" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; font-weight: 600;">${pmStatusText}</span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${timeInPmDisplay}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${timeOutPmDisplay}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
+                                <span class="${nightStatusClass}" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; font-weight: 600;">${nightStatusText}</span>
+                            </td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${timeInNightDisplay}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${timeOutNightDisplay}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${record.leave_type || '-'}</td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px;">${record.workday_type || '-'}</span></td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><strong style="color: #27ae60;">${totalHours.toFixed(2)}</strong></td>
+                            <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">${record.remarks || '-'}</td>
                         </tr>
-                    </thead>
-                    <tbody>
+                    `;
+                }
+                
+                html += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                `;
+            } else {
+                html += `
+                    <div style="border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 12px 12px; text-align: center; padding: 30px; color: #7f8c8d;">
+                        <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                        <p>No records found for ${escapeHtml(site.site_name)}</p>
+                    </div>
+                </div>
+                `;
+            }
+        }
+        
+        if (data.grand_total) {
+            html += `
+                <div style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #e8f5e9, #c8e6c9); border-radius: 12px; border-left: 4px solid #2E7D32;">
+                    <h4 style="color: #2E7D32; margin-bottom: 15px;"><i class="fas fa-chart-bar"></i> GRAND TOTAL SUMMARY</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 20px;">
+                        <div><strong>Total Records:</strong> <span style="font-weight: 600;">${data.grand_total.total_records}</span></div>
+                        <div><strong>Total Hours:</strong> <span style="color: #27ae60; font-weight: 600;">${data.grand_total.total_hours} hrs</span></div>
+                        <div><strong>Present:</strong> <span style="color: #28a745; font-weight: 600;">${data.grand_total.present_count} </span></div>
+                        <div><strong>Absent:</strong> <span style="color: #dc3545; font-weight: 600;">${data.grand_total.absent_count} </span></div>
+                        <div><strong>On Leave:</strong> <span style="color: #ffc107; font-weight: 600;">${data.grand_total.leave_count} </span></div>
+                    </div>
+                </div>
+            `;
+        }
+    } else if (data.records && data.records.length > 0) {
+        html += `
+            <div style="margin-top: 20px;">
+                <div style="overflow-x: auto; border: 1px solid #e0e0e0; border-radius: 12px;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="background: linear-gradient(135deg, #75e6da, #5fd9c9); color: white;">
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Employee</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Date</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">AM Status</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">AM In</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">AM Out</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">PM Status</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">PM In</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">PM Out</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Night Status</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Night In</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Night Out</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Leave</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Workday Type</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Total Hrs</th>
+                                <th style="padding: 12px 8px; border: 1px solid #5fd9c9;">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
         `;
         
-        data.records.forEach(record => {
-            // Format status classes
+        for (let i = 0; i < data.records.length; i++) {
+            const record = data.records[i];
+            
             let amStatusClass = 'status-no-record';
             let amStatusText = record.status || 'No Record';
             if (record.status === 'Present') amStatusClass = 'status-present';
@@ -5678,47 +5941,41 @@ function displayReportPreview(data) {
             else if (record.night_status === 'Absent') nightStatusClass = 'status-absent';
             else if (record.night_status === 'On Leave') nightStatusClass = 'status-leave';
             
+            const timeInAmDisplay = record.time_in_am_display || '-';
+            const timeOutAmDisplay = record.time_out_am_display || '-';
+            const timeInPmDisplay = record.time_in_pm_display || '-';
+            const timeOutPmDisplay = record.time_out_pm_display || '-';
+            const timeInNightDisplay = record.time_in_night_display || '-';
+            const timeOutNightDisplay = record.time_out_night_display || '-';
+            
             html += `
-                <tr style="border-bottom: 1px solid #e0e0e0; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                <tr style="border-bottom: 1px solid #e0e0e0;">
                     <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">
-                        ${record.employee_name}<br>
-                        <small style="color: #666;">ID: ${record.employee_id}</small>
+                        ${escapeHtml(record.employee_name)}<br>
+                        <small>ID: ${record.employee_id}</small>
                     </td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
-                        ${formatDate(record.date)}
-                    </td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
-                        <span class="${amStatusClass}" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; font-weight: 600;">${amStatusText}</span>
-                    </td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${record.time_in_am_display || '-'}</td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center; font-family: monospace;">${record.time_out_am_display || '-'}</td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
-                        <span class="${pmStatusClass}" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; font-weight: 600;">${pmStatusText}</span>
-                    </td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">
-                        ${record.time_in_pm_display ? '<div><span style="color: #f39c12; font-weight: 600;">PM:</span> ' + record.time_in_pm_display + '</div>' : ''}
-                        ${record.time_in_night_display ? '<div><span style="color: #9b59b6; font-weight: 600;">Night:</span> ' + record.time_in_night_display + '</div>' : ''}
-                        ${!record.time_in_pm_display && !record.time_in_night_display ? '-' : ''}
-                    </td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">
-                        ${record.time_out_pm_display ? '<div><span style="color: #f39c12; font-weight: 600;">PM:</span> ' + record.time_out_pm_display + '</div>' : ''}
-                        ${record.time_out_night_display ? '<div><span style="color: #9b59b6; font-weight: 600;">Night:</span> ' + record.time_out_night_display + '</div>' : ''}
-                        ${!record.time_out_pm_display && !record.time_out_night_display ? '-' : ''}
-                    </td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">
-                        <span class="${nightStatusClass}" style="padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; display: inline-block; font-weight: 600;">${nightStatusText}</span>
-                    </td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${formatDate(record.date)}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><span class="${amStatusClass}">${amStatusText}</span></td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${timeInAmDisplay}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${timeOutAmDisplay}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><span class="${pmStatusClass}">${pmStatusText}</span></td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${timeInPmDisplay}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${timeOutPmDisplay}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><span class="${nightStatusClass}">${nightStatusText}</span></td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${timeInNightDisplay}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${timeOutNightDisplay}</td>
                     <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${record.leave_type || '-'}</td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><span style="background: #e3f2fd; color: #1976d2; padding: 4px 8px; border-radius: 12px;">${record.workday_type || '-'}</span></td>
-                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><strong style="color: #27ae60;">${record.total_hours || '0.00'}</strong></td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;">${record.workday_type || '-'}</td>
+                    <td style="padding: 10px 8px; border: 1px solid #e0e0e0; text-align: center;"><strong>${record.total_hours || '0.00'}</strong></td>
                     <td style="padding: 10px 8px; border: 1px solid #e0e0e0;">${record.remarks || '-'}</td>
                 </tr>
             `;
-        });
+        }
         
         html += `
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         `;
     } else {
@@ -5735,7 +5992,36 @@ function displayReportPreview(data) {
     document.getElementById('reportActionButtons').style.display = 'flex';
 }
 
-// Print Report
+function calculateHoursForReport(timeIn, timeOut) {
+    if (!timeIn || !timeOut) return 0;
+    
+    const isMidnightOut = (timeOut === '00:00:00');
+    
+    const timeInTs = new Date(`2000-01-01 ${timeIn}`).getTime();
+    
+    if (isMidnightOut) {
+        const midnightTs = new Date(`2000-01-02 00:00:00`).getTime();
+        const hours = (midnightTs - timeInTs) / 3600000;
+        return Math.max(0, hours);
+    }
+    
+    let timeOutTs = new Date(`2000-01-01 ${timeOut}`).getTime();
+    
+    if (timeOutTs < timeInTs) {
+        timeOutTs += 86400000;
+    }
+    
+    const hours = (timeOutTs - timeInTs) / 3600000;
+    return Math.max(0, hours);
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function printReport() {
     const dateFrom = document.getElementById('reportDateFrom').value;
     const dateTo = document.getElementById('reportDateTo').value;
@@ -5747,7 +6033,6 @@ function printReport() {
     }
 }
 
-// Format Date Helper
 function formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -5755,15 +6040,13 @@ function formatDate(dateString) {
 
 // ============================================
 // HELPER FUNCTIONS
-//============================================
+// ============================================
 function calculateHours(timeIn, timeOut) {
     if (!timeIn || !timeOut || timeIn === '00:00:00' || timeOut === '00:00:00') {
-        // If timeOut is exactly 00:00:00 (midnight), we need to calculate it specially
         if (timeOut === '00:00:00' && timeIn && timeIn !== '00:00:00') {
-            // Calculate hours from timeIn to midnight (24:00)
             const [inHour, inMinute] = timeIn.split(':').map(Number);
             const inMinutes = inHour * 60 + inMinute;
-            const midnightMinutes = 24 * 60; // 24:00
+            const midnightMinutes = 24 * 60;
             const totalMinutes = midnightMinutes - inMinutes;
             return parseFloat((totalMinutes / 60).toFixed(2));
         }
@@ -5776,12 +6059,10 @@ function calculateHours(timeIn, timeOut) {
     let inMinutes = inHour * 60 + inMinute;
     let outMinutes = outHour * 60 + outMinute;
     
-    // Handle midnight (00:00) as 24:00
     if (outHour === 0 && outMinute === 0 && inMinutes > 0) {
         outMinutes = 24 * 60;
     }
     
-    // Handle overnight shifts
     if (outMinutes < inMinutes) {
         outMinutes += 24 * 60;
     }
@@ -5798,7 +6079,6 @@ function updateTotalHours() {
     const timeInNight = document.getElementById('timeInNight').value;
     const timeOutNight = document.getElementById('timeOutNight').value;
     
-    // Use the improved calculateHours function
     const amHours = calculateHours(timeInAm, timeOutAm);
     const pmHours = calculateHours(timeInPm, timeOutPm);
     const nightHours = calculateHours(timeInNight, timeOutNight);
@@ -5819,10 +6099,11 @@ function convertTimeTo24Hour(hour, minute, period) {
         hour24 += 12;
     }
     if (period === 'AM' && hour24 === 12) {
-        hour24 = 0;  // 12:00 AM becomes 00:00:00
+        hour24 = 0;
     }
     return `${hour24.toString().padStart(2, '0')}:${minute}:00`;
 }
+
 function disableTimeInputs(session, disabled) {
     if (session === 'am') {
         const amInputs = ['timeInAm', 'timeOutAm'];
@@ -5961,8 +6242,7 @@ function resetTimeFields(session) {
         document.getElementById('timeInAmError').style.display = 'none';
         document.getElementById('timeOutAmError').style.display = 'none';
         
-        // Reset site assignment for AM
-        resetSiteAssignment('am');
+        // DO NOT reset site assignment here
     }
     
     if (session === 'pm' || !session) {
@@ -5999,8 +6279,7 @@ function resetTimeFields(session) {
         document.getElementById('timeInPmError').style.display = 'none';
         document.getElementById('timeOutPmError').style.display = 'none';
         
-        // Reset site assignment for PM
-        resetSiteAssignment('pm');
+        // DO NOT reset site assignment here
     }
     
     if (session === 'night' || !session) {
@@ -6037,12 +6316,12 @@ function resetTimeFields(session) {
         document.getElementById('timeInNightError').style.display = 'none';
         document.getElementById('timeOutNightError').style.display = 'none';
         
-        // Reset site assignment for Night
-        resetSiteAssignment('night');
+        // DO NOT reset site assignment here
     }
     
     updateTotalHours();
 }
+
 function clearValidationHighlights() {
     const timeFields = ['timeInAmDisplay', 'timeOutAmDisplay', 'timeInPmDisplay', 'timeOutPmDisplay', 'timeInNightDisplay', 'timeOutNightDisplay'];
     timeFields.forEach(id => {
@@ -6090,78 +6369,8 @@ function showNotification(message, type = 'info', target = 'notificationArea') {
         }
     }, 5000);
 }
-document.addEventListener('DOMContentLoaded', function() {
-    const statusAbsent = document.getElementById('statusAbsent');
-    const statusPresent = document.getElementById('statusPresent');
-    const pmStatusPresent = document.getElementById('pmStatusPresent');
-    const pmStatusAbsent = document.getElementById('pmStatusAbsent');
-    const nightStatusPresent = document.getElementById('nightStatusPresent');
-    const nightStatusAbsent = document.getElementById('nightStatusAbsent');
-    
-  if (statusAbsent) {
-    statusAbsent.addEventListener('change', function() {
-        if (this.checked) {
-            disableTimeInputs('am', true);
-            resetTimeFields('am');
-            // Site assignment remains enabled - do NOT disable or reset
-            clearValidationHighlights();
-        }
-    });
-}
-    
-    if (statusPresent) {
-        statusPresent.addEventListener('change', function() {
-            if (this.checked) {
-                disableTimeInputs('am', false);
-                disableSiteAssignment('am', false);
-                clearValidationHighlights();
-            }
-        });
-    }
-    
-    if (pmStatusPresent) {
-        pmStatusPresent.addEventListener('change', function() {
-            if (this.checked) {
-                disableTimeInputs('pm', false);
-                disableSiteAssignment('pm', false);
-                clearValidationHighlights();
-            }
-        });
-    }
-    
-  if (pmStatusAbsent) {
-    pmStatusAbsent.addEventListener('change', function() {
-        if (this.checked) {
-            disableTimeInputs('pm', true);
-            resetTimeFields('pm');
-            // Site assignment remains enabled - do NOT disable or reset
-            clearValidationHighlights();
-        }
-    });
-}
-    
-    if (nightStatusPresent) {
-        nightStatusPresent.addEventListener('change', function() {
-            if (this.checked) {
-                disableTimeInputs('night', false);
-                disableSiteAssignment('night', false);
-                clearValidationHighlights();
-            }
-        });
-    }
-    
- if (nightStatusAbsent) {
-    nightStatusAbsent.addEventListener('change', function() {
-        if (this.checked) {
-            disableTimeInputs('night', true);
-            resetTimeFields('night');
-            // ✅ HUWAG i-disable ang site assignment - dapat pwedeng pumili ng site kahit Absent
-            // ✅ HUWAG i-reset ang site assignment - dapat manatili ang napiling site
-            clearValidationHighlights();
-        }
-    });
-}
-});
+
+// ============================================
 // MAIN DATE FILTER CALENDAR FUNCTIONS
 // ============================================
 function toggleMainCalendar() {
@@ -6804,7 +7013,6 @@ function openAddAttendanceModal() {
             modalTitle.innerHTML = '<i class="fas fa-calendar-plus"></i> Add Attendance Record';
         }
         
-        // Set date from the current filter
         const currentDate = document.getElementById('selectedDate').value;
         const dateObj = new Date(currentDate);
         
@@ -6905,7 +7113,6 @@ function deleteAttendance() {
         return;
     }
     
-    // Show loading state
     const deleteBtn = document.getElementById('confirmDeleteBtn');
     const originalText = deleteBtn.innerHTML;
     deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting...';
@@ -6942,7 +7149,7 @@ function deleteAttendance() {
 }
 
 // ============================================
-// VIEW ATTENDANCE FUNCTION (FIXED)
+// VIEW ATTENDANCE FUNCTION
 // ============================================
 function viewAttendance(employeeId, date, employeeName) {
     const modal = document.getElementById('viewAttendanceModal');
@@ -6956,11 +7163,9 @@ function viewAttendance(employeeId, date, employeeName) {
         
         isViewMode = true;
         
-        // Clear previous data
         document.getElementById('viewEmployeeName').textContent = employeeName;
         document.getElementById('viewEmployeeId').textContent = employeeId;
         
-        // Get position
         const select = document.getElementById('employeeSelect');
         if (select) {
             for (let i = 0; i < select.options.length; i++) {
@@ -6982,7 +7187,6 @@ function viewAttendance(employeeId, date, employeeName) {
         
         document.getElementById('viewRemarks').textContent = '--';
         
-        // Reset displays
         document.getElementById('viewAmStatus').textContent = '--';
         document.getElementById('viewPmStatus').textContent = '--';
         document.getElementById('viewNightStatus').textContent = '--';
@@ -7004,6 +7208,7 @@ function viewAttendance(employeeId, date, employeeName) {
         
         document.getElementById('viewLeaveContainer').style.display = 'none';
         document.getElementById('viewWorkdayContainer').style.display = 'none';
+        document.getElementById('viewSiteAssignmentContainer').style.display = 'none';
         
         document.getElementById('viewAmStatusDot').style.display = 'none';
         document.getElementById('viewAmStatusDotAbsent').style.display = 'none';
@@ -7021,85 +7226,14 @@ function viewAttendance(employeeId, date, employeeName) {
     }
 }
 
-// ============================================
-// LOAD SITES FROM DATABASE FOR DROPDOWNS
-// ============================================
-// LOAD SITES FROM DATABASE FOR DROPDOWNS
-// ============================================
-async function loadSites() {
-    try {
-        const response = await fetch('get_sites.php');
-        const data = await response.json();
-        
-        if (data.success && data.sites && data.sites.length > 0) {
-            // Populate AM Site dropdown
-            const amSiteSelect = document.getElementById('siteAssignmentAm');
-            const pmSiteSelect = document.getElementById('siteAssignmentPm');
-            const nightSiteSelect = document.getElementById('siteAssignmentNight');
-            
-            if (amSiteSelect) {
-                amSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
-                data.sites.forEach(site => {
-                    const option = document.createElement('option');
-                    option.value = site.site_name;
-                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
-                    amSiteSelect.appendChild(option);
-                });
-            }
-            
-            if (pmSiteSelect) {
-                pmSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
-                data.sites.forEach(site => {
-                    const option = document.createElement('option');
-                    option.value = site.site_name;
-                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
-                    pmSiteSelect.appendChild(option);
-                });
-            }
-            
-            if (nightSiteSelect) {
-                nightSiteSelect.innerHTML = '<option value="">-- Select Site (Required) --</option>';
-                data.sites.forEach(site => {
-                    const option = document.createElement('option');
-                    option.value = site.site_name;
-                    option.textContent = site.site_name + (site.address ? ' (' + site.address + ')' : '');
-                    nightSiteSelect.appendChild(option);
-                });
-            }
-            
-            console.log('Sites loaded successfully:', data.sites.length);
-        } else {
-            console.warn('No sites found in database');
-        }
-    } catch (error) {
-        console.error('Error loading sites:', error);
-    }
-}
-
-// Call loadSites when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    loadSites();
-    // ... rest of your existing DOMContentLoaded code ...
-});
-// Call loadSites when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    loadSites();
-    // ... rest of your existing DOMContentLoaded code ...
-});
-
-
-
-
 async function fetchViewAttendanceData(employeeId, date) {
     try {
         const response = await fetch(`get_attendance.php?employee_id=${employeeId}&date=${date}`);
         const data = await response.json();
         
         if (data.success) {
-            // Set record ID
             document.getElementById('viewRecordId').textContent = data.id || '--';
             
-            // Handle Leave - display if leave_type exists
             if (data.leave_type && data.leave_type !== '') {
                 document.getElementById('viewLeaveContainer').style.display = 'block';
                 document.getElementById('viewLeaveType').textContent = data.leave_type;
@@ -7107,7 +7241,6 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewLeaveContainer').style.display = 'none';
             }
             
-            // Handle Workday Type - always show if exists
             if (data.workday_type && data.workday_type !== '') {
                 document.getElementById('viewWorkdayContainer').style.display = 'block';
                 document.getElementById('viewWorkdayType').textContent = data.workday_type || '';
@@ -7115,12 +7248,8 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewWorkdayContainer').style.display = 'none';
             }
             
-            // ============================================
-            // SITE ASSIGNMENT DISPLAY - NEW
-            // ============================================
             const siteContainer = document.getElementById('viewSiteAssignmentContainer');
             if (siteContainer) {
-                // Check if any site assignment exists
                 const hasAmSite = data.site_assignment_am && data.site_assignment_am !== '';
                 const hasPmSite = data.site_assignment_pm && data.site_assignment_pm !== '';
                 const hasNightSite = data.site_assignment_night && data.site_assignment_night !== '';
@@ -7128,25 +7257,21 @@ async function fetchViewAttendanceData(employeeId, date) {
                 if (hasAmSite || hasPmSite || hasNightSite) {
                     siteContainer.style.display = 'block';
                     
-                    // Display AM Site
                     const amSiteValue = document.getElementById('viewAmSiteValue');
                     if (amSiteValue) {
                         amSiteValue.textContent = data.site_assignment_am && data.site_assignment_am !== '' ? data.site_assignment_am : '--';
                     }
                     
-                    // Display PM Site
                     const pmSiteValue = document.getElementById('viewPmSiteValue');
                     if (pmSiteValue) {
                         pmSiteValue.textContent = data.site_assignment_pm && data.site_assignment_pm !== '' ? data.site_assignment_pm : '--';
                     }
                     
-                    // Display Night Site
                     const nightSiteValue = document.getElementById('viewNightSiteValue');
                     if (nightSiteValue) {
                         nightSiteValue.textContent = data.site_assignment_night && data.site_assignment_night !== '' ? data.site_assignment_night : '--';
                     }
                     
-                    // Show/hide individual rows based on whether site exists
                     const amRow = document.getElementById('viewAmSite');
                     const pmRow = document.getElementById('viewPmSite');
                     const nightRow = document.getElementById('viewNightSite');
@@ -7159,9 +7284,7 @@ async function fetchViewAttendanceData(employeeId, date) {
                 }
             }
             
-            // ============================================
-            // AM STATUS - Display
-            // ============================================
+            // AM Status
             if (data.status) {
                 document.getElementById('viewAmStatus').textContent = data.status;
                 if (data.status === 'Present') {
@@ -7193,9 +7316,7 @@ async function fetchViewAttendanceData(employeeId, date) {
                 }
             }
             
-            // ============================================
-            // PM STATUS - Display
-            // ============================================
+            // PM Status
             if (data.pm_status) {
                 document.getElementById('viewPmStatus').textContent = data.pm_status;
                 if (data.pm_status === 'Present') {
@@ -7227,9 +7348,7 @@ async function fetchViewAttendanceData(employeeId, date) {
                 }
             }
             
-            // ============================================
-            // NIGHT STATUS - Display
-            // ============================================
+            // Night Status
             if (data.night_status) {
                 document.getElementById('viewNightStatus').textContent = data.night_status;
                 if (data.night_status === 'Present') {
@@ -7261,11 +7380,7 @@ async function fetchViewAttendanceData(employeeId, date) {
                 }
             }
             
-            // ============================================
-            // AM TIME DISPLAYS - Fixed for 00:00:00
-            // ============================================
-            
-            // AM Time In
+            // AM Times
             if (data.time_in_am !== null && data.time_in_am !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_in_am);
                 document.getElementById('viewTimeInAmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> ${timeDisplay}`;
@@ -7273,7 +7388,6 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeInAmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-            // AM Time Out
             if (data.time_out_am !== null && data.time_out_am !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_out_am);
                 document.getElementById('viewTimeOutAmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> ${timeDisplay}`;
@@ -7281,11 +7395,7 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeOutAmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-            // ============================================
-            // PM TIME DISPLAYS - Fixed for 00:00:00
-            // ============================================
-            
-            // PM Time In
+            // PM Times
             if (data.time_in_pm !== null && data.time_in_pm !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_in_pm);
                 document.getElementById('viewTimeInPmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> ${timeDisplay}`;
@@ -7293,7 +7403,6 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeInPmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-            // PM Time Out
             if (data.time_out_pm !== null && data.time_out_pm !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_out_pm);
                 document.getElementById('viewTimeOutPmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> ${timeDisplay}`;
@@ -7301,11 +7410,7 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeOutPmDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-            // ============================================
-            // NIGHT TIME DISPLAYS - Fixed for 00:00:00
-            // ============================================
-            
-            // Night Time In
+            // Night Times
             if (data.time_in_night !== null && data.time_in_night !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_in_night);
                 document.getElementById('viewTimeInNightDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> ${timeDisplay}`;
@@ -7313,7 +7418,6 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeInNightDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-            // Night Time Out
             if (data.time_out_night !== null && data.time_out_night !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_out_night);
                 document.getElementById('viewTimeOutNightDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> ${timeDisplay}`;
@@ -7321,18 +7425,14 @@ async function fetchViewAttendanceData(employeeId, date) {
                 document.getElementById('viewTimeOutNightDisplay').querySelector('.time-display-content').innerHTML = `<i class="far fa-clock"></i> --:-- --`;
             }
             
-            // ============================================
-            // REMARKS
-            // ============================================
+            // Remarks
             if (data.remarks) {
                 document.getElementById('viewRemarks').textContent = data.remarks;
             } else {
                 document.getElementById('viewRemarks').textContent = '--';
             }
             
-            // ============================================
-            // HOURS CALCULATION
-            // ============================================
+            // Hours
             const amHours = calculateHours(data.time_in_am, data.time_out_am);
             const pmHours = calculateHours(data.time_in_pm, data.time_out_pm);
             const nightHours = calculateHours(data.time_in_night, data.time_out_night);
@@ -7346,7 +7446,6 @@ async function fetchViewAttendanceData(employeeId, date) {
             document.getElementById('viewTotalNightHours').textContent = nightHours.toFixed(2);
             document.getElementById('viewTotalHours').textContent = totalHours.toFixed(2);
             
-            // Store data for edit button
             window.currentViewData = {
                 employeeId: employeeId,
                 date: date,
@@ -7362,8 +7461,6 @@ async function fetchViewAttendanceData(employeeId, date) {
         showNotification('Error loading data', 'error', 'viewNotificationArea');
     }
 }
-
-
 
 function editFromView() {
     if (window.currentViewData) {
@@ -7463,6 +7560,7 @@ function editAttendance(employeeId, date, employeeName) {
         fetchAttendanceData(employeeId, date);
     }
 }
+
 async function fetchAttendanceData(employeeId, date) {
     try {
         const response = await fetch(`get_attendance.php?employee_id=${employeeId}&date=${date}`);
@@ -7475,11 +7573,9 @@ async function fetchAttendanceData(employeeId, date) {
             resetTimeFields('pm');
             resetTimeFields('night');
             
-            // STORE WORKDAY TYPE AND LEAVE TYPE VALUES
             const storedWorkdayType = data.workday_type || '';
             const storedLeaveType = data.leave_type || '';
             
-            // STORE SITE ASSIGNMENTS
             const storedSiteAm = data.site_assignment_am || '';
             const storedSitePm = data.site_assignment_pm || '';
             const storedSiteNight = data.site_assignment_night || '';
@@ -7489,14 +7585,13 @@ async function fetchAttendanceData(employeeId, date) {
                 if (data.status === 'Absent') {
                     document.getElementById('statusAbsent').checked = true;
                     disableTimeInputs('am', true);
-                    disableSiteAssignment('am', true);
+                    // DO NOT disable site assignment
                 } else if (data.status === 'On Leave') {
                     document.getElementById('statusPresent').checked = false;
                     document.getElementById('statusAbsent').checked = false;
                     disableTimeInputs('am', true);
                     disableTimeInputs('pm', true);
                     disableTimeInputs('night', true);
-                    
                 } else if (data.status === 'Present') {
                     document.getElementById('statusPresent').checked = true;
                     disableTimeInputs('am', false);
@@ -7504,45 +7599,62 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // Set leave type dropdown value
+            // Set leave type
             if (storedLeaveType) {
                 document.getElementById('leaveType').value = storedLeaveType;
             }
             
-            // WORKDAY TYPE - Set the standalone dropdown value
+            // Set workday type
             if (storedWorkdayType) {
                 document.getElementById('workdayType').value = storedWorkdayType;
-                console.log('Workday loaded - workday type set to:', storedWorkdayType);
             }
             
-            // ============================================
-            // LOAD SITE ASSIGNMENTS INTO DROPDOWNS
-            // ============================================
-            if (storedSiteAm) {
-                const amSiteSelect = document.getElementById('siteAssignmentAm');
-                if (amSiteSelect) {
-                    amSiteSelect.value = storedSiteAm;
-                    console.log('AM Site loaded:', storedSiteAm);
+            // Load site assignments with delay to ensure dropdowns are populated
+            setTimeout(() => {
+                if (storedSiteAm) {
+                    const amSiteSelect = document.getElementById('siteAssignmentAm');
+                    if (amSiteSelect) {
+                        if (!amSiteSelect.querySelector(`option[value="${storedSiteAm}"]`)) {
+                            const option = document.createElement('option');
+                            option.value = storedSiteAm;
+                            option.textContent = storedSiteAm;
+                            amSiteSelect.appendChild(option);
+                        }
+                        amSiteSelect.value = storedSiteAm;
+                        amSiteSelect.style.borderColor = '#75e6da';
+                    }
                 }
-            }
-            
-            if (storedSitePm) {
-                const pmSiteSelect = document.getElementById('siteAssignmentPm');
-                if (pmSiteSelect) {
-                    pmSiteSelect.value = storedSitePm;
-                    console.log('PM Site loaded:', storedSitePm);
+                
+                if (storedSitePm) {
+                    const pmSiteSelect = document.getElementById('siteAssignmentPm');
+                    if (pmSiteSelect) {
+                        if (!pmSiteSelect.querySelector(`option[value="${storedSitePm}"]`)) {
+                            const option = document.createElement('option');
+                            option.value = storedSitePm;
+                            option.textContent = storedSitePm;
+                            pmSiteSelect.appendChild(option);
+                        }
+                        pmSiteSelect.value = storedSitePm;
+                        pmSiteSelect.style.borderColor = '#75e6da';
+                    }
                 }
-            }
-            
-            if (storedSiteNight) {
-                const nightSiteSelect = document.getElementById('siteAssignmentNight');
-                if (nightSiteSelect) {
-                    nightSiteSelect.value = storedSiteNight;
-                    console.log('Night Site loaded:', storedSiteNight);
+                
+                if (storedSiteNight) {
+                    const nightSiteSelect = document.getElementById('siteAssignmentNight');
+                    if (nightSiteSelect) {
+                        if (!nightSiteSelect.querySelector(`option[value="${storedSiteNight}"]`)) {
+                            const option = document.createElement('option');
+                            option.value = storedSiteNight;
+                            option.textContent = storedSiteNight;
+                            nightSiteSelect.appendChild(option);
+                        }
+                        nightSiteSelect.value = storedSiteNight;
+                        nightSiteSelect.style.borderColor = '#75e6da';
+                    }
                 }
-            }
+            }, 100);
             
-            // Set PM status if available in data
+            // Set PM status
             if (data.pm_status) {
                 if (data.pm_status === 'Present') {
                     document.getElementById('pmStatusPresent').checked = true;
@@ -7552,17 +7664,15 @@ async function fetchAttendanceData(employeeId, date) {
                     document.getElementById('pmStatusAbsent').checked = true;
                     disableTimeInputs('pm', true);
                     resetTimeFields('pm');
-                    disableSiteAssignment('pm', true);
-                    resetSiteAssignment('pm');
+                    // DO NOT disable or reset site assignment
                 } else if (data.pm_status === 'On Leave') {
                     disableTimeInputs('pm', true);
                     resetTimeFields('pm');
-                    disableSiteAssignment('pm', true);
-                    resetSiteAssignment('pm');
+                    // DO NOT disable or reset site assignment
                 }
             }
             
-            // Set Night status if available in data
+            // Set Night status
             if (data.night_status) {
                 if (data.night_status === 'Present') {
                     document.getElementById('nightStatusPresent').checked = true;
@@ -7572,26 +7682,20 @@ async function fetchAttendanceData(employeeId, date) {
                     document.getElementById('nightStatusAbsent').checked = true;
                     disableTimeInputs('night', true);
                     resetTimeFields('night');
-                    disableSiteAssignment('night', true);
-                    resetSiteAssignment('night');
+                    // DO NOT disable or reset site assignment
                 } else if (data.night_status === 'On Leave') {
                     disableTimeInputs('night', true);
                     resetTimeFields('night');
-                    disableSiteAssignment('night', true);
-                    resetSiteAssignment('night');
+                    // DO NOT disable or reset site assignment
                 }
             }
             
-            // Set attendance ID if editing
+            // Set attendance ID
             if (data.id) {
                 document.getElementById('attendanceId').value = data.id;
             }
             
-            // ============================================
-            // AM TIME FIELDS - Fixed to handle 00:00:00
-            // ============================================
-            
-            // AM Time In - allow 00:00:00 (midnight)
+            // AM Time In
             if (data.time_in_am !== null && data.time_in_am !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_in_am);
                 const timeElement = document.getElementById('timeInAm');
@@ -7611,7 +7715,7 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // AM Time Out - allow 00:00:00 (midnight)
+            // AM Time Out
             if (data.time_out_am !== null && data.time_out_am !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_out_am);
                 const timeElement = document.getElementById('timeOutAm');
@@ -7631,11 +7735,7 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // ============================================
-            // PM TIME FIELDS - Fixed to handle 00:00:00
-            // ============================================
-            
-            // PM Time In - allow 00:00:00 (midnight)
+            // PM Time In
             if (data.time_in_pm !== null && data.time_in_pm !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_in_pm);
                 const timeElement = document.getElementById('timeInPm');
@@ -7655,7 +7755,7 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // PM Time Out - allow 00:00:00 (midnight)
+            // PM Time Out
             if (data.time_out_pm !== null && data.time_out_pm !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_out_pm);
                 const timeElement = document.getElementById('timeOutPm');
@@ -7675,11 +7775,7 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // ============================================
-            // NIGHT TIME FIELDS - Fixed to handle 00:00:00
-            // ============================================
-            
-            // Night Time In - allow 00:00:00 (midnight)
+            // Night Time In
             if (data.time_in_night !== null && data.time_in_night !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_in_night);
                 const timeElement = document.getElementById('timeInNight');
@@ -7699,7 +7795,7 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // Night Time Out - allow 00:00:00 (midnight)
+            // Night Time Out
             if (data.time_out_night !== null && data.time_out_night !== '') {
                 const timeDisplay = formatTimeForDisplay(data.time_out_night);
                 const timeElement = document.getElementById('timeOutNight');
@@ -7719,12 +7815,11 @@ async function fetchAttendanceData(employeeId, date) {
                 }
             }
             
-            // Set remarks
+            // Remarks
             if (data.remarks) {
                 document.getElementById('remarks').value = data.remarks;
             }
             
-            // Update total hours calculation
             updateTotalHours();
             
             showNotification('Attendance data loaded successfully', 'success');
@@ -7736,6 +7831,7 @@ async function fetchAttendanceData(employeeId, date) {
         showNotification('Error loading attendance data. Please try again.', 'error');
     }
 }
+
 function clearNotification() {
     const notificationArea = document.getElementById('notificationArea');
     if (notificationArea) {
@@ -7788,10 +7884,12 @@ function resetAttendanceForm() {
     resetTimeFields('pm');
     resetTimeFields('night');
     
-    // Reset site assignments
-    resetSiteAssignment('am');
-    resetSiteAssignment('pm');
-    resetSiteAssignment('night');
+    // Only reset site assignments if NOT in edit mode
+    if (!isEditMode) {
+        resetSiteAssignment('am');
+        resetSiteAssignment('pm');
+        resetSiteAssignment('night');
+    }
     
     const leaveSelect = document.getElementById('leaveType');
     if (leaveSelect) leaveSelect.value = '';
@@ -7817,6 +7915,7 @@ function resetAttendanceForm() {
         workdayError.style.display = 'none';
     }
 }
+
 // ============================================
 // TIME MODAL FUNCTIONS
 // ============================================
@@ -7855,7 +7954,6 @@ function populateTimeDropdowns() {
     hourSelect.innerHTML = '';
     minuteSelect.innerHTML = '';
     
-    // Create hours 1-12
     for (let i = 1; i <= 12; i++) {
         const option = document.createElement('option');
         option.value = i.toString().padStart(2, '0');
@@ -7863,7 +7961,6 @@ function populateTimeDropdowns() {
         hourSelect.appendChild(option);
     }
     
-    // Create minutes 0-59
     for (let i = 0; i < 60; i++) {
         const option = document.createElement('option');
         option.value = i.toString().padStart(2, '0');
@@ -7871,10 +7968,9 @@ function populateTimeDropdowns() {
         minuteSelect.appendChild(option);
     }
     
-    // Set defaults
     if (currentTimeField && currentTimeField.includes('am')) {
         periodSelect.value = 'AM';
-        hourSelect.value = '12';  // Set to 12 for AM times
+        hourSelect.value = '12';
     } else if (currentTimeField && currentTimeField.includes('pm')) {
         periodSelect.value = 'PM';
         hourSelect.value = '01';
@@ -7885,6 +7981,7 @@ function populateTimeDropdowns() {
     
     minuteSelect.value = '00';
 }
+
 function saveTime() {
     if (!currentTimeField) return;
     
@@ -7898,11 +7995,8 @@ function saveTime() {
     }
     
     const displayHour = parseInt(hour);
-    // Fix: Show 12:00 AM correctly
     const timeDisplay = `${displayHour}:${minute} ${period}`;
     const time24 = convertTimeTo24Hour(hour, minute, period);
-    
-    // Rest of the function remains the same...
 
     switch(currentTimeField) {
         case 'time_in_am':
@@ -7952,6 +8046,7 @@ function updateTimeDisplay(displayId, inputId, timeDisplay, time24, period) {
     
     updateTotalHours();
 }
+
 function submitAttendanceForm() {
     if (isViewMode) return;
     
@@ -7981,7 +8076,6 @@ function submitAttendanceForm() {
         workdayError.style.display = 'none';
     }
     
-    // Check if employee is selected
     if (!employeeSelect.value) {
         showNotification('Please select an employee', 'error');
         if (!isEditMode) {
@@ -7990,100 +8084,131 @@ function submitAttendanceForm() {
         return false;
     }
     
-    // Check if date is selected
     if (!attendanceDate) {
         showNotification('Please select a date', 'error');
         document.getElementById('attendanceDateField').focus();
         return false;
     }
     
-    // ============================================
-    // CRITICAL FIX: Check if at least one session has a status selected
-    // ============================================
-
-    // PM Validation - Site Assignment is ALWAYS required if a status is selected
-const pmStatusSelected = pmStatusPresent.checked || pmStatusAbsent.checked;
-
-if (pmStatusSelected) {
-    let hasError = false;
-    
-    // If Present is selected, validate time fields
-    if (pmStatusPresent && pmStatusPresent.checked) {
-        if (!timeInPm) {
-            document.getElementById('timeInPmDisplay').classList.add('validation-error');
-            document.getElementById('timeInPmError').style.display = 'flex';
-            hasError = true;
+    if (!workdayType || workdayType === '') {
+        if (workdayError) {
+            workdayError.style.display = 'flex';
+            workdayError.innerHTML = '<i class="fas fa-exclamation-circle"></i> Workday Type is required';
         }
-        if (!timeOutPm) {
-            document.getElementById('timeOutPmDisplay').classList.add('validation-error');
-            document.getElementById('timeOutPmError').style.display = 'flex';
-            hasError = true;
-        }
-    } else if (pmStatusAbsent && pmStatusAbsent.checked) {
-        // If Absent, clear time fields
-        document.getElementById('timeInPm').value = '';
-        document.getElementById('timeOutPm').value = '';
-    }
-    
-    // ✅ SITE ASSIGNMENT VALIDATION - REQUIRED FOR ALL STATUSES
-    const pmSiteValid = validateSiteAssignment('pm');
-    if (!pmSiteValid) {
-        hasError = true;
-        document.getElementById('pmSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    if (hasError) {
-        const pmSection = document.querySelectorAll('.time-section')[1];
-        if (pmSection) {
-            pmSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        document.getElementById('workdayType').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('workdayType').style.borderColor = '#e74c3c';
         return false;
     }
-}
     
-    // ============================================
-    // Night Validation - Only if Present is selected
-   // Night Validation - Site Assignment is ALWAYS required if a status is selected
-const nightStatusSelected = nightStatusPresent.checked || nightStatusAbsent.checked;
-
-if (nightStatusSelected) {
-    let hasError = false;
+    const amStatusSelected = statusPresent.checked || statusAbsent.checked;
+    const pmStatusSelected = pmStatusPresent.checked || pmStatusAbsent.checked;
+    const nightStatusSelected = nightStatusPresent.checked || nightStatusAbsent.checked;
     
-    // If Present is selected, validate time fields
-    if (nightStatusPresent && nightStatusPresent.checked) {
-        if (!timeInNight) {
-            document.getElementById('timeInNightDisplay').classList.add('validation-error');
-            document.getElementById('timeInNightError').style.display = 'flex';
+    // AM Validation
+    if (amStatusSelected) {
+        let hasError = false;
+        
+        if (statusPresent && statusPresent.checked) {
+            if (!timeInAm) {
+                document.getElementById('timeInAmDisplay').classList.add('validation-error');
+                document.getElementById('timeInAmError').style.display = 'flex';
+                hasError = true;
+            }
+            if (!timeOutAm) {
+                document.getElementById('timeOutAmDisplay').classList.add('validation-error');
+                document.getElementById('timeOutAmError').style.display = 'flex';
+                hasError = true;
+            }
+        } else if (statusAbsent && statusAbsent.checked) {
+            document.getElementById('timeInAm').value = '';
+            document.getElementById('timeOutAm').value = '';
+        }
+        
+        const amSiteValid = validateSiteAssignment('am');
+        if (!amSiteValid) {
             hasError = true;
+            document.getElementById('amSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        if (!timeOutNight) {
-            document.getElementById('timeOutNightDisplay').classList.add('validation-error');
-            document.getElementById('timeOutNightError').style.display = 'flex';
+        
+        if (hasError) {
+            const amSection = document.querySelectorAll('.time-section')[0];
+            if (amSection) {
+                amSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+        }
+    }
+    
+    // PM Validation
+    if (pmStatusSelected) {
+        let hasError = false;
+        
+        if (pmStatusPresent && pmStatusPresent.checked) {
+            if (!timeInPm) {
+                document.getElementById('timeInPmDisplay').classList.add('validation-error');
+                document.getElementById('timeInPmError').style.display = 'flex';
+                hasError = true;
+            }
+            if (!timeOutPm) {
+                document.getElementById('timeOutPmDisplay').classList.add('validation-error');
+                document.getElementById('timeOutPmError').style.display = 'flex';
+                hasError = true;
+            }
+        } else if (pmStatusAbsent && pmStatusAbsent.checked) {
+            document.getElementById('timeInPm').value = '';
+            document.getElementById('timeOutPm').value = '';
+        }
+        
+        const pmSiteValid = validateSiteAssignment('pm');
+        if (!pmSiteValid) {
             hasError = true;
+            document.getElementById('pmSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-    } else if (nightStatusAbsent && nightStatusAbsent.checked) {
-        // If Absent, clear time fields
-        document.getElementById('timeInNight').value = '';
-        document.getElementById('timeOutNight').value = '';
-    }
-    
-    // ✅ SITE ASSIGNMENT VALIDATION - REQUIRED FOR ALL STATUSES
-    const nightSiteValid = validateSiteAssignment('night');
-    if (!nightSiteValid) {
-        hasError = true;
-        document.getElementById('nightSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    if (hasError) {
-        const nightSection = document.querySelectorAll('.time-section')[2];
-        if (nightSection) {
-            nightSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        if (hasError) {
+            const pmSection = document.querySelectorAll('.time-section')[1];
+            if (pmSection) {
+                pmSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
         }
-        return false;
     }
-}
     
-    // Additional check: If any session has Present status but no times, prevent submission
+    // Night Validation
+    if (nightStatusSelected) {
+        let hasError = false;
+        
+        if (nightStatusPresent && nightStatusPresent.checked) {
+            if (!timeInNight) {
+                document.getElementById('timeInNightDisplay').classList.add('validation-error');
+                document.getElementById('timeInNightError').style.display = 'flex';
+                hasError = true;
+            }
+            if (!timeOutNight) {
+                document.getElementById('timeOutNightDisplay').classList.add('validation-error');
+                document.getElementById('timeOutNightError').style.display = 'flex';
+                hasError = true;
+            }
+        } else if (nightStatusAbsent && nightStatusAbsent.checked) {
+            document.getElementById('timeInNight').value = '';
+            document.getElementById('timeOutNight').value = '';
+        }
+        
+        const nightSiteValid = validateSiteAssignment('night');
+        if (!nightSiteValid) {
+            hasError = true;
+            document.getElementById('nightSiteContainer').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        if (hasError) {
+            const nightSection = document.querySelectorAll('.time-section')[2];
+            if (nightSection) {
+                nightSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            return false;
+        }
+    }
+    
     if (statusPresent && statusPresent.checked && (!timeInAm || !timeOutAm)) {
         showNotification('Please fill in both AM Time In and Time Out when Present', 'error');
         return false;
@@ -8099,10 +8224,11 @@ if (nightStatusSelected) {
         return false;
     }
     
-    // Submit the form
     document.getElementById('addAttendanceForm').submit();
     return true;
 }
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 function formatDateForDisplay(dateString) {
@@ -8115,12 +8241,10 @@ function formatDateForDisplay(dateString) {
 }
 
 function formatTimeForDisplay(timeString) {
-    // Check if timeString is null, undefined, or empty string
     if (timeString === null || timeString === undefined || timeString === '') {
         return '--:-- --';
     }
     
-    // Handle midnight specially - 00:00:00 should display as 12:00 AM
     if (timeString === '00:00:00') {
         return '12:00 AM';
     }
@@ -8140,13 +8264,13 @@ function formatTimeForDisplay(timeString) {
 // EVENT LISTENERS
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
+    loadSites();
     initEmployeeSearch();
     initLiveSearch();
     
     generateMainCalendarDays();
     generateModalCalendarDays();
     
-    // Reset workday border on change
     const workdaySelect = document.getElementById('workdayType');
     if (workdaySelect) {
         workdaySelect.addEventListener('change', function() {
@@ -8196,6 +8320,77 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Status change handlers
+    const statusAbsent = document.getElementById('statusAbsent');
+    const statusPresent = document.getElementById('statusPresent');
+    const pmStatusPresent = document.getElementById('pmStatusPresent');
+    const pmStatusAbsent = document.getElementById('pmStatusAbsent');
+    const nightStatusPresent = document.getElementById('nightStatusPresent');
+    const nightStatusAbsent = document.getElementById('nightStatusAbsent');
+    
+    if (statusAbsent) {
+        statusAbsent.addEventListener('change', function() {
+            if (this.checked) {
+                disableTimeInputs('am', true);
+                resetTimeFields('am');
+                // DO NOT disable site assignment
+                clearValidationHighlights();
+            }
+        });
+    }
+    
+    if (statusPresent) {
+        statusPresent.addEventListener('change', function() {
+            if (this.checked) {
+                disableTimeInputs('am', false);
+                disableSiteAssignment('am', false);
+                clearValidationHighlights();
+            }
+        });
+    }
+    
+    if (pmStatusPresent) {
+        pmStatusPresent.addEventListener('change', function() {
+            if (this.checked) {
+                disableTimeInputs('pm', false);
+                disableSiteAssignment('pm', false);
+                clearValidationHighlights();
+            }
+        });
+    }
+    
+    if (pmStatusAbsent) {
+        pmStatusAbsent.addEventListener('change', function() {
+            if (this.checked) {
+                disableTimeInputs('pm', true);
+                resetTimeFields('pm');
+                // DO NOT disable site assignment
+                clearValidationHighlights();
+            }
+        });
+    }
+    
+    if (nightStatusPresent) {
+        nightStatusPresent.addEventListener('change', function() {
+            if (this.checked) {
+                disableTimeInputs('night', false);
+                disableSiteAssignment('night', false);
+                clearValidationHighlights();
+            }
+        });
+    }
+    
+    if (nightStatusAbsent) {
+        nightStatusAbsent.addEventListener('change', function() {
+            if (this.checked) {
+                disableTimeInputs('night', true);
+                resetTimeFields('night');
+                // DO NOT disable site assignment
+                clearValidationHighlights();
+            }
+        });
+    }
+    
     // Close calendars when clicking outside
     document.addEventListener('click', function(e) {
         const fromCalendar = document.getElementById('fromCalendar');
@@ -8230,33 +8425,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Disabled backdrop click-to-close modal behavior
+    /*
     window.addEventListener('click', function(event) {
-        const addModal = document.getElementById('addAttendanceModal');
-        const deleteModal = document.getElementById('deleteConfirmModal');
-        const timeModal = document.getElementById('timeModal');
-        const viewModal = document.getElementById('viewAttendanceModal');
-        const reportModal = document.getElementById('reportModal');
-        
-        if (event.target === addModal) {
-            closeAddAttendanceModal();
-        }
-        
-        if (event.target === deleteModal) {
-            closeDeleteModal();
-        }
-        
-        if (event.target === timeModal) {
-            closeTimeModal();
-        }
-        
-        if (event.target === viewModal) {
-            closeViewAttendanceModal();
-        }
-        
-        if (event.target === reportModal) {
-            closeReportModal();
-        }
+        ...
     });
+    */
     
     document.addEventListener('keydown', function(event) {
         if (event.key === 'Escape') {
@@ -8327,7 +8501,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 5000);
 });
 
-// Make functions globally accessible - UPDATED
+// Make functions globally accessible
+window.loadSites = loadSites;
+window.resetSiteAssignment = resetSiteAssignment;
+window.disableSiteAssignment = disableSiteAssignment;
+window.validateSiteAssignment = validateSiteAssignment;
+window.clearSiteAssignmentErrors = clearSiteAssignmentErrors;
 window.openAddAttendanceModal = openAddAttendanceModal;
 window.closeAddAttendanceModal = closeAddAttendanceModal;
 window.viewAttendance = viewAttendance;

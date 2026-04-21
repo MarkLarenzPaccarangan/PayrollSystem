@@ -155,12 +155,15 @@ function getSitesWithAttendance($conn, $filter_date = null, $search = '', $sort_
             $row['total_employees'] = 0;
         }
         
-        // Get present count (any session is Present)
+        // Get present count (present in the session assigned to this site)
         $present_query = "SELECT COUNT(DISTINCT a.employee_id) as present_count 
                           FROM attendance a
                           WHERE DATE(a.date) = DATE(?)
-                          AND (a.site_assignment_am = ? OR a.site_assignment_pm = ? OR a.site_assignment_night = ?)
-                          AND (a.status = 'Present' OR a.pm_status = 'Present' OR a.night_status = 'Present')";
+                          AND (
+                              (a.site_assignment_am = ? AND a.status = 'Present') OR 
+                              (a.site_assignment_pm = ? AND a.pm_status = 'Present') OR 
+                              (a.site_assignment_night = ? AND a.night_status = 'Present')
+                          )";
         $present_stmt = $conn->prepare($present_query);
         if ($present_stmt) {
             $present_stmt->bind_param("ssss", $filter_date, $site_name, $site_name, $site_name);
@@ -484,23 +487,23 @@ $day = date('d', strtotime($filter_date));
 
         .main-content {
             flex: 1;
-            padding: 20px 40px 0 40px; /* Binawasan ang bottom padding */
+            padding: 20px 40px 0 40px;
             width: 100%;
             height: 100%;
-            overflow-y: scroll !important; /* Force scroll para sure */
+            overflow-y: scroll !important;
             overflow-x: hidden;
             background-color: transparent;
             color: #333;
             position: relative;
             display: flex;
             justify-content: center;
-            scroll-behavior: smooth; /* Smooth scrolling */
-            -webkit-overflow-scrolling: touch; /* Para sa mobile */
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Custom Scrollbar - Enhanced */
         .main-content::-webkit-scrollbar {
-            width: 12px; /* Medyo lumaki */
+            width: 12px;
         }
 
         .main-content::-webkit-scrollbar-track {
@@ -511,7 +514,7 @@ $day = date('d', strtotime($filter_date));
         .main-content::-webkit-scrollbar-thumb {
             background: #2E7D32;
             border-radius: 10px;
-            border: 3px solid #e9ecef; /* Nadagdagan ang border */
+            border: 3px solid #e9ecef;
         }
 
         .main-content::-webkit-scrollbar-thumb:hover {
@@ -524,13 +527,13 @@ $day = date('d', strtotime($filter_date));
             scrollbar-color: #2E7D32 #e9ecef;
         }
 
-        /* Dashboard Container - May padding sa baba para magsagad */
+        /* Dashboard Container */
         .dashboard-container {
             max-width: 1400px;
             width: 100%;
             margin: 0 auto 0 auto;
-            padding: 0 20px 50px 20px; /* Dinagdagan ang bottom padding para magsagad */
-            min-height: calc(100vh - 150px); /* Para sure na magsscroll */
+            padding: 0 20px 50px 20px;
+            min-height: calc(100vh - 150px);
         }
 
         /* Dashboard Header */
@@ -853,7 +856,7 @@ $day = date('d', strtotime($filter_date));
             min-width: 120px;
         }
 
-        /* Statistics Cards - 6 CARDS NOW (added Absent) */
+        /* Statistics Cards */
         .stats-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -897,30 +900,10 @@ $day = date('d', strtotime($filter_date));
             line-height: 1;
         }
 
-        .stat-info .number.present {
-            color: #0f172a;
-        }
-        
-        .stat-info .number.absent {
-            color: #0f172a;
-        }
-        
-        .stat-info .number.leave {
-            color: #0f172a;
-        }
-
         .stat-icon {
             font-size: 42px;
             color: #2E7D32;
             opacity: 0.8;
-        }
-        
-        .stat-icon.absent {
-            color: #2E7D32;
-        }
-        
-        .stat-icon.leave {
-            color: #2E7D32;
         }
 
         /* Sites Container */
@@ -960,7 +943,6 @@ $day = date('d', strtotime($filter_date));
             color: #2E7D32;
         }
 
-        /* Sites Controls */
         .sites-controls {
             display: flex;
             align-items: center;
@@ -1082,7 +1064,7 @@ $day = date('d', strtotime($filter_date));
             grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 20px;
             width: 100%;
-            margin-bottom: 30px; /* Added margin sa baba */
+            margin-bottom: 30px;
         }
 
         .site-card {
@@ -1137,7 +1119,6 @@ $day = date('d', strtotime($filter_date));
             flex: 1;
         }
 
-        /* MODIFIED: Employee stats with 4 items (Total, Present, Absent, On Leave) */
         .employee-stats {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -1245,17 +1226,6 @@ $day = date('d', strtotime($filter_date));
             color: white;
         }
 
-        .manager-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(46, 125, 50, 0.1);
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 12px;
-            color: #1B5E20;
-        }
-
         .no-data {
             text-align: center;
             padding: 50px 20px;
@@ -1278,22 +1248,6 @@ $day = date('d', strtotime($filter_date));
         .no-data .sub-text {
             font-size: 14px;
             color: #94a3b8;
-        }
-
-        /* REMOVED: Date info section styles */
-        /* .date-info { ... } - Inalis na */
-
-        .today-link {
-            color: #75e6da;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .today-link:hover {
-            text-decoration: underline;
         }
 
         /* MODAL STYLES */
@@ -1424,7 +1378,6 @@ $day = date('d', strtotime($filter_date));
             background: #cbd5e1;
         }
 
-        /* Site Info in Modal */
         .site-info-modal {
             background: #f8fafc;
             border-radius: 12px;
@@ -1446,7 +1399,7 @@ $day = date('d', strtotime($filter_date));
             width: 20px;
         }
 
-        /* Enhanced Table Styles for Modal */
+        /* Table Styles */
         .employees-table-container {
             border-radius: 12px;
             overflow-x: auto;
@@ -1458,7 +1411,7 @@ $day = date('d', strtotime($filter_date));
             border-collapse: separate;
             border-spacing: 0;
             width: 100%;
-            min-width: 1400px;
+            min-width: 1200px;
         }
 
         .employees-table thead tr {
@@ -1474,6 +1427,7 @@ $day = date('d', strtotime($filter_date));
             padding: 15px;
             border: none;
             white-space: nowrap;
+            text-align: center;
         }
 
         .employees-table th i {
@@ -1497,11 +1451,7 @@ $day = date('d', strtotime($filter_date));
             padding: 15px;
             vertical-align: middle;
             border-bottom: 1px solid #e9ecef;
-        }
-
-        /* REMOVED BOLD FROM NAMES */
-        .employees-table td:first-child {
-            font-weight: normal;
+            text-align: center;
         }
 
         /* Status Badge Styles */
@@ -1535,7 +1485,7 @@ $day = date('d', strtotime($filter_date));
             border: 1px solid #ffeaa7;
         }
 
-        /* Time Badge Styles - WITH NIGHT SESSION */
+        /* Time Badge Styles */
         .time-badge {
             background: #f8f9fa;
             padding: 8px 12px;
@@ -1547,7 +1497,6 @@ $day = date('d', strtotime($filter_date));
             gap: 4px;
             border: 1px solid #e9ecef;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            max-width: 300px;
             line-height: 1.4;
         }
 
@@ -1573,27 +1522,39 @@ $day = date('d', strtotime($filter_date));
         .time-value {
             color: #334155;
         }
-        
-        .time-separator {
-            color: #94a3b8;
-            margin: 0 2px;
-        }
 
-        /* Total Hours Styling */
+        /* Total Hours column - tight fit with larger font */
+        .employees-table td:nth-child(7) {
+            width: 1%;
+            white-space: nowrap;
+        }
+        
         .employees-table td:nth-child(7) .time-badge {
             background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
             border: 1px solid #a5d6a7;
             font-weight: 700;
             color: #2E7D32;
+            display: inline-block;
+            white-space: nowrap;
+            padding: 2px 8px;
+            font-size: 0.85rem;
+            border-radius: 12px;
         }
 
-        /* Remarks Column Styling */
+        /* Remarks column - tight fit */
+        .employees-table td:last-child {
+            width: 1%;
+            white-space: nowrap;
+        }
+        
         .employees-table td:last-child .time-badge {
             background: #fff3e0;
             border-color: #ffe0b2;
-            max-width: 200px;
-            white-space: normal;
-            word-wrap: break-word;
+            white-space: nowrap;
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            border-radius: 12px;
         }
 
         .employees-table td:last-child .time-badge i {
@@ -1626,7 +1587,35 @@ $day = date('d', strtotime($filter_date));
             text-align: center;
         }
 
-        /* Loading and No Data States */
+        /* Summary stats row - aligned to left */
+        .summary-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e9ecef;
+            justify-content: flex-start;
+        }
+
+        .summary-stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+        }
+
+        .summary-stat.present {
+            color: #059669;
+        }
+
+        .summary-stat.absent {
+            color: #dc2626;
+        }
+
+        .summary-stat.leave {
+            color: #f59e0b;
+        }
+
         .loading {
             text-align: center;
             padding: 50px;
@@ -1652,7 +1641,7 @@ $day = date('d', strtotime($filter_date));
             opacity: 0.5;
         }
 
-        /* Responsive Enhancements */
+        /* Responsive */
         @media (max-width: 768px) {
             .employees-table th,
             .employees-table td {
@@ -1695,15 +1684,9 @@ $day = date('d', strtotime($filter_date));
             .employees-table td {
                 padding: 8px;
             }
-            
-            .employees-table td:last-child .time-badge {
-                max-width: 150px;
-            }
         }
         
-        /* ============================================ */
-        /* ROLE-BASED ACCESS STYLES - ADDED THIS */
-        /* ============================================ */
+        /* Role-based access */
         .access-denied {
             text-align: center;
             padding: 50px 20px;
@@ -1727,7 +1710,6 @@ $day = date('d', strtotime($filter_date));
             color: #64748b;
         }
         
-        /* User-specific restrictions - hide elements for users */
         <?php if ($is_user): ?>
         .admin-only,
         .ceo-only {
@@ -1739,12 +1721,10 @@ $day = date('d', strtotime($filter_date));
         }
         <?php endif; ?>
         
-        /* REMOVED: Admin Controls Container */
         .admin-only {
             display: none !important;
         }
         
-        /* Debug scroll indicator - optional, pwede ring tanggalin */
         .debug-scroll {
             text-align: center;
             padding: 10px;
@@ -1752,6 +1732,94 @@ $day = date('d', strtotime($filter_date));
             font-size: 12px;
             border-top: 1px dashed #75e6da;
             margin-top: 30px;
+        }
+
+        /* MODAL EMPLOYEE TABLE - MINIMIZED FONT SIZES & CENTERED */
+        .modal .employees-table {
+            font-size: 0.7rem;
+        }
+        
+        .modal .employees-table th {
+            font-size: 0.7rem;
+            padding: 8px 6px;
+            text-align: center;
+        }
+        
+        .modal .employees-table td {
+            font-size: 0.7rem;
+            padding: 8px 6px;
+            text-align: center;
+        }
+        
+        .modal .employees-table .status-badge {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            white-space: nowrap;
+            display: inline-flex;
+        }
+        
+        .modal .employees-table .time-badge {
+            font-size: 0.65rem;
+            padding: 4px 8px;
+            white-space: normal;
+            min-width: 170px;
+            display: inline-flex;
+        }
+        
+        .modal .employees-table .time-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            white-space: nowrap;
+            flex-wrap: nowrap;
+            justify-content: center;
+        }
+        
+        .modal .employees-table .time-label {
+            font-weight: 600;
+            color: #2E7D32;
+            min-width: 42px;
+            font-size: 0.65rem;
+        }
+        
+        .modal .employees-table .time-value {
+            font-size: 0.65rem;
+        }
+        
+        /* Total Hours column - tight fit with larger font in modal */
+        .modal .employees-table td:nth-child(7) {
+            width: 1%;
+            white-space: nowrap;
+            text-align: center;
+        }
+        
+        .modal .employees-table td:nth-child(7) .time-badge {
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            display: inline-block;
+            white-space: nowrap;
+            border-radius: 10px;
+        }
+        
+        /* Remarks column - tight fit in modal */
+        .modal .employees-table td:last-child {
+            width: 1%;
+            white-space: nowrap;
+            text-align: center;
+        }
+        
+        .modal .employees-table td:last-child .time-badge {
+            font-size: 0.65rem;
+            display: inline-block;
+            white-space: nowrap;
+            max-width: none;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        /* Employee name column - remove ID display */
+        .modal .employees-table td:first-child div {
+            display: none;
         }
     </style>
     
@@ -1764,12 +1832,11 @@ $day = date('d', strtotime($filter_date));
     <main class="content">
         <div class="main-content">
             <div class="dashboard-container">
-                <!-- Dashboard Header with Date Filter - REMOVED ROLE INDICATOR -->
+                <!-- Dashboard Header -->
                 <div class="dashboard-header">
                     <div class="dashboard-title">
                         <i class="fas fa-chart-line"></i>
                         Dashboard
-                        <!-- ROLE INDICATOR - TINANGGAL NA -->
                     </div>
                     
                     <div class="date-filter">
@@ -1780,7 +1847,6 @@ $day = date('d', strtotime($filter_date));
                         
                         <div class="main-date-picker-wrapper">
                             <button type="button" class="main-date-picker-btn" onclick="toggleMainCalendar()">
-                                
                                 <span id="mainDateDisplay"><?= $display_date ?></span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
@@ -1832,7 +1898,6 @@ $day = date('d', strtotime($filter_date));
                                     </div>
                                     
                                     <div class="main-calendar-days-grid" id="mainCalendarDaysGrid">
-                                        <!-- Days will be populated here by JavaScript -->
                                     </div>
                                     
                                     <div class="main-calendar-footer">
@@ -1860,7 +1925,7 @@ $day = date('d', strtotime($filter_date));
                     </div>
                 </div>
 
-                <!-- Statistics Cards - 6 cards now (Total Sites, Total Employees, Present, Absent, On Leave, Attendance Rate) -->
+                <!-- Statistics Cards -->
                 <div class="stats-cards">
                     <div class="stat-card">
                         <div class="stat-info">
@@ -1894,7 +1959,6 @@ $day = date('d', strtotime($filter_date));
                         </div>
                     </div>
                     
-                    <!-- NEW: Absent Stat Card -->
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>Absent</h3>
@@ -1907,7 +1971,6 @@ $day = date('d', strtotime($filter_date));
                         </div>
                     </div>
                     
-                    <!-- On Leave Stat Card -->
                     <div class="stat-card">
                         <div class="stat-info">
                             <h3>On Leave</h3>
@@ -1946,7 +2009,6 @@ $day = date('d', strtotime($filter_date));
                             Site Status Overview
                         </h2>
                         <div class="sites-controls">
-                            <!-- Search Bar - HIDE FOR USERS IF NEEDED -->
                             <?php if (!$is_user): ?>
                             <div class="site-search-container">
                                 <form method="GET" action="home.php" id="searchForm" style="display: flex; align-items: center; width: 100%;">
@@ -1963,7 +2025,6 @@ $day = date('d', strtotime($filter_date));
                                 </form>
                             </div>
                             
-                            <!-- Sort Controls - HIDE FOR USERS IF NEEDED -->
                             <div class="site-sort-container">
                                 <form method="GET" action="home.php" id="sortForm" style="display: flex; align-items: center; gap: 8px;">
                                     <input type="hidden" name="date" value="<?php echo htmlspecialchars($filter_date); ?>">
@@ -1985,7 +2046,6 @@ $day = date('d', strtotime($filter_date));
                                 </form>
                             </div>
                             <?php else: ?>
-                            <!-- For users, show simple view only -->
                             <div style="color: #64748b; font-size: 14px;">
                                 <i class="fas fa-info-circle"></i> Viewing all sites
                             </div>
@@ -2011,7 +2071,6 @@ $day = date('d', strtotime($filter_date));
                                 <i class="fas fa-times"></i> Clear Search
                             </a>
                             <?php else: ?>
-                            <!-- Hide "Manage Sites" button for users -->
                             <?php if (!$is_user): ?>
                             <a href="site_monitoring.php" style="display: inline-block; margin-top: 20px; padding: 10px 24px; background: #2E7D32; color: white; text-decoration: none; border-radius: 30px; font-weight: 600;">
                                 <i class="fas fa-plus-circle"></i> Manage Sites
@@ -2063,7 +2122,6 @@ $day = date('d', strtotime($filter_date));
                                         <?php endif; ?>
                                     </div>
                                     <div class="site-content">
-                                        <!-- MODIFIED: Employee stats with 4 items -->
                                         <div class="employee-stats">
                                             <div class="stat-item">
                                                 <div class="stat-label">Total</div>
@@ -2108,15 +2166,11 @@ $day = date('d', strtotime($filter_date));
                             <?php endforeach; ?>
                         </div>
                         
-                        <!-- Scroll indicator - para malaman na nasa dulo ka na -->
                         <div class="debug-scroll">
                             <i class="fas fa-arrow-down"></i> End of content <i class="fas fa-arrow-down"></i>
                         </div>
                     <?php endif; ?>
                 </div>
-
-                <!-- REMOVED: Date Information Footer -->
-                <!-- Date info section has been removed as requested -->
             </div>
         </div>
     </main>
@@ -2133,7 +2187,6 @@ $day = date('d', strtotime($filter_date));
             </div>
             <div class="modal-body">
                 <div id="siteInfoContainer" class="site-info-modal">
-                    <!-- Site info will be loaded here -->
                 </div>
                 <div id="employeesListModalContainer">
                     <div class="loading">
@@ -2147,7 +2200,6 @@ $day = date('d', strtotime($filter_date));
                     <i class="fas fa-times"></i>
                     Close
                 </button>
-                <!-- Hide "Manage Sites" button for users -->
                 <?php if (!$is_user): ?>
                 <a href="site_monitoring.php" class="btn btn-primary">
                     <i class="fas fa-cog"></i>
@@ -2334,16 +2386,14 @@ $day = date('d', strtotime($filter_date));
         // MODAL FUNCTIONS
         // ============================================
         
-        // Close employees modal function
         function closeEmployeesModal() {
-            console.log('Closing modal'); // Debug log
+            console.log('Closing modal');
             const modal = document.getElementById('siteEmployeesModal');
             if (modal) {
                 modal.style.display = 'none';
                 modal.classList.remove('show');
                 document.body.classList.remove('modal-open');
                 
-                // Optional: Clear the content to save memory
                 document.getElementById('siteInfoContainer').innerHTML = '';
                 document.getElementById('employeesListModalContainer').innerHTML = `
                     <div class="loading">
@@ -2354,9 +2404,8 @@ $day = date('d', strtotime($filter_date));
             }
         }
 
-        // View site employees - FIXED with better error handling
         function viewSiteEmployees(siteId) {
-            console.log('Viewing site ID:', siteId); // Debug log
+            console.log('Viewing site ID:', siteId);
             
             const modal = document.getElementById('siteEmployeesModal');
             if (!modal) {
@@ -2364,7 +2413,6 @@ $day = date('d', strtotime($filter_date));
                 return;
             }
             
-            // Clear previous content
             document.getElementById('siteInfoContainer').innerHTML = '';
             document.getElementById('employeesListModalContainer').innerHTML = '';
             
@@ -2372,7 +2420,6 @@ $day = date('d', strtotime($filter_date));
             modal.classList.add('show');
             document.body.classList.add('modal-open');
             
-            // Show loading state
             document.getElementById('siteInfoContainer').innerHTML = `
                 <div style="text-align: center; padding: 20px;">
                     <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #2E7D32;"></i>
@@ -2390,27 +2437,25 @@ $day = date('d', strtotime($filter_date));
             loadSiteEmployees(siteId);
         }
 
-        // Load site employees via AJAX - FIXED with better error handling
         async function loadSiteEmployees(siteId) {
             const date = '<?php echo $filter_date; ?>';
-            console.log('Loading employees for site:', siteId, 'date:', date); // Debug log
+            console.log('Loading employees for site:', siteId, 'date:', date);
             
             try {
                 const url = `get_site_employees_attendance.php?site_id=${siteId}&date=${encodeURIComponent(date)}`;
-                console.log('Fetching URL:', url); // Debug log
+                console.log('Fetching URL:', url);
                 
                 const response = await fetch(url);
-                console.log('Response status:', response.status); // Debug log
+                console.log('Response status:', response.status);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                console.log('Received data:', data); // Debug log
+                console.log('Received data:', data);
                 
                 if (data.success) {
-                    // Display site info
                     const siteInfoContainer = document.getElementById('siteInfoContainer');
                     siteInfoContainer.innerHTML = `
                         <p><i class="fas fa-building"></i> <strong>${data.site_name}</strong></p>
@@ -2418,10 +2463,10 @@ $day = date('d', strtotime($filter_date));
                         <p><i class="fas fa-map-marker-alt"></i> Address: ${data.site_address || 'N/A'}</p>
                         <p><i class="fas fa-calendar-alt"></i> Date: ${new Date(data.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                         <p><i class="fas fa-users"></i> Total Employees: ${data.summary.total}</p>
-                        <div style="display: flex; gap: 15px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e9ecef;">
-                            <span style="color: #059669;"><i class="fas fa-check-circle"></i> Present: ${data.summary.present}</span>
-                            <span style="color: #dc2626;"><i class="fas fa-times-circle"></i> Absent: ${data.summary.absent}</span>
-                            <span style="color: #f59e0b;"><i class="fas fa-umbrella-beach"></i> On Leave: ${data.summary.leave}</span>
+                        <div class="summary-stats">
+                            <span class="summary-stat present"><i class="fas fa-check-circle"></i> Present: ${data.summary.present}</span>
+                            <span class="summary-stat absent"><i class="fas fa-times-circle"></i> Absent: ${data.summary.absent}</span>
+                            <span class="summary-stat leave"><i class="fas fa-umbrella-beach"></i> On Leave: ${data.summary.leave}</span>
                         </div>
                     `;
                     
@@ -2447,25 +2492,18 @@ $day = date('d', strtotime($filter_date));
                         `;
                         
                         data.employees.forEach(emp => {
-                            // AM Status
                             const amStatus = emp.status_am || 'Absent';
                             const amStatusClass = amStatus === 'Present' ? 'status-present' : 
-                                                  (amStatus === 'On Leave' ? 'status-leave' : 
-                                                  (amStatus === 'Holiday' ? 'status-holiday' : 'status-absent'));
+                                                  (amStatus === 'On Leave' ? 'status-leave' : 'status-absent');
                             
-                            // PM Status
                             const pmStatus = emp.status_pm || 'Absent';
                             const pmStatusClass = pmStatus === 'Present' ? 'status-present' : 
-                                                  (pmStatus === 'On Leave' ? 'status-leave' : 
-                                                  (pmStatus === 'Holiday' ? 'status-holiday' : 'status-absent'));
+                                                  (pmStatus === 'On Leave' ? 'status-leave' : 'status-absent');
                             
-                            // Night Status
                             const nightStatus = emp.status_night || 'Absent';
                             const nightStatusClass = nightStatus === 'Present' ? 'status-present' : 
-                                                    (nightStatus === 'On Leave' ? 'status-leave' : 
-                                                    (nightStatus === 'Holiday' ? 'status-holiday' : 'status-absent'));
+                                                    (nightStatus === 'On Leave' ? 'status-leave' : 'status-absent');
                             
-                            // Use display values or raw values
                             const timeInAm = emp.time_in_am_display || emp.time_in_am || '--:--';
                             const timeOutAm = emp.time_out_am_display || emp.time_out_am || '--:--';
                             const timeInPm = emp.time_in_pm_display || emp.time_in_pm || '--:--';
@@ -2473,7 +2511,6 @@ $day = date('d', strtotime($filter_date));
                             const timeInNight = emp.time_in_night_display || emp.time_in_night || '--:--';
                             const timeOutNight = emp.time_out_night_display || emp.time_out_night || '--:--';
                             
-                            // Total hours
                             let hoursDisplay = '—';
                             if (emp.total_hours && parseFloat(emp.total_hours) > 0) {
                                 const hours = parseFloat(emp.total_hours).toFixed(2);
@@ -2484,32 +2521,26 @@ $day = date('d', strtotime($filter_date));
                                 <tr>
                                     <td>
                                         <span>${emp.full_name || emp.first_name + ' ' + emp.last_name}</span>
-                                        <div style="font-size: 0.75rem; color: #64748b;">ID: ${emp.id}</div>
                                     </td>
                                     <td>${emp.position || '—'}</td>
                                     <td>
                                         <span class="status-badge ${amStatusClass}">
                                             <i class="fas ${amStatus === 'Present' ? 'fa-check-circle' : 
-                                                           (amStatus === 'On Leave' ? 'fa-umbrella-beach' : 
-                                                           (amStatus === 'Holiday' ? 'fa-solid fa-calendar-days' : 'fa-times-circle'))}"></i>
+                                                           (amStatus === 'On Leave' ? 'fa-umbrella-beach' : 'fa-times-circle')}"></i>
                                             ${amStatus}
                                         </span>
-                                        
-                                        ${emp.holiday_type && amStatus === 'Holiday' ? `<br><small style="font-size: 0.7rem;">${emp.holiday_type}</small>` : ''}
                                     </td>
                                     <td>
                                         <span class="status-badge ${pmStatusClass}">
                                             <i class="fas ${pmStatus === 'Present' ? 'fa-check-circle' : 
-                                                           (pmStatus === 'On Leave' ? 'fa-umbrella-beach' : 
-                                                           (pmStatus === 'Holiday' ? 'fa-solid fa-calendar-days' : 'fa-times-circle'))}"></i>
+                                                           (pmStatus === 'On Leave' ? 'fa-umbrella-beach' : 'fa-times-circle')}"></i>
                                             ${pmStatus}
                                         </span>
                                     </td>
                                     <td>
                                         <span class="status-badge ${nightStatusClass}">
                                             <i class="fas ${nightStatus === 'Present' ? 'fa-check-circle' : 
-                                                           (nightStatus === 'On Leave' ? 'fa-umbrella-beach' : 
-                                                           (nightStatus === 'Holiday' ? 'fa-solid fa-calendar-days' : 'fa-times-circle'))}"></i>
+                                                           (nightStatus === 'On Leave' ? 'fa-umbrella-beach' : 'fa-times-circle')}"></i>
                                             ${nightStatus}
                                         </span>
                                     </td>
@@ -2530,12 +2561,12 @@ $day = date('d', strtotime($filter_date));
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="time-badge" style="font-weight: 600; color: #2E7D32;">
+                                        <span class="time-badge" style="font-weight: 700; color: #2E7D32;">
                                             ${hoursDisplay}
                                         </span>
                                     </td>
                                     <td>
-                                        <span class="time-badge" style="color: #64748b; max-width: 200px; white-space: normal; word-wrap: break-word;">
+                                        <span class="time-badge" style="color: #64748b;">
                                             ${emp.remarks || '—'}
                                         </span>
                                     </td>
@@ -2545,7 +2576,7 @@ $day = date('d', strtotime($filter_date));
                         
                         html += `
                                     </tbody>
-                                </table>
+                                 </table>
                             </div>
                         `;
                         
@@ -2583,15 +2614,16 @@ $day = date('d', strtotime($filter_date));
             }
         }
         
-        // Close modal when clicking outside
+        // window.onclick disabled
+        /*
         window.onclick = function(event) {
             const modal = document.getElementById('siteEmployeesModal');
             if (event.target === modal) {
                 closeEmployeesModal();
             }
         }
+        */
         
-        // Close modal with Escape key
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeEmployeesModal();
@@ -2603,7 +2635,6 @@ $day = date('d', strtotime($filter_date));
             }
         });
 
-        // Close calendar when clicking outside
         document.addEventListener('click', function(e) {
             const mainDatePicker = document.querySelector('.main-date-picker-wrapper');
             const mainCalendar = document.getElementById('mainCalendarWrapper');
@@ -2613,7 +2644,6 @@ $day = date('d', strtotime($filter_date));
             }
         });
         
-        // Initialize calendar on page load
         document.addEventListener('DOMContentLoaded', function() {
             generateMainCalendarDays();
             
@@ -2626,17 +2656,8 @@ $day = date('d', strtotime($filter_date));
                     }, 100);
                 });
             }, 200);
-            
-            // Auto-scroll to bottom for debugging (optional)
-            // setTimeout(() => {
-            //     window.scrollTo({
-            //         top: document.body.scrollHeight,
-            //         behavior: 'smooth'
-            //     });
-            // }, 1000);
         });
 
-        // Make functions globally accessible
         window.closeEmployeesModal = closeEmployeesModal;
         window.viewSiteEmployees = viewSiteEmployees;
         window.loadSiteEmployees = loadSiteEmployees;

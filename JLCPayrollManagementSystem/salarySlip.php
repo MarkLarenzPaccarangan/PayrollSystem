@@ -1,4 +1,3 @@
-
 <?php
 session_start();
 
@@ -77,41 +76,13 @@ function calculateHolidayPay($daily_salary, $holiday_type, $has_attendance) {
     return $holiday_bonus;
 }
 
-// Handle AJAX request for salary report - UPDATED for date range and site filter
+// Handle AJAX request for salary report - UPDATED for date range only
 if (isset($_POST['ajax']) && $_POST['ajax'] == 'generate_report') {
     header('Content-Type: application/json');
     
     $date_from = $_POST['date_from'];
     $date_to = $_POST['date_to'];
     $employee_id = isset($_POST['employee_id']) ? $_POST['employee_id'] : 'all';
-    $site_filter = isset($_POST['site_id']) ? $_POST['site_id'] : 'all';
-    
-    // Get attendance records with site assignments for filtering
-    $attendance_query = "
-        SELECT 
-            a.employee_id,
-            a.date,
-            a.time_in_am, a.time_out_am,
-            a.time_in_pm, a.time_out_pm,
-            a.time_in_night, a.time_out_night,
-            a.site_assignment_am,
-            a.site_assignment_pm,
-            a.site_assignment_night,
-            a.workday_type
-        FROM attendance a
-        WHERE a.date BETWEEN ? AND ?
-    ";
-    
-    $attendance_stmt = $conn->prepare($attendance_query);
-    $attendance_stmt->bind_param("ss", $date_from, $date_to);
-    $attendance_stmt->execute();
-    $attendance_result = $attendance_stmt->get_result();
-    
-    // Store attendance records by employee_id and date
-    $attendance_records = [];
-    while ($row = $attendance_result->fetch_assoc()) {
-        $attendance_records[$row['employee_id']][$row['date']] = $row;
-    }
     
     // Build query based on whether specific employee or all employees
     if ($employee_id && $employee_id != 'all') {
@@ -127,14 +98,16 @@ if (isset($_POST['ajax']) && $_POST['ajax'] == 'generate_report') {
                 p.net_pay,
                 p.total_work_hours,
                 p.status,
-                p.salary_breakdown,
                 e.first_name,
                 e.last_name,
                 e.position,
                 e.daily_salary,
-                e.contact_num
+                e.contact_num,
+                sm.site_name
             FROM payroll p
             LEFT JOIN employees e ON e.id = p.employee_id
+            LEFT JOIN site_employee se ON e.id = se.employee_id
+            LEFT JOIN site_monitoring sm ON se.site_id = sm.id
             WHERE p.employee_id = ? 
             AND ((p.date_from BETWEEN ? AND ?) OR (p.date_to BETWEEN ? AND ?))
             ORDER BY p.date_from DESC
@@ -154,14 +127,16 @@ if (isset($_POST['ajax']) && $_POST['ajax'] == 'generate_report') {
                 p.net_pay,
                 p.total_work_hours,
                 p.status,
-                p.salary_breakdown,
                 e.first_name,
                 e.last_name,
                 e.position,
                 e.daily_salary,
-                e.contact_num
+                e.contact_num,
+                sm.site_name
             FROM payroll p
             LEFT JOIN employees e ON e.id = p.employee_id
+            LEFT JOIN site_employee se ON e.id = se.employee_id
+            LEFT JOIN site_monitoring sm ON se.site_id = sm.id
             WHERE (p.date_from BETWEEN ? AND ?) OR (p.date_to BETWEEN ? AND ?)
             ORDER BY e.first_name, e.last_name, p.date_from DESC
         ";
@@ -180,230 +155,47 @@ if (isset($_POST['ajax']) && $_POST['ajax'] == 'generate_report') {
     // Group records by employee for summary
     $employee_summary = [];
     
-    // Get hourly rate for each employee
-    $hourly_rate = 0;
-    
-    // Function to filter attendance by site// Function to filter attendance by site
-function filterAttendanceBySite($attendance_records_for_employee, $date_from, $date_to, $site_filter, $employee_daily_salary) {
-    $filtered_records = [];
-    $site_hours = [];
-    $site_pay = [];
-    
-    $hourly_rate = $employee_daily_salary / 8;
-    
-    // Get site name from ID if needed
-    global $conn;
-    $site_name = $site_filter;
-    if (is_numeric($site_filter) && $site_filter != 'all') {
-        $site_query = "SELECT site_name FROM site_monitoring WHERE id = ?";
-        $site_stmt = $conn->prepare($site_query);
-        $site_stmt->bind_param("i", $site_filter);
-        $site_stmt->execute();
-        $site_result = $site_stmt->get_result();
-        if ($site_row = $site_result->fetch_assoc()) {
-            $site_name = $site_row['site_name'];
-        }
-    }
-    
-    foreach ($attendance_records_for_employee as $date => $record) {
-        // Calculate hours for each session
-        $am_hours = 0;
-        $pm_hours = 0;
-        $night_hours = 0;
-        
-        // AM Session
-        if (!empty($record['time_in_am']) && !empty($record['time_out_am']) && 
-            $record['time_in_am'] != '00:00:00' && $record['time_out_am'] != '00:00:00') {
-            $am_hours = calculateHours($record['time_in_am'], $record['time_out_am']);
-        }
-        
-        // PM Session
-        if (!empty($record['time_in_pm']) && !empty($record['time_out_pm'])) {
-            $pm_in = $record['time_in_pm'];
-            $pm_out = $record['time_out_pm'];
-            if ($pm_out == '00:00:00') {
-                $pm_in_ts = strtotime($pm_in);
-                $date_of_pm_in = date('Y-m-d', $pm_in_ts);
-                $next_day = strtotime('+1 day', strtotime($date_of_pm_in));
-                $pm_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-                $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
-            } else {
-                $pm_in_ts = strtotime($pm_in);
-                $pm_out_ts = strtotime($pm_out);
-                if ($pm_out_ts < $pm_in_ts) $pm_out_ts += 86400;
-                $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
-            }
-            $pm_hours = max(0, $pm_hours);
-        }
-        
-        // Night Session
-        if (!empty($record['time_in_night']) && !empty($record['time_out_night'])) {
-            $night_in = $record['time_in_night'];
-            $night_out = $record['time_out_night'];
-            if ($night_out == '00:00:00') {
-                $night_in_ts = strtotime($night_in);
-                $date_of_night_in = date('Y-m-d', $night_in_ts);
-                $next_day = strtotime('+1 day', strtotime($date_of_night_in));
-                $night_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-                $night_hours = ($night_out_ts - $night_in_ts) / 3600;
-            } else {
-                $night_in_ts = strtotime($night_in);
-                $night_out_ts = strtotime($night_out);
-                if ($night_out_ts < $night_in_ts) $night_out_ts += 86400;
-                $night_hours = ($night_out_ts - $night_in_ts) / 3600;
-            }
-            $night_hours = max(0, $night_hours);
-        }
-        
-        // Apply site filter - check each session
-        $am_site = $record['site_assignment_am'] ?? null;
-        $pm_site = $record['site_assignment_pm'] ?? null;
-        $night_site = $record['site_assignment_night'] ?? null;
-        
-        // Check if this record should be included based on site filter
-        $include_am = ($site_filter == 'all' || $am_site == $site_name) && $am_hours > 0;
-        $include_pm = ($site_filter == 'all' || $pm_site == $site_name) && $pm_hours > 0;
-        $include_night = ($site_filter == 'all' || $night_site == $site_name) && $night_hours > 0;
-        
-        if ($include_am) {
-            $filtered_records[] = [
-                'date' => $date,
-                'session' => 'AM',
-                'hours' => $am_hours,
-                'site' => $am_site,
-                'pay' => $am_hours * $hourly_rate
-            ];
-            
-            if (!isset($site_hours[$am_site])) {
-                $site_hours[$am_site] = 0;
-                $site_pay[$am_site] = 0;
-            }
-            $site_hours[$am_site] += $am_hours;
-            $site_pay[$am_site] += $am_hours * $hourly_rate;
-        }
-        
-        if ($include_pm) {
-            $filtered_records[] = [
-                'date' => $date,
-                'session' => 'PM',
-                'hours' => $pm_hours,
-                'site' => $pm_site,
-                'pay' => $pm_hours * $hourly_rate
-            ];
-            
-            if (!isset($site_hours[$pm_site])) {
-                $site_hours[$pm_site] = 0;
-                $site_pay[$pm_site] = 0;
-            }
-            $site_hours[$pm_site] += $pm_hours;
-            $site_pay[$pm_site] += $pm_hours * $hourly_rate;
-        }
-        
-        if ($include_night) {
-            $filtered_records[] = [
-                'date' => $date,
-                'session' => 'Night',
-                'hours' => $night_hours,
-                'site' => $night_site,
-                'pay' => $night_hours * $hourly_rate
-            ];
-            
-            if (!isset($site_hours[$night_site])) {
-                $site_hours[$night_site] = 0;
-                $site_pay[$night_site] = 0;
-            }
-            $site_hours[$night_site] += $night_hours;
-            $site_pay[$night_site] += $night_hours * $hourly_rate;
-        }
-    }
-    
-    return [
-        'records' => $filtered_records,
-        'site_hours' => $site_hours,
-        'site_pay' => $site_pay,
-        'total_hours' => array_sum($site_hours),
-        'total_pay' => array_sum($site_pay)
-    ];
-}
     if ($reportResult && $reportResult->num_rows > 0) {
         while ($row = $reportResult->fetch_assoc()) {
             $employee_name = $row['first_name'] . ' ' . $row['last_name'];
-            $employee_daily_salary = floatval($row['daily_salary']);
-            
-            // Get attendance records for this employee
-            $emp_attendance = isset($attendance_records[$row['employee_id']]) ? $attendance_records[$row['employee_id']] : [];
-            
-            // Apply site filter to attendance
-            $filtered_attendance = filterAttendanceBySite($emp_attendance, $date_from, $date_to, $site_filter, $employee_daily_salary);
-            
-            // Calculate base salary from filtered attendance if site filter is applied
-            $filtered_base_salary = $filtered_attendance['total_pay'];
-            
-            // Use filtered base salary if site filter is not 'all', otherwise use payroll base_salary
-            $base_salary_to_use = ($site_filter != 'all' && $filtered_base_salary > 0) ? $filtered_base_salary : floatval($row['base_salary']);
-            $work_hours_to_use = ($site_filter != 'all' && $filtered_attendance['total_hours'] > 0) ? $filtered_attendance['total_hours'] : floatval($row['total_work_hours']);
-            
-            // Calculate net pay based on filtered amounts
-            $deductions_to_use = floatval($row['total_deductions']);
-            $net_pay_to_use = $base_salary_to_use - $deductions_to_use;
-            
-            $employee_record = [
+            $employees[] = [
                 'id' => $row['employee_id'],
                 'payroll_id' => $row['id'],
                 'employee_name' => $employee_name,
                 'first_name' => $row['first_name'],
                 'last_name' => $row['last_name'],
                 'position' => $row['position'],
+                'site_name' => $row['site_name'],
                 'date_from' => date('M d, Y', strtotime($row['date_from'])),
                 'date_to' => date('M d, Y', strtotime($row['date_to'])),
-                'monthly_salary' => $base_salary_to_use,
-                'total_deductions' => $deductions_to_use,
-                'net_salary' => $net_pay_to_use,
-                'work_hours' => $work_hours_to_use,
-                'status' => $row['status'],
-                'site_breakdown' => $filtered_attendance['site_hours'],
-                'site_pay_breakdown' => $filtered_attendance['site_pay']
+                'monthly_salary' => $row['base_salary'],
+                'total_deductions' => $row['total_deductions'],
+                'net_salary' => $row['net_pay'],
+                'work_hours' => $row['total_work_hours'],
+                'status' => $row['status']
             ];
+            $total_gross += $row['base_salary'];
+            $total_deductions += $row['total_deductions'];
+            $total_net += $row['net_pay'];
             
-            // Only include if there's relevant data for the site filter
-            if ($site_filter == 'all' || $work_hours_to_use > 0) {
-                $employees[] = $employee_record;
-                $total_gross += $base_salary_to_use;
-                $total_deductions += $deductions_to_use;
-                $total_net += $net_pay_to_use;
-                
-                // Build employee summary
-                if (!isset($employee_summary[$employee_name])) {
-                    $employee_summary[$employee_name] = [
-                        'count' => 0,
-                        'gross' => 0,
-                        'deductions' => 0,
-                        'net' => 0
-                    ];
-                }
-                $employee_summary[$employee_name]['count']++;
-                $employee_summary[$employee_name]['gross'] += $base_salary_to_use;
-                $employee_summary[$employee_name]['deductions'] += $deductions_to_use;
-                $employee_summary[$employee_name]['net'] += $net_pay_to_use;
+            // Build employee summary
+            if (!isset($employee_summary[$employee_name])) {
+                $employee_summary[$employee_name] = [
+                    'count' => 0,
+                    'gross' => 0,
+                    'deductions' => 0,
+                    'net' => 0
+                ];
             }
+            $employee_summary[$employee_name]['count']++;
+            $employee_summary[$employee_name]['gross'] += $row['base_salary'];
+            $employee_summary[$employee_name]['deductions'] += $row['total_deductions'];
+            $employee_summary[$employee_name]['net'] += $row['net_pay'];
         }
     }
     
     // Get period description
     $period_desc = date('F d, Y', strtotime($date_from)) . ' to ' . date('F d, Y', strtotime($date_to));
-    
-    // Get site name for display
-    $site_name = 'All Sites';
-    if ($site_filter != 'all') {
-        $site_query = "SELECT site_name FROM site_monitoring WHERE id = ?";
-        $site_stmt = $conn->prepare($site_query);
-        $site_stmt->bind_param("i", $site_filter);
-        $site_stmt->execute();
-        $site_result = $site_stmt->get_result();
-        if ($site_row = $site_result->fetch_assoc()) {
-            $site_name = $site_row['site_name'];
-        }
-    }
     
     echo json_encode([
         'success' => true,
@@ -418,21 +210,416 @@ function filterAttendanceBySite($attendance_records_for_employee, $date_from, $d
         ],
         'period_desc' => $period_desc,
         'selected_employee' => $employee_id,
-        'selected_site' => $site_filter,
-        'selected_site_name' => $site_name
+        'date_from' => $date_from,
+        'date_to' => $date_to
     ]);
     exit;
 }
 
-// Handle Generate Payroll Slip Download - FIXED Excel download with site filter
+// Handle Excel download for salary report (styled like attendance report)
+if (isset($_POST['download_salary_report_excel'])) {
+    $date_from = $_POST['date_from'];
+    $date_to = $_POST['date_to'];
+    $employee_id = isset($_POST['employee_id']) ? $_POST['employee_id'] : 'all';
+    
+    // Get employee name if filtered
+    $employee_name = "All Employees";
+    if ($employee_id != 'all') {
+        $name_query = "SELECT CONCAT(first_name, ' ', last_name) as full_name FROM employees WHERE id = ?";
+        $name_stmt = $conn->prepare($name_query);
+        $name_stmt->bind_param("i", $employee_id);
+        $name_stmt->execute();
+        $name_result = $name_stmt->get_result();
+        if ($name_row = $name_result->fetch_assoc()) {
+            $employee_name = $name_row['full_name'];
+        }
+        $name_stmt->close();
+    }
+    
+    // Build query for payroll records (same as AJAX)
+    if ($employee_id != 'all') {
+        $reportQuery = "
+            SELECT 
+                p.id,
+                p.employee_id,
+                p.date_from,
+                p.date_to,
+                p.base_salary,
+                p.total_deductions,
+                p.net_pay,
+                p.total_work_hours,
+                p.status,
+                e.first_name,
+                e.last_name,
+                e.position,
+                e.daily_salary,
+                e.contact_num,
+                sm.site_name
+            FROM payroll p
+            LEFT JOIN employees e ON e.id = p.employee_id
+            LEFT JOIN site_employee se ON e.id = se.employee_id
+            LEFT JOIN site_monitoring sm ON se.site_id = sm.id
+            WHERE p.employee_id = ? 
+            AND ((p.date_from BETWEEN ? AND ?) OR (p.date_to BETWEEN ? AND ?))
+            ORDER BY p.date_from DESC
+        ";
+        $stmt = $conn->prepare($reportQuery);
+        $stmt->bind_param("issss", $employee_id, $date_from, $date_to, $date_from, $date_to);
+    } else {
+        $reportQuery = "
+            SELECT 
+                p.id,
+                p.employee_id,
+                p.date_from,
+                p.date_to,
+                p.base_salary,
+                p.total_deductions,
+                p.net_pay,
+                p.total_work_hours,
+                p.status,
+                e.first_name,
+                e.last_name,
+                e.position,
+                e.daily_salary,
+                e.contact_num,
+                sm.site_name
+            FROM payroll p
+            LEFT JOIN employees e ON e.id = p.employee_id
+            LEFT JOIN site_employee se ON e.id = se.employee_id
+            LEFT JOIN site_monitoring sm ON se.site_id = sm.id
+            WHERE (p.date_from BETWEEN ? AND ?) OR (p.date_to BETWEEN ? AND ?)
+            ORDER BY e.first_name, e.last_name, p.date_from DESC
+        ";
+        $stmt = $conn->prepare($reportQuery);
+        $stmt->bind_param("ssss", $date_from, $date_to, $date_from, $date_to);
+    }
+    
+    $stmt->execute();
+    $reportResult = $stmt->get_result();
+    
+    $employees = [];
+    $total_gross = 0;
+    $total_deductions = 0;
+    $total_net = 0;
+    
+    while ($row = $reportResult->fetch_assoc()) {
+        $employees[] = $row;
+        $total_gross += $row['base_salary'];
+        $total_deductions += $row['total_deductions'];
+        $total_net += $row['net_pay'];
+    }
+    
+    // Set headers for Excel download
+    header('Content-Type: application/vnd.ms-excel');
+    header('Content-Disposition: attachment; filename="Salary_Report_' . $date_from . '_to_' . $date_to . '.xls"');
+    header('Cache-Control: max-age=0');
+    
+    // Output HTML with styling (matching attendance report)
+    echo '<html>';
+    echo '<head>';
+    echo '<meta charset="UTF-8">';
+    echo '<title>Salary Report - ' . $date_from . ' to ' . $date_to . '</title>';
+    ?>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 30px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #2E7D32;
+        }
+        .header h1 {
+            color: #2E7D32;
+            font-size: 28px;
+            margin: 0 0 10px 0;
+        }
+        .header h2 {
+            color: #1B5E20;
+            font-size: 20px;
+            margin: 5px 0;
+            font-weight: normal;
+        }
+        .header p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .info-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 6px solid #2E7D32;
+            border-radius: 8px;
+        }
+        .info-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .info-item {
+            flex: 1;
+            min-width: 150px;
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .info-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2E7D32;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 11px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #2E7D32;
+            color: white;
+            font-weight: 600;
+            padding: 10px 5px;
+            text-align: center;
+            border: 1px solid #1B5E20;
+            font-size: 12px;
+        }
+        td {
+            padding: 8px 5px;
+            border: 1px solid #ddd;
+            text-align: center;
+            vertical-align: middle;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status-paid {
+            color: #28a745;
+            font-weight: 700;
+            background-color: #e8f5e9;
+            padding: 3px 8px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 10px;
+        }
+        .status-pending {
+            color: #856404;
+            font-weight: 700;
+            background-color: #fff9e6;
+            padding: 3px 8px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 10px;
+        }
+        .summary-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: none;
+        }
+        .summary-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2E7D32;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #2E7D32;
+        }
+        .summary-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .summary-box {
+            flex: 1;
+            min-width: 250px;
+        }
+        .summary-box h5 {
+            color: #2E7D32;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .summary-table {
+            width: 100%;
+            border: none;
+            margin: 0;
+            box-shadow: none;
+        }
+        .summary-table td {
+            border: none;
+            padding: 5px 0;
+            text-align: left;
+            background: transparent;
+        }
+        .summary-table td:first-child {
+            font-weight: 600;
+            color: #555;
+            width: 60%;
+        }
+        .summary-table td:last-child {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .payroll-value {
+            color: #00838f;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 2px solid #2E7D32;
+            font-size: 11px;
+            color: #666;
+            text-align: center;
+        }
+        .text-center { text-align: center; }
+        .text-left { text-align: left; }
+        .text-right { text-align: right; }
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+        }
+    </style>
+    </head>
+    <body>
+    <div class="header">
+        <h1>SALARY REPORT</h1>
+        <h2><?= date('F d, Y', strtotime($date_from)) ?> to <?= date('F d, Y', strtotime($date_to)) ?></h2>
+        <p>Generated on: <?= date('F j, Y \a\t h:i A') ?></p>
+    </div>
+    <div class="info-section">
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Employee</div>
+                <div class="info-value"><?= htmlspecialchars($employee_name) ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Report Period</div>
+                <div class="info-value"><?= date('M d, Y', strtotime($date_from)) ?> - <?= date('M d, Y', strtotime($date_to)) ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Records</div>
+                <div class="info-value"><?= count($employees) ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Gross</div>
+                <div class="info-value">₱<?= number_format($total_gross, 2) ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Deductions</div>
+                <div class="info-value">₱<?= number_format($total_deductions, 2) ?></div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Net Pay</div>
+                <div class="info-value">₱<?= number_format($total_net, 2) ?></div>
+            </div>
+        </div>
+    </div>
+    <?php if (empty($employees)): ?>
+        <div class="no-data">
+            <p>No salary records found for the selected period.</p>
+        </div>
+    <?php else: ?>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Employee</th>
+                    <th>Position</th>
+                    <th>Site</th>
+                    <th>Period From</th>
+                    <th>Period To</th>
+                    <th>Work Hours</th>
+                    <th>Gross Salary</th>
+                    <th>Deductions</th>
+                    <th>Net Pay</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($employees as $emp): 
+                    $status_class = ($emp['status'] == 'paid') ? 'status-paid' : 'status-pending';
+                ?>
+                    <tr>
+                        <td class="text-center"><?= $emp['employee_id'] ?></td>
+                        <td class="text-left"><?= htmlspecialchars($emp['first_name'] . ' ' . $emp['last_name']) ?></td>
+                        <td class="text-left"><?= htmlspecialchars($emp['position']) ?></td>
+                        <td class="text-center"><?= htmlspecialchars($emp['site_name'] ?? 'N/A') ?></td>
+                        <td class="text-center"><?= date('M d, Y', strtotime($emp['date_from'])) ?></td>
+                        <td class="text-center"><?= date('M d, Y', strtotime($emp['date_to'])) ?></td>
+                        <td class="text-center"><?= number_format($emp['total_work_hours'], 2) ?></td>
+                        <td class="text-right">₱<?= number_format($emp['base_salary'], 2) ?></td>
+                        <td class="text-right">₱<?= number_format($emp['total_deductions'], 2) ?></td>
+                        <td class="text-right payroll-value">₱<?= number_format($emp['net_pay'], 2) ?></td>
+                        <td class="text-center"><span class="<?= $status_class ?>"><?= ucfirst($emp['status']) ?></span></td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+            <tfoot>
+                <tr style="background: #e8f5e9; font-weight: bold;">
+                    <td colspan="7" class="text-right">GRAND TOTALS:</td>
+                    <td class="text-right">₱<?= number_format($total_gross, 2) ?></td>
+                    <td class="text-right">₱<?= number_format($total_deductions, 2) ?></td>
+                    <td class="text-right">₱<?= number_format($total_net, 2) ?></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        <div class="summary-container">
+            <div class="summary-title">SUMMARY</div>
+            <div class="summary-grid">
+                <div class="summary-box">
+                    <h5>RECORDS</h5>
+                    <table class="summary-table">
+                        <tr><td>Total Payroll Records:</td><td><?= count($employees) ?></td></tr>
+                        <tr><td>Total Employees:</td><td><?= count(array_unique(array_column($employees, 'employee_id'))) ?></td></tr>
+                    </table>
+                </div>
+                <div class="summary-box">
+                    <h5>FINANCIAL TOTALS</h5>
+                    <table class="summary-table">
+                        <tr><td>Total Gross Salary:</td><td>₱<?= number_format($total_gross, 2) ?></td></tr>
+                        <tr><td>Total Deductions:</td><td>₱<?= number_format($total_deductions, 2) ?></td></tr>
+                        <tr><td><strong>Total Net Pay:</strong></td><td class="payroll-value"><strong>₱<?= number_format($total_net, 2) ?></strong></td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    <?php endif; ?>
+    <div class="footer">
+        <p>Payroll Management System - Official Salary Report</p>
+        <p>Generated on <?= date('F j, Y \a\t h:i A') ?></p>
+    </div>
+    </body>
+    </html>
+    <?php
+    exit;
+}
+
+// Handle Generate Payroll Slip Download - FIXED Excel download
 if (isset($_POST['download_payroll_slip'])) {
     $payroll_id = $_POST['payroll_id'];
     
     // Get payroll data with employee details
     $query = "SELECT p.*, 
-                     e.first_name, e.last_name, e.position, e.daily_salary, e.contact_num
+                     e.first_name, e.last_name, e.position, e.daily_salary, e.contact_num,
+                     sm.site_name, sm.site_manager, sm.site_address
               FROM payroll p 
               JOIN employees e ON e.id = p.employee_id 
+              LEFT JOIN site_employee se ON e.id = se.employee_id
+              LEFT JOIN site_monitoring sm ON se.site_id = sm.id
               WHERE p.id = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("i", $payroll_id);
@@ -470,7 +657,7 @@ if (isset($_POST['download_payroll_slip'])) {
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
         
         // Company Header
-        fputcsv($output, ['JLC BEST CONSTRUCTION OPC - SALARY SLIP']);
+        fputcsv($output, ['PAYROLL SYSTEM - SALARY SLIP']);
         fputcsv($output, []);
         
         // Employee Information
@@ -479,6 +666,7 @@ if (isset($_POST['download_payroll_slip'])) {
         fputcsv($output, ['Employee Name:', $p['first_name'] . ' ' . $p['last_name']]);
         fputcsv($output, ['Position:', $p['position']]);
         fputcsv($output, ['Contact:', $p['contact_num'] ?? 'N/A']);
+        fputcsv($output, ['Site:', $p['site_name'] ?? 'Not Assigned']);
         fputcsv($output, ['Daily Rate:', '₱' . number_format($p['daily_salary'], 2)]);
         fputcsv($output, []);
         
@@ -490,33 +678,20 @@ if (isset($_POST['download_payroll_slip'])) {
         
         // Salary Breakdown
         fputcsv($output, ['SALARY BREAKDOWN']);
-        fputcsv($output, ['Description', 'Hours', 'Amount']);
-        fputcsv($output, ['Total Work Hours', $p['total_work_hours'] . ' hrs', '']);
-        fputcsv($output, ['Base Salary', '', '₱' . number_format($p['base_salary'], 2)]);
-        
-        // Site breakdown from salary_breakdown JSON
-        $salary_breakdown = json_decode($p['salary_breakdown'] ?? '{}', true);
-        if (!empty($salary_breakdown)) {
-            fputcsv($output, []);
-            fputcsv($output, ['SITE BREAKDOWN']);
-            foreach ($salary_breakdown as $site => $data) {
-                fputcsv($output, [$site, $data['hours'] . ' hrs', '₱' . number_format($data['pay'], 2)]);
-            }
-        }
+        fputcsv($output, ['Description', 'Amount']);
+        fputcsv($output, ['Work Hours', $p['total_work_hours'] . ' hrs']);
+        fputcsv($output, ['Base Salary', '₱' . number_format($p['base_salary'], 2)]);
         
         // Deductions
         if (!empty($deductions)) {
-            fputcsv($output, []);
-            fputcsv($output, ['DEDUCTIONS']);
             foreach ($deductions as $d) {
-                fputcsv($output, [$d['deduction_name'], '', '- ₱' . number_format($d['amount'], 2)]);
+                fputcsv($output, [$d['deduction_name'], '- ₱' . number_format($d['amount'], 2)]);
             }
         }
         
+        fputcsv($output, ['Total Deductions', '- ₱' . number_format($p['total_deductions'], 2)]);
         fputcsv($output, []);
-        fputcsv($output, ['Total Deductions', '', '- ₱' . number_format($p['total_deductions'], 2)]);
-        fputcsv($output, []);
-        fputcsv($output, ['NET PAY', '', '₱' . number_format($p['net_pay'], 2)]);
+        fputcsv($output, ['NET PAY', '₱' . number_format($p['net_pay'], 2)]);
         fputcsv($output, []);
         fputcsv($output, ['Status:', ucfirst($p['status'] ?? 'pending')]);
         fputcsv($output, []);
@@ -531,7 +706,7 @@ if (isset($_POST['download_payroll_slip'])) {
     }
 }
 
-// Handle Get Single Payroll for View - ENHANCED with full breakdown
+// Handle Get Single Payroll for View
 if (isset($_GET['get_payroll'])) {
     header('Content-Type: application/json');
     header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -551,10 +726,12 @@ if (isset($_GET['get_payroll'])) {
         
         // Get main payroll data with employee details
         $query = "SELECT p.*, 
-                         e.first_name, e.last_name, e.position, e.daily_salary, e.contact_num, e.employment_type,
-                         e.id as employee_id
+                         e.first_name, e.last_name, e.position, e.daily_salary, e.contact_num,
+                         sm.site_name, sm.site_manager, sm.site_address
                   FROM payroll p 
                   JOIN employees e ON e.id = p.employee_id 
+                  LEFT JOIN site_employee se ON e.id = se.employee_id
+                  LEFT JOIN site_monitoring sm ON se.site_id = sm.id
                   WHERE p.id = ?";
         $stmt = $conn->prepare($query);
         $stmt->bind_param("i", $payroll_id);
@@ -564,12 +741,10 @@ if (isset($_GET['get_payroll'])) {
         if ($result->num_rows > 0) {
             $payroll = $result->fetch_assoc();
             
-            // Decode salary_breakdown JSON
-            $payroll['salary_breakdown'] = json_decode($payroll['salary_breakdown'] ?? '{}', true);
-            
-            // Get deductions for this payroll
+            // Check if payroll_deductions table exists
             $table_check = $conn->query("SHOW TABLES LIKE 'payroll_deductions'");
             if ($table_check->num_rows > 0) {
+                // Get deductions for this payroll
                 $deduction_query = "SELECT deduction_name, amount FROM payroll_deductions WHERE payroll_id = ?";
                 $deduction_stmt = $conn->prepare($deduction_query);
                 $deduction_stmt->bind_param("i", $payroll_id);
@@ -580,157 +755,9 @@ if (isset($_GET['get_payroll'])) {
                 while ($row = $deduction_result->fetch_assoc()) {
                     $deductions[] = $row;
                 }
+                
                 $payroll['deductions'] = $deductions;
             }
-            
-            // Calculate attendance summary from attendance records for this date range
-            $date_from = $payroll['date_from'];
-            $date_to = $payroll['date_to'];
-            $employee_id = $payroll['employee_id'];
-            
-            // Get employee daily salary and hourly rate
-            $daily_salary = floatval($payroll['daily_salary']);
-            $hourly_rate = $daily_salary / 8;
-            
-            // Get attendance records
-            $attendance_query = "SELECT date, leave_type, workday_type,
-                                        time_in_am, time_out_am,
-                                        time_in_pm, time_out_pm,
-                                        time_in_night, time_out_night,
-                                        site_assignment_am, site_assignment_pm, site_assignment_night,
-                                        status, pm_status, night_status
-                                 FROM attendance 
-                                 WHERE employee_id = ? AND date BETWEEN ? AND ?";
-            $attendance_stmt = $conn->prepare($attendance_query);
-            $attendance_stmt->bind_param("iss", $employee_id, $date_from, $date_to);
-            $attendance_stmt->execute();
-            $attendance_result = $attendance_stmt->get_result();
-            
-            // Calculate days between dates
-            $start = new DateTime($date_from);
-            $end = new DateTime($date_to);
-            $end->modify('+1 day');
-            $interval = new DateInterval('P1D');
-            $period = new DatePeriod($start, $interval, $end);
-            
-            // Track totals
-            $workday_type_summary = [];
-            $days_present = 0;
-            $days_on_leave = 0;
-            $total_attendance_hours = 0;
-            
-            // Store attendance records by date for easier lookup
-            $attendance_by_date = [];
-            while ($row = $attendance_result->fetch_assoc()) {
-                $attendance_by_date[$row['date']] = $row;
-            }
-            
-            // Loop through each date in the period
-            foreach ($period as $date) {
-                $date_str = $date->format('Y-m-d');
-                
-                if (isset($attendance_by_date[$date_str])) {
-                    $record = $attendance_by_date[$date_str];
-                    $workday_type = $record['workday_type'] ?? 'Ordinary Working Day';
-                    $is_on_leave = !empty($record['leave_type']) && $record['leave_type'] != 'None';
-                    
-                    // Calculate hours for this day
-                    $am_hours = 0;
-                    $pm_hours = 0;
-                    $night_hours = 0;
-                    
-                    // AM hours
-                    if (!empty($record['time_in_am']) && !empty($record['time_out_am']) && 
-                        $record['time_in_am'] != '00:00:00' && $record['time_out_am'] != '00:00:00') {
-                        $am_in = strtotime($record['time_in_am']);
-                        $am_out = strtotime($record['time_out_am']);
-                        if ($am_out < $am_in) $am_out += 86400;
-                        $am_hours = ($am_out - $am_in) / 3600;
-                    }
-                    
-                    // PM hours
-                    if (!empty($record['time_in_pm']) && !empty($record['time_out_pm'])) {
-                        $pm_in = $record['time_in_pm'];
-                        $pm_out = $record['time_out_pm'];
-                        if ($pm_out == '00:00:00') {
-                            $pm_in_ts = strtotime($pm_in);
-                            $date_of_pm_in = date('Y-m-d', $pm_in_ts);
-                            $next_day = strtotime('+1 day', strtotime($date_of_pm_in));
-                            $pm_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-                            $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
-                        } else {
-                            $pm_in_ts = strtotime($pm_in);
-                            $pm_out_ts = strtotime($pm_out);
-                            if ($pm_out_ts < $pm_in_ts) $pm_out_ts += 86400;
-                            $pm_hours = ($pm_out_ts - $pm_in_ts) / 3600;
-                        }
-                        $pm_hours = max(0, $pm_hours);
-                    }
-                    
-                    // Night hours
-                    if (!empty($record['time_in_night']) && !empty($record['time_out_night'])) {
-                        $night_in = $record['time_in_night'];
-                        $night_out = $record['time_out_night'];
-                        if ($night_out == '00:00:00') {
-                            $night_in_ts = strtotime($night_in);
-                            $date_of_night_in = date('Y-m-d', $night_in_ts);
-                            $next_day = strtotime('+1 day', strtotime($date_of_night_in));
-                            $night_out_ts = strtotime(date('Y-m-d', $next_day) . ' 00:00:00');
-                            $night_hours = ($night_out_ts - $night_in_ts) / 3600;
-                        } else {
-                            $night_in_ts = strtotime($night_in);
-                            $night_out_ts = strtotime($night_out);
-                            if ($night_out_ts < $night_in_ts) $night_out_ts += 86400;
-                            $night_hours = ($night_out_ts - $night_in_ts) / 3600;
-                        }
-                        $night_hours = max(0, $night_hours);
-                    }
-                    
-                    $day_total_hours = $am_hours + $pm_hours + $night_hours;
-                    $has_attendance = $day_total_hours > 0;
-                    
-                    // Initialize workday type summary
-                    if (!isset($workday_type_summary[$workday_type])) {
-                        $workday_type_summary[$workday_type] = [
-                            'count' => 0,
-                            'present_count' => 0,
-                            'absent_count' => 0,
-                            'leave_count' => 0,
-                            'total_hours' => 0
-                        ];
-                    }
-                    
-                    $workday_type_summary[$workday_type]['count']++;
-                    
-                    if ($is_on_leave) {
-                        $workday_type_summary[$workday_type]['leave_count']++;
-                        $days_on_leave++;
-                    } else if ($has_attendance) {
-                        $workday_type_summary[$workday_type]['present_count']++;
-                        $workday_type_summary[$workday_type]['total_hours'] += $day_total_hours;
-                        $total_attendance_hours += $day_total_hours;
-                        $days_present++;
-                    } else {
-                        $workday_type_summary[$workday_type]['absent_count']++;
-                    }
-                }
-            }
-            
-            $payroll['workday_type_summary'] = $workday_type_summary;
-            $payroll['days_present'] = $days_present;
-            $payroll['days_on_leave'] = $days_on_leave;
-            $payroll['total_days'] = iterator_count($period);
-            
-            // Also pass through the existing payroll fields that may have been calculated
-            $payroll['regular_hours'] = isset($payroll['regular_hours']) ? floatval($payroll['regular_hours']) : 0;
-            $payroll['overtime_hours'] = isset($payroll['overtime_hours']) ? floatval($payroll['overtime_hours']) : 0;
-            $payroll['regular_night_hours'] = isset($payroll['regular_night_hours']) ? floatval($payroll['regular_night_hours']) : 0;
-            $payroll['night_shift_overtime_hours'] = isset($payroll['night_shift_overtime_hours']) ? floatval($payroll['night_shift_overtime_hours']) : 0;
-            $payroll['regular_pay'] = isset($payroll['regular_pay']) ? floatval($payroll['regular_pay']) : 0;
-            $payroll['overtime_pay'] = isset($payroll['overtime_pay']) ? floatval($payroll['overtime_pay']) : 0;
-            $payroll['regular_night_pay'] = isset($payroll['regular_night_pay']) ? floatval($payroll['regular_night_pay']) : 0;
-            $payroll['night_shift_overtime_pay'] = isset($payroll['night_shift_overtime_pay']) ? floatval($payroll['night_shift_overtime_pay']) : 0;
-            $payroll['holiday_guaranteed_pay'] = isset($payroll['holiday_guaranteed_pay']) ? floatval($payroll['holiday_guaranteed_pay']) : 0;
             
             $response['success'] = true;
             $response['data'] = $payroll;
@@ -748,6 +775,7 @@ if (isset($_GET['get_payroll'])) {
     echo json_encode($response);
     exit;
 }
+
 // First, let's check the structure of the payroll table
 $payrollColumns = [];
 $checkPayrollTable = $conn->query("SHOW COLUMNS FROM payroll");
@@ -767,7 +795,7 @@ if (isset($_GET['employee_id'])) {
 
     // Check if payroll record already exists for the employee
     $payrollQuery = "
-        SELECT p.id, p.date_from, p.date_to, p.base_salary, p.total_deductions, p.net_pay, p.total_work_hours, p.status, p.salary_breakdown
+        SELECT p.id, p.date_from, p.date_to, p.base_salary, p.total_deductions, p.net_pay, p.total_work_hours, p.status
         FROM payroll p 
         WHERE p.employee_id = ? 
         ORDER BY p.date_from DESC
@@ -787,8 +815,10 @@ if (isset($_GET['employee_id'])) {
         $employeeQuery = "
             SELECT e.id, CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
                    e.contact_num, e.position, e.daily_salary, e.hourly_rate,
-                   e.email
+                   e.email, sm.site_name, sm.site_manager, sm.site_address
             FROM employees e
+            LEFT JOIN site_employee se ON e.id = se.employee_id
+            LEFT JOIN site_monitoring sm ON se.site_id = sm.id
             WHERE e.id = ? AND e.status = 'active'
         ";
         $stmt = $conn->prepare($employeeQuery);
@@ -808,7 +838,6 @@ if (isset($_GET['employee_id'])) {
             $employeeData['total_work_hours'] = $payrollData['total_work_hours'];
             $employeeData['monthly_salary'] = $payrollData['base_salary'];
             $employeeData['status'] = $payrollData['status'];
-            $employeeData['salary_breakdown'] = json_decode($payrollData['salary_breakdown'] ?? '{}', true);
         }
         
         // Fetch deductions for this payroll
@@ -835,8 +864,13 @@ if (isset($_GET['employee_id'])) {
                 e.position, 
                 e.daily_salary,
                 e.hourly_rate,
-                e.email
+                e.email, 
+                sm.site_name, 
+                sm.site_manager, 
+                sm.site_address
             FROM employees e
+            LEFT JOIN site_employee se ON e.id = se.employee_id
+            LEFT JOIN site_monitoring sm ON se.site_id = sm.id
             WHERE e.id = ? AND e.status = 'active'
         ";
 
@@ -858,8 +892,7 @@ if (isset($_GET['employee_id'])) {
             
             // Get attendance records
             $attendance_query = "SELECT date, status, time_in_am, time_out_am, time_in_pm, time_out_pm, 
-                                        time_in_night, time_out_night, holiday_type,
-                                        site_assignment_am, site_assignment_pm, site_assignment_night
+                                        time_in_night, time_out_night, holiday_type
                                  FROM attendance 
                                  WHERE employee_id = ? AND date BETWEEN ? AND ?";
             $attendance_stmt = $conn->prepare($attendance_query);
@@ -872,7 +905,6 @@ if (isset($_GET['employee_id'])) {
             $overtime_pay = 0;
             $night_shift_pay = 0;
             $holiday_bonus = 0;
-            $site_breakdown = [];
             
             while ($row = $attendance_result->fetch_assoc()) {
                 $am_hours = calculateHours($row['time_in_am'], $row['time_out_am']);
@@ -882,35 +914,16 @@ if (isset($_GET['employee_id'])) {
                 $day_hours = $am_hours + $pm_hours;
                 $total_work_hours += $day_hours + $night_hours;
                 
-                // Track site-based hours
-                $am_site = $row['site_assignment_am'] ?? 'Main Office';
-                $pm_site = $row['site_assignment_pm'] ?? $am_site;
-                $night_site = $row['site_assignment_night'] ?? $pm_site;
-                
-                if ($am_hours > 0) {
-                    if (!isset($site_breakdown[$am_site])) {
-                        $site_breakdown[$am_site] = ['hours' => 0, 'pay' => 0];
+                if ($day_hours > 0) {
+                    if ($day_hours <= 8) {
+                        $regular_pay += $day_hours * $hourly_rate;
+                    } else {
+                        $regular_pay += 8 * $hourly_rate;
+                        $overtime_pay += ($day_hours - 8) * $hourly_rate * 1.25;
                     }
-                    $site_breakdown[$am_site]['hours'] += $am_hours;
-                    $site_breakdown[$am_site]['pay'] += $am_hours * $hourly_rate;
-                    $regular_pay += $am_hours * $hourly_rate;
-                }
-                
-                if ($pm_hours > 0) {
-                    if (!isset($site_breakdown[$pm_site])) {
-                        $site_breakdown[$pm_site] = ['hours' => 0, 'pay' => 0];
-                    }
-                    $site_breakdown[$pm_site]['hours'] += $pm_hours;
-                    $site_breakdown[$pm_site]['pay'] += $pm_hours * $hourly_rate;
-                    $regular_pay += $pm_hours * $hourly_rate;
                 }
                 
                 if ($night_hours > 0) {
-                    if (!isset($site_breakdown[$night_site])) {
-                        $site_breakdown[$night_site] = ['hours' => 0, 'pay' => 0];
-                    }
-                    $site_breakdown[$night_site]['hours'] += $night_hours;
-                    $site_breakdown[$night_site]['pay'] += $night_hours * $hourly_rate * 1.25;
                     $night_shift_pay += $night_hours * $hourly_rate * 1.25;
                 }
                 
@@ -947,7 +960,6 @@ if (isset($_GET['employee_id'])) {
             $employeeData['total_work_hours'] = $total_work_hours;
             $employeeData['status'] = 'pending';
             $employeeData['payroll_id'] = null;
-            $employeeData['salary_breakdown'] = $site_breakdown;
         }
     }
 }
@@ -955,10 +967,6 @@ if (isset($_GET['employee_id'])) {
 // Get all active employees for the dropdown
 $employees_query = "SELECT id, first_name, last_name FROM employees WHERE status = 'active' ORDER BY first_name, last_name";
 $employees_result = $conn->query($employees_query);
-
-// Get all sites for the dropdown
-$sites_query = "SELECT id, site_name FROM site_monitoring ORDER BY site_name";
-$sites_result = $conn->query($sites_query);
 
 // Get all payroll records with employee details for the main table
 $month = isset($_GET['month']) ? $_GET['month'] : date('m');
@@ -974,9 +982,12 @@ $sql = "
            CONCAT(e.first_name, ' ', e.last_name) AS employee_name, 
            e.position, e.id as employee_id, 
            COALESCE(e.daily_salary, 0) as daily_salary,
-           e.contact_num
+           e.contact_num,
+           sm.site_name
     FROM payroll p
     LEFT JOIN employees e ON e.id = p.employee_id
+    LEFT JOIN site_employee se ON e.id = se.employee_id
+    LEFT JOIN site_monitoring sm ON se.site_id = sm.id
     WHERE MONTH(p.date_from) = ? AND YEAR(p.date_from) = ?
     ORDER BY p.date_from DESC
 ";
@@ -1760,7 +1771,7 @@ $result = $stmt->get_result();
         
         .report-select-group {
             flex: 1;
-            min-width: 180px;
+            min-width: 200px;
         }
         
         .report-select-group label {
@@ -1814,87 +1825,57 @@ $result = $stmt->get_result();
             box-shadow: 0 4px 10px rgba(117, 230, 218, 0.3);
         }
 
-        /* Employee Summary Cards */
-        .employee-summary-section {
-            margin-bottom: 25px;
-        }
-        
-        .employee-summary-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .employee-summary-title i {
-            color: #75e6da;
-        }
-        
-        .employee-summary-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .employee-summary-card {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid #75e6da;
-        }
-        
-        .employee-summary-name {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        
-        .employee-summary-stats {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: #666;
-        }
-        
-        .employee-summary-stats span {
-            font-weight: 600;
-            color: #00838f;
-        }
-
-        .report-summary-cards {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-
-        .report-summary-card {
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            padding: 15px;
-            border-radius: 10px;
+        /* Report Content Styles - Matching Attendance Report */
+        .report-header {
             text-align: center;
-            border-left: 4px solid #75e6da;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #2E7D32;
         }
-
-        .report-summary-card .label {
+        .report-header h1 {
+            color: #2E7D32;
+            font-size: 28px;
+            margin: 0 0 10px 0;
+        }
+        .report-header h2 {
+            color: #1B5E20;
+            font-size: 20px;
+            margin: 5px 0;
+            font-weight: normal;
+        }
+        .report-header p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .report-info-section {
+            background: #f5f5f5;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 6px solid #2E7D32;
+            border-radius: 8px;
+        }
+        .report-info-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .report-info-item {
+            flex: 1;
+            min-width: 150px;
+        }
+        .report-info-label {
             font-size: 12px;
             color: #666;
+            margin-bottom: 5px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
-        .report-summary-card .value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-top: 5px;
+        .report-info-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2E7D32;
         }
-
         .report-table-container {
             max-height: 400px;
             overflow-y: auto;
@@ -1902,54 +1883,38 @@ $result = $stmt->get_result();
             border-radius: 8px;
             margin-bottom: 20px;
         }
-
         .report-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
         }
-
         .report-table th {
-            background: #75e6da;
+            background: #2E7D32;
             color: white;
             padding: 10px;
-            text-align: left;
-            font-weight: 600;
+            text-align: center;
+            border: 1px solid #1B5E20;
             position: sticky;
             top: 0;
             z-index: 10;
         }
-
         .report-table td {
             padding: 8px 10px;
-            border-bottom: 1px solid #ddd;
+            border: 1px solid #ddd;
+            text-align: center;
         }
-
         .report-table tr:nth-child(even) {
-            background-color: #f8f9fa;
+            background-color: #f9f9f9;
         }
-
-        .report-table tr:hover {
-            background-color: #e6f7f5;
-        }
-
-        .report-table .text-right {
-            text-align: right;
-        }
-
+        .report-table .text-left { text-align: left; }
+        .report-table .text-right { text-align: right; }
         .report-table .currency {
             font-weight: 600;
         }
-
         .report-table .total-row {
-            background: linear-gradient(135deg, #e6f7f5, #d1f0ec);
+            background: #e8f5e9;
             font-weight: bold;
         }
-
-        .report-table .total-row td {
-            border-top: 2px solid #75e6da;
-        }
-
         .report-site-badge {
             display: inline-block;
             padding: 2px 8px;
@@ -1959,17 +1924,66 @@ $result = $stmt->get_result();
             font-size: 11px;
             font-weight: 600;
         }
-
+        .report-summary-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: none;
+        }
+        .report-summary-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2E7D32;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #2E7D32;
+        }
+        .report-summary-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+        }
+        .report-summary-box {
+            flex: 1;
+            min-width: 250px;
+        }
+        .report-summary-box h5 {
+            color: #2E7D32;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        .report-summary-table {
+            width: 100%;
+            border: none;
+            margin: 0;
+            box-shadow: none;
+        }
+        .report-summary-table td {
+            border: none;
+            padding: 5px 0;
+            text-align: left;
+            background: transparent;
+        }
+        .report-summary-table td:first-child {
+            font-weight: 600;
+            color: #555;
+            width: 60%;
+        }
+        .report-summary-table td:last-child {
+            font-weight: 700;
+            color: #2c3e50;
+        }
         .report-footer {
             margin-top: 15px;
             padding-top: 15px;
-            border-top: 2px solid #75e6da;
+            border-top: 2px solid #2E7D32;
             display: flex;
             justify-content: space-between;
             color: #666;
             font-size: 12px;
         }
-
         .report-print-btn {
             background: #75e6da;
             color: white;
@@ -1984,13 +1998,11 @@ $result = $stmt->get_result();
             align-items: center;
             gap: 5px;
         }
-
         .report-print-btn:hover {
             background: #62d4c8;
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(117, 230, 218, 0.3);
         }
-        
         .report-download-btn {
             background: #28a745;
             color: white;
@@ -2006,19 +2018,16 @@ $result = $stmt->get_result();
             gap: 5px;
             margin-left: 10px;
         }
-        
         .report-download-btn:hover {
             background: #218838;
             transform: translateY(-2px);
             box-shadow: 0 4px 10px rgba(40, 167, 69, 0.3);
         }
-
         .report-loading {
             text-align: center;
             padding: 40px;
             color: #666;
         }
-
         .report-loading i {
             font-size: 2.5rem;
             color: #75e6da;
@@ -2036,14 +2045,11 @@ $result = $stmt->get_result();
             }
         }
 
-        /* ============ MULTI-PAGE PRINT STYLES ============ */
+        /* Print Styles */
         @media print {
-            /* Hide elements not needed for printing */
             body * {
                 visibility: hidden;
             }
-            
-            /* Only show the report modal content */
             .report-modal, 
             .report-modal-content,
             .report-modal-body,
@@ -2051,8 +2057,6 @@ $result = $stmt->get_result();
             #reportContent * {
                 visibility: visible;
             }
-            
-            /* Position the report content for printing */
             .report-modal {
                 position: absolute;
                 left: 0;
@@ -2063,7 +2067,6 @@ $result = $stmt->get_result();
                 background: none;
                 overflow: visible;
             }
-            
             .report-modal-content {
                 position: relative;
                 left: 0;
@@ -2078,89 +2081,35 @@ $result = $stmt->get_result();
                 overflow: visible;
                 background: white;
             }
-            
             .report-modal-header, 
             .report-controls,
             .modal-calendar-wrapper,
             .calendar-dropdown-btn {
                 display: none !important;
             }
-            
-            /* FIXED: Hide the print and download Excel buttons when printing */
             .report-print-btn,
             .report-download-btn {
                 display: none !important;
             }
-            
             .report-modal-body {
                 padding: 0.5in;
                 overflow: visible !important;
                 height: auto;
             }
-            
-            /* Allow table to break across pages */
             .report-table-container {
                 max-height: none;
                 overflow: visible !important;
                 border: none;
             }
-            
-            .report-table {
-                page-break-inside: auto;
-                border-collapse: collapse;
-                width: 100%;
-            }
-            
-            .report-table tr {
-                page-break-inside: avoid;
-                page-break-after: auto;
-            }
-            
-            .report-table thead {
-                display: table-header-group;
-            }
-            
-            .report-table tfoot {
-                display: table-footer-group;
-            }
-            
             .report-table th {
-                background: #75e6da !important;
-                color: black !important;
+                background: #2E7D32 !important;
+                color: white !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
-            
-            .report-table tbody tr {
-                page-break-inside: avoid;
-            }
-            
-            .report-summary-cards,
-            .employee-summary-grid {
-                page-break-inside: avoid;
-            }
-            
-            .report-table .total-row {
-                page-break-before: avoid;
-                page-break-after: avoid;
-            }
-            
-            .report-footer {
-                page-break-before: avoid;
-                margin-top: 20px;
-            }
-            
-            .status-paid, 
-            .status-pending,
-            .report-site-badge,
-            .employee-summary-card {
+            .status-paid, .status-pending {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-            }
-            
-            .report-footer:after {
-                content: "Page " counter(page);
-                counter-increment: page;
             }
         }
 
@@ -2879,21 +2828,6 @@ $result = $stmt->get_result();
             margin: 0 auto;
             background-color: white;
         }
-
-        /* Site badge in report table */
-        .site-breakdown-cell {
-            font-size: 11px;
-        }
-        
-        .site-badge {
-            display: inline-block;
-            background: #e6f7f5;
-            color: #00838f;
-            padding: 2px 6px;
-            border-radius: 10px;
-            margin: 2px;
-            font-size: 10px;
-        }
     </style>
 </head>
 <body>
@@ -2977,6 +2911,12 @@ $result = $stmt->get_result();
                                                 <div><strong>Position:</strong> <?php echo htmlspecialchars($row['position']); ?></div>
                                                 <div><strong>ID:</strong> <?php echo $row['employee_id']; ?></div>
                                                 <div><strong>Contact:</strong> <?php echo htmlspecialchars($row['contact_num'] ?? 'N/A'); ?></div>
+                                                <?php if (!empty($row['site_name'])): ?>
+                                                    <div class="site-info-badge">
+                                                        <i class="fas fa-map-marked-alt"></i>
+                                                        <?php echo htmlspecialchars($row['site_name']); ?>
+                                                    </div>
+                                                <?php endif; ?>
                                             </div>
                                         </td>
                                         <td>₱<?php echo number_format(floatval($row['daily_salary']), 2); ?></td>
@@ -3079,6 +3019,22 @@ $result = $stmt->get_result();
                     <span><?= htmlspecialchars($employeeData['position']) ?></span>
                 </div>
                 <div>
+                    <strong><i class="fas fa-map-marked-alt"></i> Site:</strong>
+                    <span><?= htmlspecialchars($employeeData['site_name'] ?? 'Not Assigned') ?></span>
+                </div>
+                <?php if (!empty($employeeData['site_manager'])): ?>
+                <div>
+                    <strong><i class="fas fa-user-tie"></i> Site Manager:</strong>
+                    <span><?= htmlspecialchars($employeeData['site_manager']) ?></span>
+                </div>
+                <?php endif; ?>
+                <?php if (!empty($employeeData['site_address'])): ?>
+                <div style="grid-column: span 2;">
+                    <strong><i class="fas fa-map-marker-alt"></i> Site Address:</strong>
+                    <span><?= htmlspecialchars($employeeData['site_address']) ?></span>
+                </div>
+                <?php endif; ?>
+                <div>
                     <strong><i class="fas fa-calculator"></i> Rate:</strong>
                     <span>
                         <?php if ($employeeData['daily_salary'] > 0): ?>
@@ -3090,7 +3046,7 @@ $result = $stmt->get_result();
                 </div>
             </div>
 
-            <!-- Enhanced Salary Breakdown with Site Breakdown -->
+            <!-- Enhanced Salary Breakdown -->
             <div class="payroll-summary-container" style="margin: 20px;">
                 <div class="summary-header">
                     <h4>
@@ -3108,20 +3064,6 @@ $result = $stmt->get_result();
                         </div>
                         <div class="breakdown-value">-</div>
                     </div>
-                    
-                    <!-- Site Breakdown -->
-                    <?php if (!empty($employeeData['salary_breakdown'])): ?>
-                        <?php foreach ($employeeData['salary_breakdown'] as $site => $breakdown): ?>
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-building"></i>
-                                    <?= htmlspecialchars($site) ?>
-                                    <span class="badge"><?= number_format($breakdown['hours'], 2) ?> hrs</span>
-                                </div>
-                                <div class="breakdown-value">₱<?= number_format($breakdown['pay'], 2) ?></div>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
                     
                     <div class="breakdown-row">
                         <div class="breakdown-label">
@@ -3225,7 +3167,7 @@ $result = $stmt->get_result();
         </div>
     </div>
 
-    <!-- Report Modal - Modified with Site Dropdown -->
+    <!-- Report Modal - Modified to display report immediately without initial whitespace -->
     <div id="reportModal" class="report-modal">
         <div class="report-modal-content">
             <div class="report-modal-header">
@@ -3235,7 +3177,7 @@ $result = $stmt->get_result();
             <div class="report-modal-body" id="reportModalBody">
                 <!-- Date Range Controls with Attendance.php style date pickers -->
                 <div class="report-controls active">
-                    <!-- Date From - with calendar picker -->
+                    <!-- Date From - with calendar picker (no redundant icon) -->
                     <div class="report-select-group">
                         <label for="report_date_from"><i class="fas fa-calendar-alt" style="color: #75e6da;"></i> Date From</label>
                         <div class="date-picker-wrapper">
@@ -3307,7 +3249,7 @@ $result = $stmt->get_result();
                         </div>
                     </div>
                     
-                    <!-- Date To - with calendar picker -->
+                    <!-- Date To - with calendar picker (no redundant icon) -->
                     <div class="report-select-group">
                         <label for="report_date_to"><i class="fas fa-calendar-alt" style="color: #75e6da;"></i> Date To</label>
                         <div class="date-picker-wrapper">
@@ -3398,25 +3340,6 @@ $result = $stmt->get_result();
                         </select>
                     </div>
                     
-                    <!-- NEW: Site Dropdown -->
-                    <div class="report-select-group">
-                        <label for="report_site"><i class="fas fa-map-marker-alt" style="color: #75e6da;"></i> Site</label>
-                        <select id="report_site" class="report-select">
-                            <option value="all">All Sites</option>
-                            <?php if ($sites_result && $sites_result->num_rows > 0): 
-                                $sites_result->data_seek(0);
-                                while ($site = $sites_result->fetch_assoc()): 
-                            ?>
-                                <option value="<?php echo $site['id']; ?>">
-                                    <?php echo htmlspecialchars($site['site_name']); ?>
-                                </option>
-                            <?php 
-                                endwhile; 
-                            endif; 
-                            ?>
-                        </select>
-                    </div>
-                    
                     <button class="generate-report-submit-btn" onclick="generateReportData()">
                         <i class="fas fa-chart-bar"></i> Generate
                     </button>
@@ -3446,7 +3369,7 @@ $result = $stmt->get_result();
     let calendarToSelected = '<?php echo date('Y-m-t'); ?>';
 
     // ============================================
-    // Save as Image Function - Captures entire modal except buttons
+    // FIXED: Save as Image Function - Captures entire modal except buttons
     // ============================================
     window.saveSalarySlipAsImage = function() {
         console.log('Save as image button clicked');
@@ -3536,7 +3459,7 @@ $result = $stmt->get_result();
         // Calculate actual height of the clone
         const cloneHeight = cloneContainer.scrollHeight;
         
-        // Capture the clone as an image
+        // Capture the clone as an image with settings to capture full height
         html2canvas(cloneContainer, {
             scale: 2,
             backgroundColor: '#ffffff',
@@ -3731,193 +3654,168 @@ $result = $stmt->get_result();
         }
         resultsDiv.classList.add('show');
     }
-// Enhanced View Salary Slip function with full breakdown (NO SITE BREAKDOWN)
-// Enhanced View Salary Slip function - ONLY Salary Computation (No Attendance, No Deductions)
-async function viewSalarySlip(payrollId) {
-    showLoading();
-    
-    try {
-        const timestamp = Date.now();
-        const response = await fetch(`salarySlip.php?get_payroll=${payrollId}&t=${timestamp}`, {
-            headers: {
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const p = data.data;
-            
-            // Format dates
-            const dateFrom = new Date(p.date_from).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-            const dateTo = new Date(p.date_to).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-            
-            // Get employment type display
-            const employmentType = p.employment_type || 'regular';
-            const employmentTypeClass = employmentType === 'regular' ? 'regular' : 'non-regular';
-            const employmentTypeLabel = employmentType === 'regular' ? 'Regular' : 'Non Regular';
-            
-            const hourlyRate = parseFloat(p.daily_salary) / 8;
-            
-            // Calculate net pay (base salary - total deductions)
-            const netPayAmount = parseFloat(p.net_pay || 0);
-            
-            const modalContent = `
-                <div class="salary-modal-content" id="salary-slip-content-dynamic">
-                    <div class="salary-header">
-                        <h2><i class="fas fa-file-invoice-dollar"></i> SALARY SLIP</h2>
-                        <p>Pay Period: ${dateFrom} - ${dateTo}</p>
-                    </div>
-                    
-                    <div class="employee-info-modal">
-                        <div><strong><i class="fas fa-id-card"></i> Employee ID:</strong> <span>${p.employee_id}</span></div>
-                        <div><strong><i class="fas fa-user"></i> Employee Name:</strong> <span>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</span></div>
-                        <div><strong><i class="fas fa-briefcase"></i> Position:</strong> <span>${escapeHtml(p.position)}</span></div>
-                        <div><strong><i class="fas fa-calculator"></i> Rate:</strong> <span>Daily: ₱${parseFloat(p.daily_salary).toFixed(2)}/day</span></div>
-                        <div><strong><i class="fas fa-tag"></i> Employment Type:</strong> <span class="employment-type-badge ${employmentTypeClass}">${employmentTypeLabel}</span></div>
-                    </div>
 
-                    <div class="payroll-summary-container" style="margin: 20px;">
-                        <div class="summary-header">
-                            <h4><i class="fas fa-coins"></i> Salary Computation</h4>
+    // View salary slip by payroll ID
+    async function viewSalarySlip(payrollId) {
+        showLoading();
+        
+        try {
+            const response = await fetch(`salarySlip.php?get_payroll=${payrollId}&t=${Date.now()}`, {
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const p = data.data;
+                
+                // Format dates
+                const dateFrom = new Date(p.date_from).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const dateTo = new Date(p.date_to).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                
+                // Build deductions HTML
+                let deductionsHtml = '';
+                let totalDeductions = 0;
+                if (p.deductions && p.deductions.length > 0) {
+                    p.deductions.forEach(d => {
+                        totalDeductions += parseFloat(d.amount);
+                        deductionsHtml += `
+                            <div class="breakdown-row total-deductions">
+                                <div class="breakdown-label">
+                                    <i class="fas fa-minus-circle"></i>
+                                    ${d.deduction_name}
+                                </div>
+                                <div class="breakdown-value">- ₱${parseFloat(d.amount).toFixed(2)}</div>
+                            </div>
+                        `;
+                    });
+                }
+                
+                // Create modal content with unique ID for image capture
+                const modalContent = `
+                    <div class="salary-modal-content" id="salary-slip-content-dynamic">
+                        <div class="salary-header">
+                            <h2>JLC BEST CONSTRUCTION OPC</h2>
+                            <h2><i class="fas fa-file-invoice-dollar"></i> SALARY SLIP</h2>
+                            <p>Pay Period: ${dateFrom} - ${dateTo}</p>
                         </div>
                         
-                        <div class="salary-breakdown">
-                            <div class="breakdown-header"><i class="fas fa-calculator"></i> Hours & Pay Breakdown</div>
-                            
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-clock"></i>
-                                    Total Work Hours
-                                    <span class="badge">${parseFloat(p.total_work_hours || 0).toFixed(2)} hrs</span>
-                                </div>
-                                <div class="breakdown-value">-</div>
+                        <div class="employee-info-modal">
+                            <div>
+                                <strong>Employee ID:</strong>
+                                <span>${p.employee_id}</span>
                             </div>
-                            
-                            <!-- Regular Day Hours -->
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-sun"></i>
-                                    Regular Day Hours
-                                    <span class="badge">${parseFloat(p.regular_hours || 0).toFixed(2)} hrs</span>
-                                </div>
-                                <div class="breakdown-value">₱${parseFloat(p.regular_pay || 0).toFixed(2)}</div>
+                            <div>
+                                <strong>Employee Name:</strong>
+                                <span>${p.first_name} ${p.last_name}</span>
                             </div>
-                            
-                            <!-- Day Overtime -->
-                            ${p.overtime_hours && p.overtime_hours > 0 ? `
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-clock"></i>
-                                    Day Overtime Hours
-                                    <span class="badge">${parseFloat(p.overtime_hours).toFixed(2)} hrs</span>
-                                </div>
-                                <div class="breakdown-value highlight">₱${parseFloat(p.overtime_pay).toFixed(2)}</div>
-                            </div>` : ''}
-                            
-                            <!-- Regular Night Hours -->
-                            ${p.regular_night_hours && p.regular_night_hours > 0 ? `
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-moon"></i>
-                                    Regular Night Hours
-                                    <span class="badge">${parseFloat(p.regular_night_hours).toFixed(2)} hrs</span>
-                                </div>
-                                <div class="breakdown-value highlight">₱${parseFloat(p.regular_night_pay).toFixed(2)}</div>
-                            </div>` : ''}
-                            
-                            <!-- Night Overtime -->
-                            ${p.night_shift_overtime_hours && p.night_shift_overtime_hours > 0 ? `
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-moon"></i>
-                                    Night Overtime Hours
-                                    <span class="badge">${parseFloat(p.night_shift_overtime_hours).toFixed(2)} hrs</span>
-                                </div>
-                                <div class="breakdown-value highlight">₱${parseFloat(p.night_shift_overtime_pay).toFixed(2)}</div>
-                            </div>` : ''}
-                            
-                            <!-- Holiday Guaranteed Pay -->
-                            ${p.holiday_guaranteed_pay && p.holiday_guaranteed_pay > 0 ? `
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-gift"></i>
-                                    Holiday Guaranteed Pay
-                                </div>
-                                <div class="breakdown-value">₱${parseFloat(p.holiday_guaranteed_pay).toFixed(2)}</div>
-                            </div>` : ''}
-                            
-                            <div class="breakdown-row">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-money-bill"></i>
-                                    Base Salary
-                                </div>
-                                <div class="breakdown-value">₱${parseFloat(p.base_salary).toFixed(2)}</div>
+                            <div>
+                                <strong>Position:</strong>
+                                <span>${p.position}</span>
+                            </div>
+                            <div>
+                                <strong>Site:</strong>
+                                <span>${p.site_name || 'Not Assigned'}</span>
+                            </div>
+                            <div>
+                                <strong>Rate:</strong>
+                                <span>Daily: ₱${parseFloat(p.daily_salary).toFixed(2)}/day</span>
                             </div>
                         </div>
-                        
-                        <!-- NET PAY ONLY - removed Total Deductions row -->
-                        <div class="salary-breakdown" style="margin-top: 20px;">
-                            <div class="breakdown-row net-pay">
-                                <div class="breakdown-label">
-                                    <i class="fas fa-check-circle"></i>
-                                    Net Pay
-                                </div>
-                                <div class="breakdown-value">₱${netPayAmount.toFixed(2)}</div>
-                            </div>
-                        </div>
-                        
-                        <div class="hourly-rate-info">
-                            <span><i class="fas fa-tag"></i> <strong>Hourly Rate:</strong> ₱${hourlyRate.toFixed(2)}</span>
-                            <span class="rate-value"><i class="fas fa-calendar"></i> Daily Rate: ₱${parseFloat(p.daily_salary).toFixed(2)}</span>
-                        </div>
-                        
-                        <div style="margin-top: 15px; text-align: right;">
-                            <span class="status-badge ${p.status === 'paid' ? 'status-paid' : 'status-pending'}">
-                                <i class="fas ${p.status === 'paid' ? 'fa-check-circle' : 'fa-clock'}"></i>
-                                Status: ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}
-                            </span>
-                        </div>
-                    </div>
 
-                    <div class="modal-buttons">
-                        <button class="save-image-btn" onclick="window.saveSalarySlipAsImage()">
-                            <i class="fas fa-camera"></i> Save as Image
-                        </button>
-                        <button class="close-btn-modal" onclick="closeModal()">
-                            <i class="fas fa-times"></i> Close
-                        </button>
+                        <div class="payroll-summary-container" style="margin: 20px;">
+                            <div class="summary-header">
+                                <h4>
+                                    <i class="fas fa-coins"></i>
+                                    Salary Breakdown
+                                </h4>
+                            </div>
+                            
+                            <div class="salary-breakdown">
+                                <div class="breakdown-row">
+                                    <div class="breakdown-label">
+                                        <i class="fas fa-clock"></i>
+                                        Work Hours
+                                        <span class="badge">${parseFloat(p.total_work_hours).toFixed(2)} hrs</span>
+                                    </div>
+                                    <div class="breakdown-value">-</div>
+                                </div>
+                                
+                                <div class="breakdown-row">
+                                    <div class="breakdown-label">
+                                        <i class="fas fa-money-bill"></i>
+                                        Base Salary
+                                    </div>
+                                    <div class="breakdown-value">₱${parseFloat(p.base_salary).toFixed(2)}</div>
+                                </div>
+                                
+                                ${deductionsHtml}
+                                
+                                <div class="breakdown-row total-deductions">
+                                    <div class="breakdown-label">
+                                        <i class="fas fa-calculator"></i>
+                                        Total Deductions
+                                    </div>
+                                    <div class="breakdown-value">- ₱${parseFloat(p.total_deductions).toFixed(2)}</div>
+                                </div>
+                                
+                                <div class="breakdown-row net-pay">
+                                    <div class="breakdown-label">
+                                        <i class="fas fa-check-circle"></i>
+                                        Net Pay
+                                    </div>
+                                    <div class="breakdown-value">₱${parseFloat(p.net_pay).toFixed(2)}</div>
+                                </div>
+                            </div>
+                            
+                            <div style="margin-top: 15px; text-align: right;">
+                                <span class="status-badge ${p.status === 'paid' ? 'status-paid' : 'status-pending'}">
+                                    <i class="fas ${p.status === 'paid' ? 'fa-check-circle' : 'fa-clock'}"></i>
+                                    Status: ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="modal-buttons">
+                            <button class="save-image-btn" onclick="window.saveSalarySlipAsImage()">
+                                <i class="fas fa-camera"></i> Save as Image
+                            </button>
+                            <button class="close-btn-modal" onclick="closeModal()">
+                                <i class="fas fa-times"></i> Close
+                            </button>
+                        </div>
                     </div>
-                </div>
-            `;
-            
-            // Create or update modal
-            let modal = document.getElementById('salary-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'salary-modal';
-                modal.className = 'salary-modal';
-                document.body.appendChild(modal);
+                `;
+                
+                // Create or update modal
+                let modal = document.getElementById('salary-modal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'salary-modal';
+                    modal.className = 'salary-modal';
+                    document.body.appendChild(modal);
+                }
+                
+                modal.innerHTML = modalContent;
+                modal.style.display = 'flex';
+                document.body.classList.add('modal-open');
+                
+                hideLoading();
+            } else {
+                showToast('Error loading salary slip', 'error');
+                hideLoading();
             }
-            
-            modal.innerHTML = modalContent;
-            modal.style.display = 'flex';
-            document.body.classList.add('modal-open');
-            
-            hideLoading();
-        } else {
-            showToast('Error loading salary slip', 'error');
+        } catch (error) {
+            console.error('Error:', error);
+            showToast('Error: ' + error.message, 'error');
             hideLoading();
         }
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('Error: ' + error.message, 'error');
-        hideLoading();
     }
-}
+
     // Open delete payroll modal
     function openDeletePayrollModal(payrollId, employeeName, dateFrom, dateTo, netPay) {
         currentDeletePayrollId = payrollId;
@@ -3938,22 +3836,12 @@ async function viewSalarySlip(payrollId) {
         window.location.href = 'payrollList.php?delete_id=' + currentDeletePayrollId;
     }
 
-    // Close modal when clicking outside
+    // Close modal when clicking outside - Disabled
+    /*
     window.onclick = function(event) {
-        const salaryModal = document.getElementById('salary-modal');
-        const reportModal = document.getElementById('reportModal');
-        const deleteModal = document.getElementById('deletePayrollModal');
-        
-        if (event.target === salaryModal) {
-            closeModal();
-        }
-        if (event.target === reportModal) {
-            closeReportModal();
-        }
-        if (event.target === deleteModal) {
-            closeModalById('deletePayrollModal');
-        }
+        ...
     }
+    */
 
     // Close modal with Escape key
     document.addEventListener('keydown', function(event) {
@@ -4189,7 +4077,6 @@ async function viewSalarySlip(payrollId) {
         const dateFrom = document.getElementById('report_date_from').value;
         const dateTo = document.getElementById('report_date_to').value;
         const employee_id = document.getElementById('report_employee').value;
-        const site_id = document.getElementById('report_site').value;
         
         if (!dateFrom || !dateTo) {
             showToast('Please select both dates', 'error');
@@ -4212,7 +4099,7 @@ async function viewSalarySlip(payrollId) {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `ajax=generate_report&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}&employee_id=${encodeURIComponent(employee_id)}&site_id=${encodeURIComponent(site_id)}`
+            body: `ajax=generate_report&date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}&employee_id=${encodeURIComponent(employee_id)}`
         })
         .then(response => response.json())
         .then(data => {
@@ -4229,174 +4116,167 @@ async function viewSalarySlip(payrollId) {
             closeReportModal();
         });
     }
-function displayReport(data) {
-    const reportContent = document.getElementById('reportContent');
-    const reportLoading = document.getElementById('reportLoading');
-    
-    let employeeSummaryHtml = '';
-    if (data.employee_summary && Object.keys(data.employee_summary).length > 0) {
-        employeeSummaryHtml = '<div class="employee-summary-section"><div class="employee-summary-title"><i class="fas fa-users"></i> Employee Summary</div><div class="employee-summary-grid">';
-        for (const [empName, stats] of Object.entries(data.employee_summary)) {
-            employeeSummaryHtml += `
-                <div class="employee-summary-card">
-                    <div class="employee-summary-name">${escapeHtml(empName)}</div>
-                    <div class="employee-summary-stats">
-                        <span>Records: ${stats.count}</span>
-                        <span>Net: ₱${formatNumber(stats.net)}</span>
+
+    function displayReport(data) {
+        const reportContent = document.getElementById('reportContent');
+        const reportLoading = document.getElementById('reportLoading');
+        
+        // Build employee summary (optional, kept for info)
+        let employeeSummaryHtml = '';
+        if (data.employee_summary && Object.keys(data.employee_summary).length > 0) {
+            employeeSummaryHtml = '<div class="employee-summary-section"><div class="employee-summary-title"><i class="fas fa-users"></i> Employee Summary</div><div class="employee-summary-grid">';
+            for (const [empName, stats] of Object.entries(data.employee_summary)) {
+                employeeSummaryHtml += `
+                    <div class="employee-summary-card">
+                        <div class="employee-summary-name">${escapeHtml(empName)}</div>
+                        <div class="employee-summary-stats">
+                            <span>Records: ${stats.count}</span>
+                            <span>Net: ₱${formatNumber(stats.net)}</span>
+                        </div>
+                        <div style="font-size: 11px; margin-top: 5px; color: #666;">
+                            Gross: ₱${formatNumber(stats.gross)} | Ded: ₱${formatNumber(stats.deductions)}
+                        </div>
                     </div>
-                    <div style="font-size: 11px; margin-top: 5px; color: #666;">
-                        Gross: ₱${formatNumber(stats.gross)} | Ded: ₱${formatNumber(stats.deductions)}
+                `;
+            }
+            employeeSummaryHtml += '</div></div>';
+        }
+        
+        // Build main report HTML matching Attendance report style
+        let html = `
+            <div class="report-header">
+                <h1>SALARY REPORT</h1>
+                <h2>${data.period_desc}</h2>
+                <p>Generated on: ${new Date().toLocaleString()}</p>
+            </div>
+            
+            <div class="report-info-section">
+                <div class="report-info-grid">
+                    <div class="report-info-item">
+                        <div class="report-info-label">Employee</div>
+                        <div class="report-info-value">${data.selected_employee === 'all' ? 'All Employees' : escapeHtml(data.employees[0]?.employee_name || 'Selected')}</div>
+                    </div>
+                    <div class="report-info-item">
+                        <div class="report-info-label">Report Period</div>
+                        <div class="report-info-value">${data.period_desc}</div>
+                    </div>
+                    <div class="report-info-item">
+                        <div class="report-info-label">Total Records</div>
+                        <div class="report-info-value">${data.totals.count}</div>
+                    </div>
+                    <div class="report-info-item">
+                        <div class="report-info-label">Total Gross</div>
+                        <div class="report-info-value">₱${formatNumber(data.totals.gross)}</div>
+                    </div>
+                    <div class="report-info-item">
+                        <div class="report-info-label">Total Deductions</div>
+                        <div class="report-info-value">₱${formatNumber(data.totals.deductions)}</div>
+                    </div>
+                    <div class="report-info-item">
+                        <div class="report-info-label">Total Net Pay</div>
+                        <div class="report-info-value">₱${formatNumber(data.totals.net)}</div>
                     </div>
                 </div>
-            `;
-        }
-        employeeSummaryHtml += '</div></div>';
-    }
-    
-    // Display selected site filter info
-    const siteFilterInfo = data.selected_site_name !== 'All Sites' ? `<div style="margin-bottom: 15px; padding: 8px 15px; background: #e6f7f5; border-radius: 30px; display: inline-block;">
-        <i class="fas fa-map-marker-alt" style="color: #00838f;"></i> Filtered by Site: <strong>${escapeHtml(data.selected_site_name)}</strong>
-    </div>` : '';
-    
-    let html = `
-        <div class="report-summary-cards">
-            <div class="report-summary-card">
-                <div class="label">Payroll Records</div>
-                <div class="value">${data.totals.count}</div>
             </div>
-            <div class="report-summary-card">
-                <div class="label">Employees</div>
-                <div class="value">${data.totals.employee_count}</div>
+            
+            ${employeeSummaryHtml}
+            
+            <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="color: #2c3e50; margin: 0; font-size: 14px;">
+                    <i class="fas fa-calendar-alt" style="color: #75e6da;"></i> Period: ${data.period_desc}
+                </h4>
+                <div>
+                    <button class="report-print-btn" onclick="printReport()">
+                        <i class="fas fa-print"></i> Print
+                    </button>
+                    <button class="report-download-btn" onclick="downloadReportExcel()">
+                        <i class="fas fa-file-excel"></i> Download Excel
+                    </button>
+                </div>
             </div>
-            <div class="report-summary-card">
-                <div class="label">Gross Salary</div>
-                <div class="value">₱${formatNumber(data.totals.gross)}</div>
-            </div>
-            <div class="report-summary-card">
-                <div class="label">Deductions</div>
-                <div class="value">₱${formatNumber(data.totals.deductions)}</div>
-            </div>
-            <div class="report-summary-card">
-                <div class="label">Net Payroll</div>
-                <div class="value">₱${formatNumber(data.totals.net)}</div>
-            </div>
-        </div>
+            
+            <div class="report-table-container">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Employee Name</th>
+                            <th>Position</th>
+                            <th>Site</th>
+                            <th>Period From</th>
+                            <th>Period To</th>
+                            <th class="text-right">Work Hrs</th>
+                            <th class="text-right">Gross Salary</th>
+                            <th class="text-right">Deductions</th>
+                            <th class="text-right">Net Pay</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
         
-        ${siteFilterInfo}
-        
-        ${employeeSummaryHtml}
-        
-        <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
-            <h4 style="color: #2c3e50; margin: 0; font-size: 14px;">
-                <i class="fas fa-calendar-alt" style="color: #75e6da;"></i> Period: ${data.period_desc}
-            </h4>
-            <div>
-                <button class="report-print-btn" onclick="printReport()">
-                    <i class="fas fa-print"></i> Print
-                </button>
-                <button class="report-download-btn" onclick="downloadReportExcel()">
-                    <i class="fas fa-file-excel"></i> Download Excel
-                </button>
-            </div>
-        </div>
-        
-        <div class="report-table-container">
-            <table class="report-table">
-                <thead>
+        if (data.employees.length > 0) {
+            data.employees.forEach(emp => {
+                html += `
                     <tr>
-                        <th>ID</th>
-                        <th>Employee Name</th>
-                        <th>Position</th>
-                        <th>Site</th>
-                        <th class="text-right">Work Hrs</th>
-                        <th class="text-right">Base Salary</th>
-                        <th class="text-right">Deductions</th>
-                        <th class="text-right">Net Pay</th>
-                        <th>Status</th>
+                        <td><strong>${String(emp.id).padStart(4, '0')}</strong></td>
+                        <td class="text-left">${escapeHtml(emp.employee_name)}</td>
+                        <td class="text-left">${escapeHtml(emp.position)}</td>
+                        <td>${emp.site_name ? `<span class="report-site-badge">${escapeHtml(emp.site_name)}</span>` : 'N/A'}</td>
+                        <td>${emp.date_from}</td>
+                        <td>${emp.date_to}</td>
+                        <td class="text-right">${emp.work_hours || 0}</td>
+                        <td class="text-right currency">₱${formatNumber(emp.monthly_salary)}</td>
+                        <td class="text-right currency" style="color: #dc3545;">₱${formatNumber(emp.total_deductions)}</td>
+                        <td class="text-right currency" style="color: #00838f; font-weight: bold;">₱${formatNumber(emp.net_salary)}</td>
+                        <td>
+                            <span class="status-badge ${emp.status === 'paid' ? 'status-paid' : 'status-pending'}" style="font-size: 11px; padding: 3px 8px;">
+                                ${emp.status ? emp.status.charAt(0).toUpperCase() + emp.status.slice(1) : 'Pending'}
+                            </span>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    if (data.employees.length > 0) {
-        data.employees.forEach(emp => {
-            // Determine which site to display based on filter
-            let displaySite = '';
-            let displayHours = emp.work_hours || 0;
-            let displayBaseSalary = emp.monthly_salary || 0;
+                `;
+            });
             
-            // If filtering by a specific site, show that site name
-            if (data.selected_site_name !== 'All Sites') {
-                displaySite = data.selected_site_name;
-            } else {
-                // If all sites, show the site breakdown or first site
-                if (emp.site_breakdown && Object.keys(emp.site_breakdown).length > 0) {
-                    const sites = Object.keys(emp.site_breakdown);
-                    displaySite = sites.join(', ');
-                } else {
-                    displaySite = 'N/A';
-                }
-            }
-            
+            // Totals row
+            html += `
+                <tr class="total-row">
+                    <td colspan="7" class="text-right"><strong>GRAND TOTALS:</strong></td>
+                    <td class="text-right"><strong>₱${formatNumber(data.totals.gross)}</strong></td>
+                    <td class="text-right"><strong>₱${formatNumber(data.totals.deductions)}</strong></td>
+                    <td class="text-right"><strong>₱${formatNumber(data.totals.net)}</strong></td>
+                    <td></td>
+                </tr>
+            `;
+        } else {
             html += `
                 <tr>
-                    <td><strong>${String(emp.id).padStart(4, '0')}</strong></td>
-                    <td>${escapeHtml(emp.employee_name)}</td>
-                    <td>${escapeHtml(emp.position)}</td>
-                    <td>${escapeHtml(displaySite)}</td>
-                    <td class="text-right">${displayHours}</td>
-                    <td class="text-right currency">₱${formatNumber(displayBaseSalary)}</td>
-                    <td class="text-right currency" style="color: #dc3545;">₱${formatNumber(emp.total_deductions)}</td>
-                    <td class="text-right currency" style="color: #00838f; font-weight: bold;">₱${formatNumber(emp.net_salary)}</td>
-                    <td>
-                        <span class="status-badge ${emp.status === 'paid' ? 'status-paid' : 'status-pending'}" style="font-size: 11px; padding: 3px 8px;">
-                            ${emp.status ? emp.status.charAt(0).toUpperCase() + emp.status.slice(1) : 'Pending'}
-                        </span>
+                    <td colspan="11" style="text-align: center; padding: 30px;">
+                        <i class="fas fa-file-invoice" style="font-size: 36px; color: #ccc; margin-bottom: 10px;"></i>
+                        <p style="color: #666;">No salary slip records found for the selected period.</p>
                     </td>
                 </tr>
             `;
-        });
+        }
         
-        // Totals row
         html += `
-            <tr class="total-row">
-                <td colspan="4" class="text-right"><strong>GRAND TOTALS:</strong></td>
-                <td class="text-right"><strong>${data.totals.gross_hours || data.employees.reduce((sum, emp) => sum + (emp.work_hours || 0), 0)}</strong></td>
-                <td class="text-right"><strong>₱${formatNumber(data.totals.gross)}</strong></td>
-                <td class="text-right"><strong>₱${formatNumber(data.totals.deductions)}</strong></td>
-                <td class="text-right"><strong>₱${formatNumber(data.totals.net)}</strong></td>
-                <td></td>
-            </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="report-footer">
+                <div><strong>Generated on:</strong> ${new Date().toLocaleString()}</div>
+                <div><strong>Generated by:</strong> <?= $_SESSION['Admin_User'] ?></div>
+            </div>
         `;
-    } else {
-        html += `
-            <tr>
-                <td colspan="9" style="text-align: center; padding: 30px;">
-                    <i class="fas fa-file-invoice" style="font-size: 36px; color: #ccc; margin-bottom: 10px;"></i>
-                    <p style="color: #666;">No salary slip records found for the selected period and site filter.</p>
-                </td>
-            </tr>
-        `;
+        
+        reportContent.innerHTML = html;
+        reportLoading.style.display = 'none';
+        reportContent.style.display = 'block';
+        
+        // Store data for Excel download
+        window.reportData = data;
     }
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="report-footer">
-            <div><strong>Generated on:</strong> ${new Date().toLocaleString()}</div>
-            <div><strong>Generated by:</strong> <?= $_SESSION['Admin_User'] ?></div>
-        </div>
-    `;
-    
-    reportContent.innerHTML = html;
-    reportLoading.style.display = 'none';
-    reportContent.style.display = 'block';
-    
-    // Store data for Excel download
-    window.reportData = data;
-}
 
     function formatNumber(num) {
         return new Intl.NumberFormat('en-PH', {
@@ -4406,7 +4286,6 @@ function displayReport(data) {
     }
 
     function escapeHtml(text) {
-        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -4422,19 +4301,24 @@ function displayReport(data) {
             return;
         }
         
-        // Get the current date range, employee, and site selections from the form
+        // Get the current date range and employee selection from the form
         const dateFrom = document.getElementById('report_date_from').value;
         const dateTo = document.getElementById('report_date_to').value;
         const employeeId = document.getElementById('report_employee').value;
-        const siteId = document.getElementById('report_site').value;
         
-        // Create a form to submit to the separate PHP file
+        // Create a form to submit to the same page for Excel download
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'generate_salary_report.php';
+        form.action = 'salarySlip.php';
         form.target = '_blank';
         
         // Add hidden inputs
+        const downloadInput = document.createElement('input');
+        downloadInput.type = 'hidden';
+        downloadInput.name = 'download_salary_report_excel';
+        downloadInput.value = '1';
+        form.appendChild(downloadInput);
+        
         const dateFromInput = document.createElement('input');
         dateFromInput.type = 'hidden';
         dateFromInput.name = 'date_from';
@@ -4452,12 +4336,6 @@ function displayReport(data) {
         employeeInput.name = 'employee_id';
         employeeInput.value = employeeId;
         form.appendChild(employeeInput);
-        
-        const siteInput = document.createElement('input');
-        siteInput.type = 'hidden';
-        siteInput.name = 'site_id';
-        siteInput.value = siteId;
-        form.appendChild(siteInput);
         
         document.body.appendChild(form);
         form.submit();
@@ -4484,3 +4362,4 @@ function displayReport(data) {
 
 </body>
 </html>
+<?php $conn->close(); ?>
