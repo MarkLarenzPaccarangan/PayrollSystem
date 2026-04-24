@@ -40,16 +40,17 @@ $all_products = $conn->query("SELECT * FROM products $order_by");
 $products_with_stock = [];
 $totalProducts = 0;
 $outOfStock = 0;
-$totalInventoryValue = 0; // NEW: Track total inventory value
+$totalInventoryValue = 0;
 
 if ($all_products && $all_products->num_rows > 0) {
     while($row = $all_products->fetch_assoc()) {
-        // Calculate stock as of selected date
+        // Calculate stock as of selected date (ONLY count ACTIVE movements)
         $stock_query = $conn->prepare("
             SELECT COALESCE(SUM(
                 CASE 
                     WHEN type = 'in' THEN quantity 
                     WHEN type = 'out' THEN -quantity 
+                    WHEN type = 'deduct' THEN 0 
                     ELSE 0 
                 END
             ), 0) as stock_on_date
@@ -61,11 +62,11 @@ if ($all_products && $all_products->num_rows > 0) {
         $stock_query->execute();
         $stock_result = $stock_query->get_result();
         $stock_data = $stock_result->fetch_assoc();
-        
+
         $row['historical_quantity'] = $stock_data['stock_on_date'];
         $quantity = $row['historical_quantity'];
         $unit_price = $row['price'];
-        $total_value = $quantity * $unit_price; // NEW: Calculate total value
+        $total_value = $quantity * $unit_price;
         
         // Add to total inventory value
         $totalInventoryValue += $total_value;
@@ -146,8 +147,8 @@ if ($all_products && $all_products->num_rows > 0) {
         $row['display_item_no'] = $display_item_no;
         $row['display_category'] = $display_category;
         $row['display_unit'] = $display_unit;
-        $row['unit_price'] = $unit_price; // Store unit price
-        $row['total_value'] = $total_value; // Store total value
+        $row['unit_price'] = $unit_price;
+        $row['total_value'] = $total_value;
         
         // Get description
         $display_description = $row['description'];
@@ -457,12 +458,9 @@ require_once 'include/header.php';
 /* Category badge */
 .category-badge {
     display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #75e6da, #6c5ce7);
-    color: white;
+    font-size: 13px;
+    font-weight: normal;
+    color: var(--text-primary);
 }
 
 /* Action buttons */
@@ -630,7 +628,7 @@ require_once 'include/header.php';
     flex-wrap: wrap;
 }
 
-/* ===== CONTAINER DESIGN ===== */
+/* Container design */
 .page-container {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -974,7 +972,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Statistics Cards - ADDED TOTAL INVENTORY VALUE CARD -->
+<!-- Statistics Cards -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon">
@@ -1009,7 +1007,6 @@ require_once 'include/header.php';
         </div>
     </div>
     
-    <!-- NEW: Total Inventory Value Card -->
     <div class="stat-card">
         <div class="stat-icon">
             <i class="fas fa-chart-line"></i>
@@ -1022,7 +1019,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- Top Bar with Search, Date Picker, Export Button, and Sort Dropdown -->
+<!-- Top Bar -->
 <div class="top-bar">
     <div class="top-bar-left">
         <div class="search-wrapper">
@@ -1045,7 +1042,7 @@ require_once 'include/header.php';
         </div>
         
         <!-- Export Button -->
-        <button class="btn-export" onclick="openExportModal()">
+        <button type="button" class="btn-export" onclick="openExportModal()">
             <i class="fas fa-file-excel"></i> Export
         </button>
     </div>
@@ -1054,7 +1051,7 @@ require_once 'include/header.php';
     <div class="sort-container">
         <span class="sort-label">Sort by:</span>
         <div class="sort-dropdown" id="sortDropdown">
-            <button class="sort-button" onclick="toggleDropdown()">
+            <button type="button" class="sort-button" onclick="toggleSortDropdown()">
                 <span><i class="fas fa-sort"></i> <?php echo $current_sort_label; ?></span>
                 <i class="fas fa-chevron-down arrow"></i>
             </button>
@@ -1076,10 +1073,9 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- ===== PRODUCTS CONTAINER ===== -->
+<!-- Products Container -->
 <div class="page-container" id="tableContainer">
     <?php if (!empty($products_with_stock)): ?>
-        <!-- Products Table - UPDATED WITH UNIT PRICE AND TOTAL VALUE -->
         <table class="products-table" id="productsTable">
             <thead>
                 <tr>
@@ -1103,13 +1099,9 @@ require_once 'include/header.php';
                     $unit_price = $row['unit_price'];
                     $total_value = $row['total_value'];
                     
-                    // Check if this product has been updated
                     $is_updated = ($display_item_no != $row['item_no'] && !empty($row['item_no']));
-                    
-                    // Calculate stock percentage
                     $stockPercentage = min(($quantity / 50) * 100, 100);
                     
-                    // Determine status and colors
                     if($quantity == 0) {
                         $status = 'Out of Stock';
                         $statusColor = '#a00c0c';
@@ -1127,6 +1119,13 @@ require_once 'include/header.php';
                         $statusColor = '#00ff4c';
                         $bgColor = '#00b89420';
                     }
+                    
+                    // Prepare JSON data for the view modal
+                    $row_json = json_encode($row);
+                    $item_no_json = json_encode($display_item_no);
+                    $desc_json = json_encode($display_description);
+                    $cat_json = json_encode($display_category);
+                    $unit_json = json_encode($display_unit);
                 ?>
                     <tr data-product-id="<?php echo $row['id']; ?>" 
                         data-item-no="<?php echo htmlspecialchars($display_item_no); ?>"
@@ -1142,22 +1141,22 @@ require_once 'include/header.php';
                                     <h4>
                                         <?php echo htmlspecialchars($display_item_no); ?>
                                         <?php if($is_updated): ?>
-                                            <span class="updated-item-badge" title="Item No was updated from <?php echo htmlspecialchars($row['item_no']); ?> to <?php echo htmlspecialchars($display_item_no); ?>">
+                                            <span class="updated-item-badge" title="Item No was updated">
                                                 <i class="fas fa-sync-alt"></i> Updated
                                             </span>
                                         <?php endif; ?>
                                     </h4>
                                 </div>
                             </div>
-                         </td>
-                         <td>
-                            <span class="category-badge">
+                        </td>
+                        <td>
+                           
                                 <?php echo htmlspecialchars($display_category ?? 'Accessories'); ?>
-                            </span>
-                         </td>
-                          <td class="unit-price-cell"><?php echo htmlspecialchars($display_description); ?> </td>
-                        <td class="unit-price-cell">₱<?php echo number_format($unit_price, 2); ?> </td>
-                          <td>
+                            
+                        </td>
+                        <td class="unit-price-cell"><?php echo htmlspecialchars($display_description); ?></td>
+                        <td class="unit-price-cell">₱<?php echo number_format($unit_price, 2); ?></td>
+                        <td>
                             <div style="display: flex; flex-direction: column; gap: 8px;">
                                 <div style="display: flex; align-items: center; justify-content: space-between;">
                                     <span style="font-size: 12px; padding: 4px 12px; border-radius: 20px; background-color: <?php echo $bgColor; ?>; color: <?php echo $statusColor; ?>; font-weight: 600;">
@@ -1173,41 +1172,37 @@ require_once 'include/header.php';
                                     </span>
                                 </div>
                             </div>
-                          </td>
-                          <td class="total-value-cell">₱<?php echo number_format($total_value, 2); ?> </td>
-                          <td>
-                            <span class="category-badge">
+                        </td>
+                        <td class="total-value-cell">₱<?php echo number_format($total_value, 2); ?></td>
+                        <td>
+                            
                                 <?php echo htmlspecialchars($display_unit); ?>
-                            </span>
-                          </td>
-                          <td>
+                          
+                        </td>
+                        <td>
                             <div style="display: flex; gap: 5px;">
-                                <button class="action-btn edit" onclick='openEditModal(<?php echo $row['id']; ?>, <?php echo json_encode($row['name']); ?>, <?php echo json_encode($display_description); ?>, <?php echo $unit_price; ?>, <?php echo $quantity; ?>, <?php echo json_encode($display_category ?? ''); ?>, <?php echo json_encode($display_unit); ?>)' title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="action-btn delete" onclick='openDeleteModal(<?php echo $row['id']; ?>, <?php echo json_encode($display_item_no . ' - ' . $display_description); ?>)' title="Delete">
+                                <button type="button" class="action-btn delete" onclick='openDeleteModal(<?php echo $row['id']; ?>, "<?php echo htmlspecialchars(addslashes($display_item_no . ' - ' . $display_description)); ?>")' title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                                <button class="action-btn view" onclick='openViewModal(<?php echo json_encode($row); ?>, <?php echo json_encode($display_item_no); ?>, <?php echo json_encode($display_description); ?>, <?php echo json_encode($display_category); ?>, <?php echo json_encode($display_unit); ?>, <?php echo $unit_price; ?>, <?php echo $total_value; ?>)' title="View">
+                                <button type="button" class="action-btn view" onclick='openViewModal(<?php echo htmlspecialchars($row_json); ?>, <?php echo htmlspecialchars($item_no_json); ?>, <?php echo htmlspecialchars($desc_json); ?>, <?php echo htmlspecialchars($cat_json); ?>, <?php echo htmlspecialchars($unit_json); ?>, <?php echo $unit_price; ?>, <?php echo $total_value; ?>)' title="View">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
-                          </td>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
-          </table>
+        </table>
     <?php else: ?>
-        <!-- Empty State -->
         <div class="empty-state">
             <i class="fas fa-store"></i>
             <h3>No Items and products Found</h3>
-            <p>You need to purchased</p>
+            <p>You need to purchase items</p>
         </div>
     <?php endif; ?>
 </div>
 
-<!-- No Results Message (for search) -->
+<!-- No Results Message -->
 <div id="noResultsMessage" class="no-results" style="display: none;">
     <i class="fas fa-search"></i>
     <h3>No Products Found</h3>
@@ -1237,118 +1232,15 @@ require_once 'include/header.php';
                     <i class="fas fa-spinner fa-spin"></i> Loading preview...
                 </div>
             </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeExportModal()">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-                <button type="button" class="btn btn-success" onclick="exportToExcel()">
-                    <i class="fas fa-download"></i> Download Excel
-                </button>
-            </div>
         </div>
-    </div>
-</div>
-
-<!-- Add/Edit Modal -->
-<div id="productModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="modalTitle">Add New Product</h2>
-            <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeExportModal()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+            <button type="button" class="btn btn-success" onclick="exportToExcel()">
+                <i class="fas fa-download"></i> Download Excel
+            </button>
         </div>
-        <form id="productForm" method="POST" action="products_process.php">
-            <input type="hidden" name="action" id="formAction" value="add">
-            <input type="hidden" name="product_id" id="productId" value="">
-            
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="productName">Product Name <span class="required">*</span></label>
-                    <input type="text" id="productName" name="name" class="form-control" required>
-                    <small style="color: var(--text-secondary);">Format: Item No - Description (e.g., 0123 - graba)</small>
-                </div>
-                
-                <div class="form-group">
-                    <label for="productCategory">Category <span class="required">*</span></label>
-                    <select id="productCategory" name="category" class="form-control" required>
-                        <option value="">Select Category</option>
-                        <option value="Accessories">Accessories</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Hardware">Hardware</option>
-                        <option value="Consumables">Consumables</option>
-                        <option value="Transportation">Transportation</option>
-                        <option value="Tools and Equipment">Tools and Equipment</option>
-                        <option value="Miscellaneous">Miscellaneous</option>
-                        <option value="Office Supplies">Office Supplies</option>
-                        <option value="Rent & Utilities Expenses">Rent & Utilities Expenses</option>
-                        <option value="Safe Expenses">Safe Expenses</option>
-                        <option value="Admin Payroll">Admin Payroll</option>
-                        <option value="InHouse Payroll Office">InHouse Payroll Office</option>
-                        <option value="Subcon Payroll - Electrical">Subcon Payroll - Electrical</option>
-                        <option value="Subcon Payroll - Auxiliary">Subcon Payroll - Auxiliary</option>
-                        <?php 
-                        if ($categories && $categories->num_rows > 0) {
-                            $categories->data_seek(0);
-                            $existing_categories = [];
-                            while($cat = $categories->fetch_assoc()): 
-                                $cat_name = $cat['category'];
-                                $hardcoded = ['Accessories', 'Electronics', 'Hardware', 'Consumables', 'Transportation', 'Tools and Equipment', 'Miscellaneous', 'Office Supplies', 'Rent & Utilities Expenses', 'Safe Expenses', 'Admin Payroll', 'InHouse Payroll Office', 'Subcon Payroll - Electrical', 'Subcon Payroll - Auxiliary'];
-                                if (!in_array($cat_name, $hardcoded) && !in_array($cat_name, $existing_categories)) {
-                                    $existing_categories[] = $cat_name;
-                                    echo '<option value="' . htmlspecialchars($cat_name) . '">' . htmlspecialchars($cat_name) . '</option>';
-                                }
-                            endwhile; 
-                        }
-                        ?>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="productDescription">Product Description</label>
-                    <textarea id="productDescription" name="description" class="form-control" rows="3"></textarea>
-                </div>
-                
-                <div class="form-row">
-                    <div class="form-group" style="flex: 1;">
-                        <label for="productPrice">Unit Price (₱) <span class="required">*</span></label>
-                        <input type="number" id="productPrice" name="price" class="form-control" step="0.01" min="0" required>
-                    </div>
-                    
-                    <div class="form-group" style="flex: 1;">
-                        <label for="productQuantity">Quantity <span class="required">*</span></label>
-                        <input type="number" id="productQuantity" name="quantity" class="form-control" min="0" required>
-                    </div>
-                    
-                    <div class="form-group" style="flex: 1;">
-                        <label for="productUnit">Unit <span class="required">*</span></label>
-                        <select id="productUnit" name="unit" class="form-control" required>
-                            <option value="">Select Unit</option>
-                            <option value="pcs">Pieces (pcs)</option>
-                            <option value="pair">Pair (pair)</option>
-                            <option value="set">Set (set)</option>
-                            <option value="pack">Pack (pack)</option>
-                            <option value="box">Box (box)</option>
-                            <option value="dozen">Dozen (dozen)</option>
-                            <option value="roll">Roll (roll)</option>
-                            <option value="bundle">Bundle (bundle)</option>
-                            <option value="meter">Meter (m)</option>
-                            <option value="feet">Feet (ft)</option>
-                            <option value="kilogram">Kilogram (kg)</option>
-                            <option value="liter">Liter (l)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeModal()">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" id="modalSubmitBtn">
-                    <i class="fas fa-save"></i> <span id="submitBtnText">Save Product</span>
-                </button>
-            </div>
-        </form>
     </div>
 </div>
 
@@ -1392,28 +1284,18 @@ require_once 'include/header.php';
 <?php endif; ?>
 
 <script>
+// Global variables
+var currentSort = '<?php echo $sort; ?>';
+var selectedDate = '<?php echo $selected_date; ?>';
+
 // Toggle sort dropdown
-function toggleDropdown() {
+function toggleSortDropdown() {
     var content = document.getElementById('sortDropdownContent');
     content.classList.toggle('show');
 }
 
-// Close dropdown when clicking outside
-window.onclick = function(event) {
-    if (!event.target.matches('.sort-button') && !event.target.closest('.sort-button')) {
-        var dropdowns = document.getElementsByClassName('sort-dropdown-content');
-        for (var i = 0; i < dropdowns.length; i++) {
-            var openDropdown = dropdowns[i];
-            if (openDropdown.classList.contains('show')) {
-                openDropdown.classList.remove('show');
-            }
-        }
-    }
-}
-
 // Apply sort
 function applySort(sortType) {
-    var currentSort = '<?php echo $sort; ?>';
     var newSort = '';
     
     if (sortType === 'name') {
@@ -1430,17 +1312,13 @@ function applySort(sortType) {
         }
     }
     
-    // Get current date
     var currentDate = document.getElementById('stockDatePicker').value;
-    
-    // Redirect with sort parameter and date
     window.location.href = 'home.php?sort=' + newSort + '&stock_date=' + currentDate;
 }
 
 // Apply date filter
 function applyDateFilter() {
     var selectedDate = document.getElementById('stockDatePicker').value;
-    var currentSort = '<?php echo $sort; ?>';
     window.location.href = 'home.php?sort=' + currentSort + '&stock_date=' + selectedDate;
 }
 
@@ -1457,13 +1335,11 @@ function searchProducts() {
     var rows = table.getElementsByTagName('tr');
     var hasResults = false;
     
-    // Skip the header row (index 0)
     for (var i = 1; i < rows.length; i++) {
         var row = rows[i];
         var cells = row.getElementsByTagName('td');
         var found = false;
         
-        // Search in Item No (cell 0), Category (cell 1), Description (cell 2)
         if (cells.length >= 3) {
             var itemNo = cells[0].innerText.toLowerCase();
             var category = cells[1].innerText.toLowerCase();
@@ -1480,16 +1356,26 @@ function searchProducts() {
         row.style.display = found ? '' : 'none';
     }
     
-    // Show/hide no results message
     var noResultsMsg = document.getElementById('noResultsMessage');
     if (noResultsMsg) {
         noResultsMsg.style.display = hasResults ? 'none' : 'flex';
     }
 }
 
-// Modal functions
+// Export Modal Functions
 function openExportModal() {
     document.getElementById('exportModal').style.display = 'block';
+    var dateFrom = document.getElementById('exportDateFrom');
+    var dateTo = document.getElementById('exportDateTo');
+    var stockDatePicker = document.getElementById('stockDatePicker');
+    
+    if (!dateFrom.value && stockDatePicker) {
+        dateFrom.value = stockDatePicker.value;
+    }
+    if (!dateTo.value) {
+        dateTo.value = '<?php echo date('Y-m-d'); ?>';
+    }
+    
     loadStockPreview();
 }
 
@@ -1497,78 +1383,25 @@ function closeExportModal() {
     document.getElementById('exportModal').style.display = 'none';
 }
 
-function openEditModal(id, name, description, price, quantity, category, unit) {
-    document.getElementById('modalTitle').innerHTML = 'Edit Product';
-    document.getElementById('formAction').value = 'edit';
-    document.getElementById('productId').value = id;
-    document.getElementById('productName').value = name;
-    document.getElementById('productDescription').value = description;
-    document.getElementById('productPrice').value = price;
-    document.getElementById('productQuantity').value = quantity;
-    
-    // Set category
-    var categorySelect = document.getElementById('productCategory');
-    for (var i = 0; i < categorySelect.options.length; i++) {
-        if (categorySelect.options[i].value === category) {
-            categorySelect.selectedIndex = i;
-            break;
-        }
-    }
-    
-    // Set unit
-    var unitSelect = document.getElementById('productUnit');
-    for (var i = 0; i < unitSelect.options.length; i++) {
-        if (unitSelect.options[i].value === unit) {
-            unitSelect.selectedIndex = i;
-            break;
-        }
-    }
-    
-    document.getElementById('submitBtnText').innerHTML = 'Update Product';
-    document.getElementById('productModal').style.display = 'block';
-}
-
+// Delete Modal Functions
 function openDeleteModal(id, name) {
     document.getElementById('deleteProductId').value = id;
     document.getElementById('deleteProductName').innerHTML = name;
     document.getElementById('deleteModal').style.display = 'block';
 }
 
-function closeModal() {
-    document.getElementById('productModal').style.display = 'none';
-    // Reset form
-    document.getElementById('productForm').reset();
-    document.getElementById('modalTitle').innerHTML = 'Add New Product';
-    document.getElementById('formAction').value = 'add';
-    document.getElementById('productId').value = '';
-    document.getElementById('submitBtnText').innerHTML = 'Save Product';
-}
-
 function closeDeleteModal() {
     document.getElementById('deleteModal').style.display = 'none';
-}
-
-// Close modals when clicking outside
-window.onclick = function(event) {
-    var productModal = document.getElementById('productModal');
-    var deleteModal = document.getElementById('deleteModal');
-    var exportModal = document.getElementById('exportModal');
-    
-    if (event.target == productModal) {
-        closeModal();
-    }
-    if (event.target == deleteModal) {
-        closeDeleteModal();
-    }
-    if (event.target == exportModal) {
-        closeExportModal();
-    }
 }
 
 // View modal function
 function openViewModal(product, displayItemNo, displayDescription, displayCategory, displayUnit, unitPrice, totalValue) {
     if (typeof product === 'string') {
-        product = JSON.parse(product);
+        try {
+            product = JSON.parse(product);
+        } catch(e) {
+            console.error('Error parsing product data:', e);
+        }
     }
     
     var itemNo = displayItemNo || (product.name ? product.name.split(' - ')[0] : 'N/A');
@@ -1579,19 +1412,19 @@ function openViewModal(product, displayItemNo, displayDescription, displayCatego
     var price = unitPrice || product.price || 0;
     var total = totalValue || (quantity * price);
     
-    alert(`Product Details:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Item No: ${itemNo}
-Category: ${category}
-Description: ${description}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Unit Price: ₱${parseFloat(price).toFixed(2)}
-Quantity: ${quantity} ${unit}
-Total Value: ₱${parseFloat(total).toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    alert('Product Details:\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+        'Item No: ' + itemNo + '\n' +
+        'Category: ' + category + '\n' +
+        'Description: ' + description + '\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+        'Unit Price: ₱' + parseFloat(price).toFixed(2) + '\n' +
+        'Quantity: ' + quantity + ' ' + unit + '\n' +
+        'Total Value: ₱' + parseFloat(total).toFixed(2) + '\n' +
+        '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
-// Load stock preview for export - automatic kapag nagbago ang dates
+// Load stock preview for export
 function loadStockPreview() {
     var dateFrom = document.getElementById('exportDateFrom').value;
     var dateTo = document.getElementById('exportDateTo').value;
@@ -1604,7 +1437,6 @@ function loadStockPreview() {
     
     previewContent.innerHTML = '<div class="preview-loading"><i class="fas fa-spinner fa-spin"></i> Loading preview...</div>';
     
-    // Make AJAX request to get stock data
     var xhr = new XMLHttpRequest();
     xhr.open('GET', 'get_stock_preview.php?from=' + encodeURIComponent(dateFrom) + '&to=' + encodeURIComponent(dateTo), true);
     xhr.onload = function() {
@@ -1631,9 +1463,40 @@ function exportToExcel() {
     }
     
     window.location.href = 'export_stock.php?from=' + encodeURIComponent(dateFrom) + '&to=' + encodeURIComponent(dateTo);
+    closeExportModal();
 }
 
-// Initialize date pickers and add event listeners
+// Close modals when clicking outside
+window.onclick = function(event) {
+    var exportModal = document.getElementById('exportModal');
+    var deleteModal = document.getElementById('deleteModal');
+    var productModal = document.getElementById('productModal');
+    
+    if (event.target == exportModal) {
+        closeExportModal();
+    }
+    if (event.target == deleteModal) {
+        closeDeleteModal();
+    }
+    if (event.target == productModal) {
+        if (typeof closeModal === 'function') {
+            closeModal();
+        }
+    }
+    
+    // Close sort dropdown when clicking outside
+    if (!event.target.matches('.sort-button') && !event.target.closest('.sort-button')) {
+        var dropdowns = document.getElementsByClassName('sort-dropdown-content');
+        for (var i = 0; i < dropdowns.length; i++) {
+            var openDropdown = dropdowns[i];
+            if (openDropdown.classList.contains('show')) {
+                openDropdown.classList.remove('show');
+            }
+        }
+    }
+};
+
+// Initialize event listeners when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     // Add event listener for search input
     var searchInput = document.getElementById('productSearch');
@@ -1641,60 +1504,36 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.addEventListener('keyup', searchProducts);
     }
     
-    // Add event listeners for export date pickers - auto load preview when dates change
+    // Add event listeners for export date pickers
     var dateFrom = document.getElementById('exportDateFrom');
     var dateTo = document.getElementById('exportDateTo');
     
     if (dateFrom) {
-        dateFrom.addEventListener('change', function() {
-            loadStockPreview();
-        });
+        dateFrom.addEventListener('change', loadStockPreview);
     }
     
     if (dateTo) {
-        dateTo.addEventListener('change', function() {
-            loadStockPreview();
+        dateTo.addEventListener('change', loadStockPreview);
+    }
+    
+    // Close alerts after 3 seconds
+    setTimeout(function() {
+        var alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function(alert) {
+            alert.style.opacity = '0';
+            setTimeout(function() {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 300);
         });
-    }
+    }, 3000);
 });
 
-// Modified openExportModal function to load preview when modal opens
-function openExportModal() {
-    document.getElementById('exportModal').style.display = 'block';
-    // Set default dates if not set
-    var dateFrom = document.getElementById('exportDateFrom');
-    var dateTo = document.getElementById('exportDateTo');
-    var selectedDate = document.getElementById('stockDatePicker').value;
-    
-    if (!dateFrom.value) {
-        dateFrom.value = selectedDate;
-    }
-    if (!dateTo.value) {
-        dateTo.value = '<?php echo date('Y-m-d'); ?>';
-    }
-    
-    loadStockPreview();
+// Prevent form resubmission on page refresh
+if (window.history.replaceState) {
+    window.history.replaceState(null, null, window.location.href);
 }
-
-// Initialize date picker and search on page load
-document.addEventListener('DOMContentLoaded', function() {
-    // Add event listener for search input
-    var searchInput = document.getElementById('productSearch');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', searchProducts);
-    }
-});
-
-// Close alerts after 3 seconds
-setTimeout(function() {
-    var alerts = document.querySelectorAll('.alert');
-    alerts.forEach(function(alert) {
-        alert.style.opacity = '0';
-        setTimeout(function() {
-            alert.remove();
-        }, 300);
-    });
-}, 3000);
 </script>
 
 <?php

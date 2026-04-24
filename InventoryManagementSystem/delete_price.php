@@ -1,5 +1,5 @@
 <?php
-// delete_price.php
+// delete_price.php - EXPLICITLY PREVENTS products TABLE UPDATES
 require_once 'config.php';
 requireLogin();
 
@@ -11,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Get price_id from POST
 $price_id = isset($_POST['price_id']) ? $_POST['price_id'] : null;
 
 if (!$price_id) {
@@ -19,7 +18,6 @@ if (!$price_id) {
     exit;
 }
 
-// Convert to integer
 $price_id = intval($price_id);
 
 if ($price_id <= 0) {
@@ -43,45 +41,73 @@ if ($conn->connect_error) {
 $conn->begin_transaction();
 
 try {
-    // First, get the company_id before deleting
-    $get_company = $conn->query("SELECT company_id FROM company_prices WHERE id = $price_id");
-    if ($get_company->num_rows === 0) {
+    // Get item_id and company_id before deleting
+    $get_info = $conn->query("SELECT item_id, company_id FROM company_prices WHERE id = $price_id");
+    if ($get_info->num_rows === 0) {
         throw new Exception('Price record not found');
     }
     
-    $company_data = $get_company->fetch_assoc();
-    $company_id = $company_data['company_id'];
+    $info = $get_info->fetch_assoc();
+    $item_id = $info['item_id'];
+    $company_id = $info['company_id'];
+    
+    // Get the item_no before deleting for safety check
+    $get_item_no = $conn->query("SELECT item_no FROM canvas_items WHERE id = $item_id");
+    $item_no = '';
+    if ($get_item_no && $get_item_no->num_rows > 0) {
+        $item_data = $get_item_no->fetch_assoc();
+        $item_no = $item_data['item_no'];
+    }
     
     // Delete the price record
-    $sql = "DELETE FROM company_prices WHERE id = ?";
-    $stmt = $conn->prepare($sql);
+    $stmt = $conn->prepare("DELETE FROM company_prices WHERE id = ?");
     $stmt->bind_param("i", $price_id);
     
     if (!$stmt->execute()) {
         throw new Exception('Failed to delete: ' . $conn->error);
     }
+    $stmt->close();
     
-    // Check if this company has any other prices
-    $check_other_prices = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE company_id = $company_id");
-    $other_prices_count = $check_other_prices->fetch_assoc()['count'];
+    // Check if item has any other prices
+    $check_item = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE item_id = $item_id");
+    $item_count = $check_item->fetch_assoc()['count'];
     
-    // If no other prices, delete the company (optional - you can remove this if you want to keep companies)
-    if ($other_prices_count == 0) {
-        $delete_company = $conn->query("DELETE FROM companies WHERE id = $company_id");
-        if (!$delete_company) {
-            // Log error but don't fail the transaction
-            error_log("Failed to delete orphaned company ID: $company_id");
+    if ($item_count == 0) {
+        // Delete from canvas_items ONLY - NEVER from products table
+        $conn->query("DELETE FROM canvas_items WHERE id = $item_id");
+    }
+    
+    // Check if company has any other prices
+    $check_company = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE company_id = $company_id");
+    $company_count = $check_company->fetch_assoc()['count'];
+    
+    if ($company_count == 0) {
+        $conn->query("DELETE FROM companies WHERE id = $company_id");
+    }
+    
+    // ===== SAFETY CHECK: Fix any products table records that might have been corrupted =====
+    if (!empty($item_no)) {
+        $check_products = $conn->query("SELECT id, category, unit FROM products WHERE item_no = '$item_no' LIMIT 1");
+        if ($check_products && $check_products->num_rows > 0) {
+            $product_data = $check_products->fetch_assoc();
+            if ($product_data['category'] === '0' || $product_data['category'] == 0) {
+                $conn->query("UPDATE products SET category = NULL WHERE id = {$product_data['id']}");
+                error_log("Fixed products table: Reset category '0' to NULL for product ID: {$product_data['id']}");
+            }
+            if ($product_data['unit'] === '0' || $product_data['unit'] == 0) {
+                $conn->query("UPDATE products SET unit = 'pcs' WHERE id = {$product_data['id']}");
+                error_log("Fixed products table: Reset unit '0' to 'pcs' for product ID: {$product_data['id']}");
+            }
         }
     }
     
     $conn->commit();
-    echo json_encode(['success' => true, 'message' => 'Price deleted successfully']);
+    echo json_encode(['success' => true, 'message' => 'Price deleted successfully (products table NOT affected)']);
     
 } catch (Exception $e) {
     $conn->rollback();
     echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-$stmt->close();
 $conn->close();
 ?>

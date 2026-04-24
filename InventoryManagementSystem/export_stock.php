@@ -1,5 +1,5 @@
 <?php
-// export_stock.php - Export stock data with date columns
+// export_stock.php - Export stock data with date columns (Professional Format)
 require_once 'config.php';
 requireLogin();
 
@@ -22,10 +22,13 @@ while ($current <= $end) {
     $current = strtotime('+1 day', $current);
 }
 
-// Set headers for Excel download
-header('Content-Type: application/vnd.ms-excel');
+// Set headers for Excel download with proper UTF-8 encoding
+header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
 header('Content-Disposition: attachment; filename="stock_report_' . $date_from . '_to_' . $date_to . '.xls"');
 header('Cache-Control: max-age=0');
+
+// Add BOM for UTF-8
+echo "\xEF\xBB\xBF";
 
 // Get all products
 $products_query = $conn->query("SELECT * FROM products ORDER BY category ASC, name ASC");
@@ -35,25 +38,50 @@ if (!$products_query || $products_query->num_rows == 0) {
     exit;
 }
 
-// Create HTML table for Excel
+// Create HTML table for Excel (Professional Format)
 echo '<html>';
 echo '<head>';
 echo '<meta charset="UTF-8">';
+echo '<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">';
 echo '<title>Stock Report</title>';
 echo '<style>';
-echo 'th { background-color: #4CAF50; color: white; padding: 8px; border: 1px solid #ddd; }';
-echo 'td { padding: 6px; border: 1px solid #ddd; }';
-echo '.category-header { background-color: #2196F3; color: white; }';
-echo '.total-row { background-color: #f2f2f2; font-weight: bold; }';
+echo 'body { font-family: Arial, Helvetica, sans-serif; margin: 20px; }';
+echo 'h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }';
+echo 'h3 { color: #34495e; margin-top: 30px; }';
+echo '.report-header { background-color: #2c3e50; color: white; padding: 15px; margin-bottom: 20px; }';
+echo '.report-info { margin-bottom: 20px; padding: 10px; background-color: #ecf0f1; border-left: 4px solid #3498db; }';
+echo 'table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }';
+echo 'th { background-color: #34495e; color: white; padding: 10px 8px; border: 1px solid #2c3e50; font-size: 11px; }';
+echo 'td { padding: 8px; border: 1px solid #bdc3c7; font-size: 11px; }';
+echo 'tr:nth-child(even) { background-color: #f9f9f9; }';
+echo 'tr:hover { background-color: #f5f5f5; }';
+echo '.category-header { background-color: #3498db; color: white; }';
+echo '.total-row { background-color: #2c3e50; color: white; font-weight: bold; }';
+echo '.category-total { background-color: #ecf0f1; font-weight: bold; }';
+echo '.grand-total { background-color: #2c3e50; color: white; font-weight: bold; font-size: 12px; }';
+echo '.footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #bdc3c7; font-size: 10px; color: #7f8c8d; text-align: center; }';
+echo '.summary-table { width: auto; margin-top: 20px; }';
+echo '.summary-table td { padding: 8px 15px; }';
+echo '.summary-table td:first-child { font-weight: bold; background-color: #ecf0f1; }';
 echo '</style>';
 echo '</head>';
 echo '<body>';
-echo '<h2>Stock Report - Daily Stock Movement</h2>';
-echo '<p>Date Range: ' . date('F d, Y', strtotime($date_from)) . ' to ' . date('F d, Y', strtotime($date_to)) . '</p>';
-echo '<p>Generated on: ' . date('F d, Y h:i A') . '</p>';
-echo '<br>';
 
-// Start table
+// Company Header
+echo '<div class="report-header">';
+echo '<h2 style="margin: 0; color: white;">INVENTORY STOCK REPORT</h2>';
+echo '<p style="margin: 5px 0 0 0; opacity: 0.8;">Daily Stock Movement Report</p>';
+echo '</div>';
+
+// Report Information
+echo '<div class="report-info">';
+echo '<strong>Date Range:</strong> ' . date('F d, Y', strtotime($date_from)) . ' to ' . date('F d, Y', strtotime($date_to)) . '<br>';
+echo '<strong>Generated on:</strong> ' . date('F d, Y h:i A') . '<br>';
+echo '<strong>Total Days:</strong> ' . count($dates) . ' days<br>';
+echo '<strong>Prepared by:</strong> System Administrator';
+echo '</div>';
+
+// Start main table
 echo '<table border="1" cellpadding="5" cellspacing="0">';
 echo '<thead>';
 echo '<tr>';
@@ -61,21 +89,22 @@ echo '<th>Item No</th>';
 echo '<th>Category</th>';
 echo '<th>Description</th>';
 echo '<th>Unit</th>';
-echo '<th>Unit Price (₱)</th>';
+echo '<th>Unit Price</th>';
 
-// Add date columns
+// Add date columns (show only month/day for better readability)
 foreach ($dates as $date) {
     echo '<th>' . date('M d, Y', strtotime($date)) . '<br><small>Stock Qty</small></th>';
 }
 
 echo '<th>Ending Stock</th>';
-echo '<th>Total Value (₱)</th>';
+echo '<th>Total Value</th>';
 echo '</tr>';
 echo '</thead>';
 echo '<tbody>';
 
 $total_inventory_value = 0;
 $category_totals = [];
+$row_count = 0;
 
 while ($product = $products_query->fetch_assoc()) {
     // Get proper display values
@@ -143,9 +172,15 @@ while ($product = $products_query->fetch_assoc()) {
         $display_description = trim($parts[1]);
     }
     
-    // Set default category if still empty
+    // Set default values if still empty
     if (empty($display_category)) {
         $display_category = 'Accessories';
+    }
+    if (empty($display_unit)) {
+        $display_unit = 'pcs';
+    }
+    if (empty($display_description)) {
+        $display_description = $product['name'];
     }
     
     // Get stock quantities for each date
@@ -186,57 +221,71 @@ while ($product = $products_query->fetch_assoc()) {
     }
     $category_totals[$display_category] += $total_value;
     
+    // Alternate row background
+    $row_bg = ($row_count % 2 == 0) ? '#ffffff' : '#f9f9f9';
+    
     // Display row
-    echo '<tr>';
+    echo '<tr style="background-color: ' . $row_bg . ';">';
     echo '<td>' . htmlspecialchars($display_item_no ?: 'N/A') . '</td>';
     echo '<td>' . htmlspecialchars($display_category) . '</td>';
     echo '<td>' . htmlspecialchars($display_description) . '</td>';
-    echo '<td>' . htmlspecialchars($display_unit ?: 'pcs') . '</td>';
+    echo '<td>' . htmlspecialchars($display_unit) . '</td>';
     echo '<td>' . number_format($unit_price, 2) . '</td>';
     
     // Display stock for each date
     foreach ($dates as $date) {
         $stock = $stock_by_date[$date];
-        echo '<td>' . number_format($stock) . '</td>';
+        $stock_style = ($stock <= 5) ? 'color: #e74c3c; font-weight: bold;' : '';
+        echo '<td style="' . $stock_style . '">' . number_format($stock) . '</td>';
     }
     
     echo '<td><strong>' . number_format($ending_stock) . '</strong></td>';
-    echo '<td><strong>₱' . number_format($total_value, 2) . '</strong></td>';
+    echo '<td><strong>' . number_format($total_value, 2) . '</strong></td>';
     echo '</tr>';
+    $row_count++;
 }
 
-// Add category summary rows
-echo '<tr class="total-row">';
-echo '<td colspan="4" align="right"><strong>CATEGORY SUMMARY</strong></td>';
-echo '<td colspan="' . (count($dates) + 2) . '"></td>';
+// Category Summary Section
+echo '<tr style="background-color: #34495e;">';
+echo '<td colspan="5" style="color: white; font-weight: bold;">CATEGORY SUMMARY</td>';
+echo '<td colspan="' . (count($dates) + 1) . '" style="color: white;">&nbsp;</td>';
+echo '<td style="color: white; font-weight: bold;">Total Value</td>';
 echo '</tr>';
 
 foreach ($category_totals as $category => $total) {
-    echo '<tr>';
-    echo '<td colspan="4" align="right">' . htmlspecialchars($category) . ':</td>';
-    echo '<td colspan="' . (count($dates) + 2) . '"><strong>₱' . number_format($total, 2) . '</strong></td>';
+    echo '<tr class="category-total">';
+    echo '<td colspan="5" style="text-align: right; font-weight: bold;">' . htmlspecialchars($category) . ':</td>';
+    echo '<td colspan="' . (count($dates) + 1) . '">&nbsp;</td>';
+    echo '<td><strong>' . number_format($total, 2) . '</strong></td>';
     echo '</tr>';
 }
 
-// Add total row
-echo '<tr class="total-row">';
-echo '<td colspan="4" align="right"><strong>GRAND TOTAL</strong></td>';
-echo '<td colspan="' . (count($dates) + 2) . '"><strong>₱' . number_format($total_inventory_value, 2) . '</strong></td>';
+// Grand Total Row
+echo '<tr class="grand-total">';
+echo '<td colspan="5" style="font-weight: bold;">GRAND TOTAL</td>';
+echo '<td colspan="' . (count($dates) + 1) . '">&nbsp;</td>';
+echo '<td><strong>' . number_format($total_inventory_value, 2) . '</strong></td>';
 echo '</tr>';
 
 echo '</tbody>';
 echo '</table>';
 
-// Add summary
-echo '<br><br>';
+// Summary Section
 echo '<h3>Report Summary</h3>';
-echo '<table border="1" cellpadding="5" cellspacing="0">';
-echo '<tr><th>Date From</th><td>' . date('F d, Y', strtotime($date_from)) . '</td></tr>';
-echo '<tr><th>Date To</th><td>' . date('F d, Y', strtotime($date_to)) . '</td></tr>';
-echo '<tr><th>Total Days</th><td>' . count($dates) . '</td></tr>';
-echo '<tr><th>Total Products</th><td>' . $products_query->num_rows . '</td></tr>';
-echo '<tr><th>Total Inventory Value</th><td>₱' . number_format($total_inventory_value, 2) . '</td></tr>';
+echo '<table class="summary-table" border="1" cellpadding="8" cellspacing="0">';
+echo '<tr><td><strong>Date From</strong></td><td>' . date('F d, Y', strtotime($date_from)) . '</td></tr>';
+echo '<tr><td><strong>Date To</strong></td><td>' . date('F d, Y', strtotime($date_to)) . '</td></tr>';
+echo '<tr><td><strong>Total Days</strong></td><td>' . count($dates) . ' days</td></tr>';
+echo '<tr><td><strong>Total Products</strong></td><td>' . $products_query->num_rows . ' products</td></tr>';
+echo '<tr><td><strong>Categories</strong></td><td>' . count($category_totals) . ' categories</td></tr>';
+echo '<tr style="background-color: #2c3e50; color: white;"><td><strong>Total Inventory Value</strong></td><td><strong>' . number_format($total_inventory_value, 2) . '</strong></td></tr>';
 echo '</table>';
+
+// Footer
+echo '<div class="footer">';
+echo 'This report is system-generated and shows the daily stock movement for the specified period.<br>';
+echo 'Generated by Inventory Management System | ' . date('F d, Y h:i A');
+echo '</div>';
 
 echo '</body>';
 echo '</html>';

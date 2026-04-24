@@ -70,7 +70,7 @@ while ($product = $products_query->fetch_assoc()) {
             $display_item_no = $latest_item_no;
             
             // Get category from canvas_items
-            $canvas_query = $conn->prepare("SELECT category FROM canvas_items WHERE item_no = ?");
+            $canvas_query = $conn->prepare("SELECT category, description, unit FROM canvas_items WHERE item_no = ?");
             $canvas_query->bind_param("s", $latest_item_no);
             $canvas_query->execute();
             $canvas_result = $canvas_query->get_result();
@@ -79,15 +79,45 @@ while ($product = $products_query->fetch_assoc()) {
                 if (empty($display_category)) {
                     $display_category = $canvas_data['category'];
                 }
+                if (empty($display_description)) {
+                    $display_description = $canvas_data['description'];
+                }
+                if (empty($display_unit)) {
+                    $display_unit = $canvas_data['unit'];
+                }
             }
             $canvas_query->close();
         }
     }
     $latest_purchase_query->close();
     
+    // Get description from canvas_items if still empty
+    if (empty($display_description) && !empty($display_item_no)) {
+        $desc_query = $conn->prepare("SELECT description FROM canvas_items WHERE item_no = ?");
+        $desc_query->bind_param("s", $display_item_no);
+        $desc_query->execute();
+        $desc_result = $desc_query->get_result();
+        if ($desc_result->num_rows > 0) {
+            $desc_data = $desc_result->fetch_assoc();
+            $display_description = $desc_data['description'];
+        }
+        $desc_query->close();
+    }
+    
+    // Fallback: extract description from product name
+    if (empty($display_description) && strpos($product['name'], ' - ') !== false) {
+        $parts = explode(' - ', $product['name'], 2);
+        $display_description = trim($parts[1]);
+    }
+    
     // Set default category if still empty
     if (empty($display_category)) {
         $display_category = 'Accessories';
+    }
+    
+    // Set default description if still empty
+    if (empty($display_description)) {
+        $display_description = $product['name'];
     }
     
     // Get stock for each date
@@ -138,41 +168,46 @@ $has_more = $products_query->num_rows == 10;
 ?>
 
 <div style="max-height: 300px; overflow-y: auto;">
-    <table class="stock-preview-table" style="width: 100%; font-size: 11px;">
+    <table class="stock-preview-table" style="width: 100%; font-size: 11px; border-collapse: collapse;">
         <thead>
-            <tr>
-                <th>Item No</th>
-                <th>Category</th>
-                <th>Description</th>
+            <tr style="background: linear-gradient(135deg, #34495e, #2c3e50); color: white; position: sticky; top: 0;">
+                <th style="padding: 10px 8px; text-align: left; border: 1px solid #2c3e50;">Item No</th>
+                <th style="padding: 10px 8px; text-align: left; border: 1px solid #2c3e50;">Category</th>
+                <th style="padding: 10px 8px; text-align: left; border: 1px solid #2c3e50;">Description</th>
                 <?php foreach($dates as $date): ?>
-                    <th><?php echo date('m/d', strtotime($date)); ?></th>
+                    <th style="padding: 10px 8px; text-align: center; border: 1px solid #2c3e50;"><?php echo date('M d', strtotime($date)); ?></th>
                 <?php endforeach; ?>
-                <th>Ending</th>
-                <th>Value</th>
+                <th style="padding: 10px 8px; text-align: center; border: 1px solid #2c3e50;">Ending</th>
+                <th style="padding: 10px 8px; text-align: right; border: 1px solid #2c3e50;">Value (₱)</th>
             </tr>
         </thead>
         <tbody>
-            <?php foreach($products_data as $item): ?>
-                <tr>
-                    <td><?php echo htmlspecialchars($item['item_no'] ?: 'N/A'); ?></td>
-                    <td><?php echo htmlspecialchars($item['category']); ?></td>
-                    <td><?php echo htmlspecialchars(substr($item['description'], 0, 25)) . (strlen($item['description']) > 25 ? '...' : ''); ?></td>
-                    <?php foreach($dates as $date): ?>
-                        <td><?php echo number_format($item['stock_by_date'][$date]); ?></td>
+            <?php $row_num = 0; foreach($products_data as $item): 
+                $row_bg = ($row_num % 2 == 0) ? '#ffffff' : '#f9f9f9';
+            ?>
+                <tr style="background-color: <?php echo $row_bg; ?>;">
+                    <td style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars($item['item_no'] ?: 'N/A'); ?></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars($item['category']); ?></td>
+                    <td style="padding: 8px; border: 1px solid #ddd;"><?php echo htmlspecialchars(substr($item['description'], 0, 35)) . (strlen($item['description']) > 35 ? '...' : ''); ?></td>
+                    <?php foreach($dates as $date): 
+                        $stock_qty = $item['stock_by_date'][$date];
+                        $stock_style = ($stock_qty <= 5) ? 'color: #e74c3c; font-weight: bold;' : '';
+                    ?>
+                        <td style="padding: 8px; text-align: center; border: 1px solid #ddd; <?php echo $stock_style; ?>"><?php echo number_format($stock_qty); ?></td>
                     <?php endforeach; ?>
-                    <td><strong><?php echo number_format($item['ending_stock']); ?></strong></td>
-                    <td><strong>₱<?php echo number_format($item['total_value'], 2); ?></strong></td>
+                    <td style="padding: 8px; text-align: center; border: 1px solid #ddd; font-weight: bold;"><?php echo number_format($item['ending_stock']); ?></td>
+                    <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-weight: bold; color: #27ae60;">₱<?php echo number_format($item['total_value'], 2); ?></td>
                 </tr>
-            <?php endforeach; ?>
+            <?php $row_num++; endforeach; ?>
         </tbody>
         <tfoot>
-            <tr style="background: var(--bg-secondary); font-weight: bold;">
-                <td colspan="<?php echo count($dates) + 3; ?>" style="text-align: right;">TOTAL STOCK VALUE (Preview):</td>
-                <td>₱<?php echo number_format($total_stock_value, 2); ?></td>
+            <tr style="background: linear-gradient(135deg, #2c3e50, #34495e); color: white; font-weight: bold;">
+                <td colspan="<?php echo count($dates) + 3; ?>" style="padding: 10px; text-align: right; border: 1px solid #2c3e50;">TOTAL STOCK VALUE (Preview):</td>
+                <td style="padding: 10px; text-align: right; border: 1px solid #2c3e50; font-size: 13px;">₱<?php echo number_format($total_stock_value, 2); ?></td>
             </tr>
             <?php if($has_more): ?>
                 <tr>
-                    <td colspan="<?php echo count($dates) + 4; ?>" style="text-align: center; color: #666;">
+                    <td colspan="<?php echo count($dates) + 4; ?>" style="padding: 8px; text-align: center; background-color: #ecf0f1; color: #7f8c8d; border: 1px solid #ddd;">
                         <i class="fas fa-info-circle"></i> Showing first 10 products. Full report will include all products.
                     </td>
                 </tr>

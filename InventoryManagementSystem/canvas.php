@@ -1,3 +1,5 @@
+
+
 <?php
 // canvas.php
 ob_start();
@@ -49,19 +51,14 @@ $categories_filter_query = "
 ";
 $categories_filter = $conn->query($categories_filter_query);
 
-// Get all active companies for company colors and dropdown
+// Get all active companies for dropdown
 $companies = $conn->query("SELECT * FROM companies WHERE status = 'active' ORDER BY name");
 $companies_array = [];
-$company_colors = [];
 $companies_dropdown = [];
 if ($companies && $companies->num_rows > 0) {
-    $colors = ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b', '#36b9cc', '#6f42c1', '#fd7e14', '#20c9a6'];
-    $i = 0;
     while($comp = $companies->fetch_assoc()) {
         $companies_array[$comp['id']] = $comp;
-        $company_colors[$comp['id']] = $colors[$i % count($colors)];
         $companies_dropdown[] = $comp;
-        $i++;
     }   
 }
 
@@ -367,36 +364,25 @@ require_once 'include/header.php';
     font-size: 20px;
 }
 
-/* Company badge */
-.company-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
+/* Plain text styles for company, category, unit - NO BADGES */
+.plain-text {
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
-/* Category badge - NEW STYLE */
-.category-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #667eea);
-    color: white;
+.category-text {
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
-/* Unit badge */
-.unit-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
+.unit-text {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.company-text {
     font-weight: 600;
-    background: linear-gradient(135deg, #6c5ce7);
-    color: white;
+    color: var(--text-primary);
 }
 
 /* Contact person style */
@@ -737,10 +723,7 @@ require_once 'include/header.php';
     background: var(--bg-secondary);
 }
 
-/* Center all badges and inline elements */
-.products-table td .company-badge,
-.products-table td .category-badge,
-.products-table td .unit-badge,
+/* Center all inline elements */
 .products-table td .availability-badge,
 .products-table td .contact-person,
 .products-table td .contact-number {
@@ -767,8 +750,6 @@ require_once 'include/header.php';
     vertical-align: middle;
 }
 
-.comparison-table td .company-badge,
-.comparison-table td .category-badge,
 .comparison-table td .availability-badge,
 .comparison-table td .total-price-cell {
     margin: 0 auto;
@@ -1059,8 +1040,6 @@ require_once 'include/header.php';
     font-size: 12px;
 }
 
-/* REMOVED DISPLAY INFO SECTION - filter results box tinanggal */
-
 /* Item count badge */
 .item-count-badge {
     background: var(--bg-primary);
@@ -1168,32 +1147,6 @@ require_once 'include/header.php';
     background: var(--bg-primary);
     border-radius: 8px;
     border: 1px solid var(--border-color);
-}
-
-.view-detail-value.company-badge-view {
-    display: inline-block;
-    padding: 8px 15px;
-    border-radius: 20px;
-    color: white;
-    font-weight: 600;
-}
-
-.view-detail-value.category-badge-view {
-    display: inline-block;
-    padding: 8px 15px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    font-weight: 600;
-}
-
-.view-detail-value.unit-badge-view {
-    display: inline-block;
-    padding: 8px 15px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #6c5ce7, #75e6da);
-    color: white;
-    font-weight: 600;
 }
 
 /* Edit Price Modal Styles */
@@ -1609,8 +1562,6 @@ require_once 'include/header.php';
 }
 
 /* Center badges in comparison table */
-.comparison-table td .company-badge,
-.comparison-table td .category-badge,
 .comparison-table td .availability-badge,
 .comparison-table td .total-price-cell {
     margin: 0 auto;
@@ -1996,32 +1947,6 @@ require_once 'include/header.php';
     border: 1px solid var(--border-color);
 }
 
-.detail-value.company-badge-modal {
-    display: inline-block;
-    padding: 8px 15px;
-    border-radius: 20px;
-    color: white;
-    font-weight: 600;
-}
-
-.detail-value.category-badge-modal {
-    display: inline-block;
-    padding: 8px 15px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    font-weight: 600;
-}
-
-.detail-value.unit-badge-modal {
-    display: inline-block;
-    padding: 8px 15px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #6c5ce7, #75e6da);
-    color: white;
-    font-weight: 600;
-}
-
 .detail-value.price-highlight {
     color: #75e6da;
     font-weight: 700;
@@ -2358,6 +2283,10 @@ require_once 'include/header.php';
     box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
 }
 
+.delete-modal .close-modal {
+    cursor: pointer;
+    z-index: 10;
+}
 /* Cart notification */
 .cart-notification {
     position: fixed;
@@ -2674,9 +2603,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- REMOVED: Display Info section (Filter Results box) -->
-
-<!-- Main Table - WITH CATEGORY AND UNIT COLUMNS - ALL TEXT CENTERED -->
+<!-- Main Table - WITH CATEGORY AND UNIT AS PLAIN TEXT -->
 <div class="table-wrapper">
     <?php if ($items && $items->num_rows > 0): ?>
         <table class="products-table" id="canvasTable">
@@ -2719,35 +2646,23 @@ require_once 'include/header.php';
                         data-contact-number="<?php echo htmlspecialchars($row['contact_number'] ?? ''); ?>"
                         data-quantity="<?php echo $row['available_quantity']; ?>"
                         data-price="<?php echo $row['price']; ?>"
-                        data-availability="<?php echo $row['availability']; ?>"
-                        data-company-color="<?php echo $company_colors[$row['company_id']] ?? '#6c757d'; ?>">
+                        data-availability="<?php echo $row['availability']; ?>">
                         
                         <td><strong><?php echo htmlspecialchars($row['item_no']); ?></strong></td>
                         <td><?php echo htmlspecialchars($row['description']); ?></td>
-                        
-                        <!-- Category Column -->
-                        <td>
-                            <?php if (!empty($row['category'])): ?>
-                                <span class="category-badge">
-                                    <i class="fas fa-tag"></i> <?php echo htmlspecialchars($row['category']); ?>
-                                </span>
-                            <?php else: ?>
-                                <span class="text-muted">—</span>
-                            <?php endif; ?>
+                                                <!-- Category Column - Plain Text (No Badge) -->
+                        <td class="category-text">
+                            <?php echo !empty($row['category']) ? htmlspecialchars($row['category']) : '—'; ?>
                         </td>
                         
-                        <!-- Unit Column -->
-                        <td>
-                            <span class="unit-badge">
-                                <i class="fas fa-ruler"></i> <?php echo htmlspecialchars($row['unit'] ?? 'pcs'); ?>
-                            </span>
+                        <!-- Unit Column - Plain Text (No Badge) -->
+                        <td class="unit-text">
+                            <?php echo htmlspecialchars($row['unit'] ?? 'pcs'); ?>
                         </td>
                         
-                        <!-- Company Name with Color -->
-                        <td>
-                            <span class="company-badge" style="background: <?php echo $company_colors[$row['company_id']] ?? '#6c757d'; ?>">
-                                <?php echo htmlspecialchars($row['company_name']); ?>
-                            </span>
+                        <!-- Company Name - Plain Text (No Badge) -->
+                        <td class="company-text">
+                            <?php echo htmlspecialchars($row['company_name']); ?>
                         </td>
                         
                         <!-- Contact Person -->
@@ -2828,7 +2743,7 @@ require_once 'include/header.php';
         </div>
         <?php endif; ?>
         
-     <?php else: ?>
+    <?php else: ?>
         <!-- EMPTY STATE - With icon -->
         <div style="text-align: center; padding: 60px 20px; background: var(--bg-primary); border: 2px dashed var(--border-color); border-radius: 12px; margin: 20px 0;">
             <i class="fas fa-box-open" style="font-size: 64px; color: var(--text-secondary); opacity: 0.3; margin-bottom: 20px;"></i>
@@ -2866,7 +2781,7 @@ require_once 'include/header.php';
             <div class="quantity-section">
                 <h3><i class="fas fa-calendar-alt"></i> Select Delivery Date</h3>
                 <div class="date-control">
-                  <input type="date" id="deliveryDate" class="form-control" style="width: 100%;">
+                    <input type="date" id="deliveryDate" class="form-control" style="width: 100%;">
                     <div class="form-hint">
                         <i class="fas fa-info-circle"></i> Select the date when you need this item
                     </div>
@@ -3166,7 +3081,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- View Details Modal - WITH CATEGORY AND UNIT -->
+<!-- View Details Modal - WITH CATEGORY AND UNIT AS PLAIN TEXT -->
 <div id="viewModal" class="modal">
     <div class="modal-content view-modal">
         <div class="modal-header">
@@ -3391,7 +3306,6 @@ let currentCartItem = {
     contactNumber: '',
     availableQuantity: 0,
     price: 0,
-    companyColor: '',
     rowElement: null
 };
 
@@ -3540,6 +3454,19 @@ function fetchItemDescription() {
         });
 }
 
+// Function to ensure products table is NEVER updated from canvas operations
+// This is a SAFETY function - it will rollback any transaction that tries to update products
+function preventProductsTableUpdate($conn, $query) {
+    $lowerQuery = strtolower($query);
+    if (strpos($lowerQuery, 'update products') !== false || 
+        strpos($lowerQuery, 'insert into products') !== false ||
+        strpos($lowerQuery, 'delete from products') !== false) {
+        throw new Exception('Products table modification is not allowed from canvas.php');
+    }
+    return true;
+}
+
+
 // Debounce function to avoid too many requests
 function debounceFetchDescription() {
     clearTimeout(debounceTimer);
@@ -3547,7 +3474,6 @@ function debounceFetchDescription() {
         fetchItemDescription();
     }, 500); // Wait 500ms after user stops typing
 }
-
 
 // Function to setup auto-description on modal open
 function setupAutoDescription() {
@@ -3859,8 +3785,7 @@ function collectAllItemsData() {
                 contactNumber: row.getAttribute('data-contact-number') || '',
                 quantity: parseInt(row.getAttribute('data-quantity')) || 0,
                 price: parseFloat(row.getAttribute('data-price')) || 0,
-                availability: row.getAttribute('data-availability') === '1' ? 'In Stock' : 'Out of Stock',
-                companyColor: row.getAttribute('data-company-color') || '#6c5ce7'
+                availability: row.getAttribute('data-availability') === '1' ? 'In Stock' : 'Out of Stock'
             });
         }
     });
@@ -3931,31 +3856,14 @@ function renderComparisonTable() {
         const total = item.quantity * item.price;
         html += `
             <tr>
-                <td><strong>${escapeHtml(item.itemNo)}</strong>
-
-                                 <td><strong>${escapeHtml(item.itemNo)}</strong></td>
-                 <td>${escapeHtml(item.description)}</td>
-                 <td>
-                    ${item.category ? 
-                        `<span class="category-badge" style="background: linear-gradient(135deg, #667eea, #764ba2);">
-                            <i class="fas fa-tag"></i> ${escapeHtml(item.category)}
-                        </span>` : 
-                        '<span class="text-muted">—</span>'
-                    }
-                 </td>
-                 <td>
-                    <span class="unit-badge" style="background: linear-gradient(135deg, #6c5ce7, #75e6da);">
-                        <i class="fas fa-ruler"></i> ${escapeHtml(item.unit)}
-                    </span>
-                 </td>
-                 <td>
-                    <span class="company-badge" style="background: ${item.companyColor}">
-                        ${escapeHtml(item.company)}
-                    </span>
-                 </td>
-                 <td>${escapeHtml(item.contactPerson) || '—'}</td>
-                 <td>${escapeHtml(item.contactNumber) || '—'}</td>
-                 <td>${item.quantity.toLocaleString()}</td>
+                <td><strong>${escapeHtml(item.itemNo)}</strong></td>
+                <td>${escapeHtml(item.description)}</td>
+                <td class="category-text">${escapeHtml(item.category) || '—'}</td>
+                <td class="unit-text">${escapeHtml(item.unit)}</td>
+                <td class="company-text">${escapeHtml(item.company)}</td>
+                <td>${escapeHtml(item.contactPerson) || '—'}</td>
+                <td>${escapeHtml(item.contactNumber) || '—'}</td>
+                <td>${item.quantity.toLocaleString()}</td>
                 <td class="price-cell">₱${item.price.toFixed(2)}</td>
                 <td>
                     <span class="total-price-cell">
@@ -3968,7 +3876,7 @@ function renderComparisonTable() {
                         ${item.availability}
                     </span>
                 </td>
-             </tr>
+            </tr>
         `;
     });
     
@@ -4557,8 +4465,8 @@ function printComparison() {
         });
         
         html += `<th rowspan="2">Lowest<br>Total</th>
-                     </tr>
-                     <tr>`;
+                      </tr>
+                      <tr>`;
         
         // Add price/total subheaders for companies
         allCompanies.forEach(() => {
@@ -4626,7 +4534,7 @@ function printComparison() {
             });
             
             html += `<td class="formula-cell"></td>
-                 </tr>`;
+                  </tr>`;
         }
         
         // Add totals row
@@ -4640,9 +4548,9 @@ function printComparison() {
         });
         
         html += `<td class="formula-cell"><strong>=${grandTotal.toFixed(2)}</strong></td>
-             </tr>
+              </tr>
             </tbody>
-          </table>`;
+           </table>`;
         
         // Add note and signature
         html += `
@@ -4711,7 +4619,6 @@ function openCartModal(button) {
         contactNumber: row.getAttribute('data-contact-number'),
         availableQuantity: parseInt(row.getAttribute('data-quantity')),
         price: parseFloat(row.getAttribute('data-price')),
-        companyColor: row.getAttribute('data-company-color'),
         rowElement: row
     };
     
@@ -4726,19 +4633,15 @@ function openCartModal(button) {
         </div>
         <div class="detail-item">
             <span class="detail-label">Category</span>
-            <span class="detail-value ${currentCartItem.category ? 'category-badge-modal' : ''}" ${currentCartItem.category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>
-                ${currentCartItem.category || '—'}
-            </span>
+            <span class="detail-value">${currentCartItem.category || '—'}</span>
         </div>
         <div class="detail-item">
             <span class="detail-label">Unit</span>
-            <span class="detail-value unit-badge-modal" style="background: linear-gradient(135deg, #6c5ce7, #75e6da); color: white;">
-                ${currentCartItem.unit}
-            </span>
+            <span class="detail-value">${currentCartItem.unit}</span>
         </div>
         <div class="detail-item">
             <span class="detail-label">Company</span>
-            <span class="detail-value company-badge-modal" style="background: ${currentCartItem.companyColor}">${currentCartItem.companyName}</span>
+            <span class="detail-value company-text">${currentCartItem.companyName}</span>
         </div>
         <div class="detail-item">
             <span class="detail-label">Contact Person</span>
@@ -4856,7 +4759,6 @@ function addToCart() {
         quantity: quantity,
         price: currentCartItem.price,
         total: quantity * currentCartItem.price,
-        company_color: currentCartItem.companyColor,
         delivery_date: deliveryDate
     };
     
@@ -4919,7 +4821,6 @@ function viewCompanyPrice(priceId) {
     const contactNumber = row.getAttribute('data-contact-number');
     const quantity = parseInt(row.getAttribute('data-quantity'));
     const price = parseFloat(row.getAttribute('data-price'));
-    const companyColor = row.getAttribute('data-company-color');
     const total = quantity * price;
     
     const viewHtml = `
@@ -4933,15 +4834,15 @@ function viewCompanyPrice(priceId) {
         </div>
         <div class="view-detail-item">
             <span class="view-detail-label">Category</span>
-            <span class="view-detail-value ${category ? 'category-badge-view' : ''}" ${category ? 'style="background: linear-gradient(135deg, #667eea, #764ba2); color: white;"' : ''}>${category || '—'}</span>
+            <span class="view-detail-value">${category || '—'}</span>
         </div>
         <div class="view-detail-item">
             <span class="view-detail-label">Unit</span>
-            <span class="view-detail-value unit-badge-view" style="background: linear-gradient(135deg, #6c5ce7, #75e6da); color: white;">${unit}</span>
+            <span class="view-detail-value">${unit}</span>
         </div>
         <div class="view-detail-item full-width">
             <span class="view-detail-label">Company</span>
-            <span class="view-detail-value company-badge-view" style="background: ${companyColor}">${company}</span>
+            <span class="view-detail-value company-text">${company}</span>
         </div>
         <div class="view-detail-item">
             <span class="view-detail-label">Contact Person</span>

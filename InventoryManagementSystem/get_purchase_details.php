@@ -24,8 +24,11 @@ if (!isset($_GET['id'])) {
 
 $purchase_id = intval($_GET['id']);
 
-// Get purchase details
-$purchase_sql = "SELECT * FROM purchases WHERE id = ?";
+// Get purchase details WITH CATEGORY from canvas_items
+$purchase_sql = "SELECT p.*, ci.category 
+                 FROM purchases p 
+                 LEFT JOIN canvas_items ci ON p.item_no = ci.item_no 
+                 WHERE p.id = ?";
 $stmt = $conn->prepare($purchase_sql);
 $stmt->bind_param("i", $purchase_id);
 $stmt->execute();
@@ -38,13 +41,15 @@ if ($purchase_result->num_rows === 0) {
 
 $purchase = $purchase_result->fetch_assoc();
 
-// Return only the needed columns
+// Return all needed columns INCLUDING CATEGORY
 $response = [
     'success' => true,
     'purchase' => [
         'id' => $purchase['id'],
+        'purchase_number' => $purchase['purchase_number'] ?? 'N/A',
         'item_no' => $purchase['item_no'] ?? 'N/A',
         'description' => $purchase['description'] ?? 'N/A',
+        'category' => $purchase['category'] ?? '',  // ADDED CATEGORY
         'company_name' => $purchase['company_name'] ?? 'N/A',
         'contact_person' => $purchase['contact_person'] ?? 'N/A',
         'quantity_purchased' => intval($purchase['quantity_purchased'] ?? 0),
@@ -52,8 +57,8 @@ $response = [
         'total_amount' => floatval($purchase['total_amount'] ?? 0),
         'status' => $purchase['status'] ?? 'pending',
         'purchase_date' => $purchase['purchase_date'],
+        'delivery_date' => $purchase['delivery_date'] ?? '',
         'company_color' => $purchase['company_color'] ?? '#6c5ce7',
-        'purchase_number' => $purchase['purchase_number'],
     ]
 ];
 
@@ -61,6 +66,11 @@ $response = [
 $response['purchase']['formatted_date'] = date('M d, Y', strtotime($purchase['purchase_date']));
 $response['purchase']['formatted_price'] = '₱' . number_format($purchase['price_per_unit'] ?? 0, 2);
 $response['purchase']['formatted_total'] = '₱' . number_format($purchase['total_amount'] ?? 0, 2);
+if (!empty($purchase['delivery_date'])) {
+    $response['purchase']['formatted_delivery_date'] = date('M d, Y', strtotime($purchase['delivery_date']));
+} else {
+    $response['purchase']['formatted_delivery_date'] = '—';
+}
 
 echo json_encode($response);
 

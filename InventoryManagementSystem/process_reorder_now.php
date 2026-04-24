@@ -1,5 +1,5 @@
 <?php
-// process_reorder_now.php - Order Now from Purchase History (FIXED - CREATE NEW PRODUCT FOR NEW ITEM NO)
+// process_reorder_now.php - Order Now from Purchase History (FIXED DUPLICATION)
 require_once 'config.php';
 requireLogin();
 
@@ -30,27 +30,84 @@ if (!$purchase_id) {
     exit();
 }
 
-// Start transaction
+// ===== CRITICAL: Use a lock to prevent race conditions =====
 $conn->begin_transaction();
 
 try {
-    // Check if purchase is already completed
-    $check_status = "SELECT status, stock_updated FROM purchases WHERE id = ?";
-    $check_stmt = $conn->prepare($check_status);
-    $check_stmt->bind_param("i", $purchase_id);
-    $check_stmt->execute();
-    $status_result = $check_stmt->get_result();
-    $current_status = $status_result->fetch_assoc();
+    // ===== FIRST CHECK: Lock the purchase row to prevent concurrent updates =====
+    $lock_query = "SELECT id, status, stock_updated FROM purchases WHERE id = ? FOR UPDATE";
+    $lock_stmt = $conn->prepare($lock_query);
+    $lock_stmt->bind_param("i", $purchase_id);
+    $lock_stmt->execute();
+    $lock_result = $lock_stmt->get_result();
+    $current_status = $lock_result->fetch_assoc();
+    $lock_stmt->close();
     
-    if ($current_status && $current_status['status'] == 'completed') {
+    if (!$current_status) {
+        throw new Exception("Purchase not found");
+    }
+    
+    // If already completed, return error immediately
+    if ($current_status['status'] == 'completed') {
         throw new Exception("This order is already completed.");
     }
     
-    if ($current_status && $current_status['stock_updated'] == 1) {
+    // If stock already updated, prevent duplicate
+    if ($current_status['stock_updated'] == 1) {
         throw new Exception("Stock for this order has already been updated.");
     }
     
-    // Get the original purchase with all details
+    // ===== SECOND CHECK: Check if stock movement already exists for this purchase =====
+    $purchase_number_check = "SELECT purchase_number FROM purchases WHERE id = ?";
+    $pn_stmt = $conn->prepare($purchase_number_check);
+    $pn_stmt->bind_param("i", $purchase_id);
+    $pn_stmt->execute();
+    $pn_result = $pn_stmt->get_result();
+    $pn_data = $pn_result->fetch_assoc();
+    $purchase_number = $pn_data['purchase_number'] ?? '';
+    $pn_stmt->close();
+    
+    if (!empty($purchase_number)) {
+        $check_movement = "SELECT id FROM stock_movements WHERE reference = ? AND type = 'in'";
+        $movement_ref = "PURCHASE #" . $purchase_number;
+        $check_movement_stmt = $conn->prepare($check_movement);
+        $check_movement_stmt->bind_param("s", $movement_ref);
+        $check_movement_stmt->execute();
+        $movement_result = $check_movement_stmt->get_result();
+        
+        if ($movement_result->num_rows > 0) {
+            // Movement already exists - update purchase status but don't create duplicate
+            $existing_movement = $movement_result->fetch_assoc();
+            $existing_movement_id = $existing_movement['id'];
+            
+            // Just update the purchase status to completed
+            $update_original = "UPDATE purchases SET 
+                                status = 'completed', 
+                                stock_updated = 1,
+                                stock_movement_id = ?,
+                                updated_at = NOW() 
+                                WHERE id = ?";
+            $update_original_stmt = $conn->prepare($update_original);
+            $update_original_stmt->bind_param("ii", $existing_movement_id, $purchase_id);
+            $update_original_stmt->execute();
+            $update_original_stmt->close();
+            
+            $conn->commit();
+            
+            echo json_encode([
+                'success' => true,
+                'message' => 'Order already processed!',
+                'purchase_number' => $purchase_number,
+                'movement_id' => $existing_movement_id,
+                'already_processed' => true,
+                'redirect_url' => "stock_tracker.php?date=" . date('Y-m-d') . "&purchased=success"
+            ]);
+            exit();
+        }
+        $check_movement_stmt->close();
+    }
+    
+    // Get the original purchase with all details INCLUDING CATEGORY
     $query = "SELECT p.*, cp.quantity as current_stock, ci.unit, ci.category, ci.id as canvas_item_id
               FROM purchases p
               LEFT JOIN company_prices cp ON p.price_id = cp.id
@@ -61,13 +118,11 @@ try {
     $stmt->execute();
     $result = $stmt->get_result();
     $original = $result->fetch_assoc();
+    $stmt->close();
     
     if (!$original) {
         throw new Exception("Purchase not found");
     }
-    
-    // Debug: Log the original purchase data
-    error_log("=== REORDER NOW - Original purchase data: " . print_r($original, true));
     
     $correct_item_no = $original['item_no'];
     $correct_description = $original['description'];
@@ -75,18 +130,33 @@ try {
     $quantity_purchased = intval($original['quantity_purchased']);
     $price_id = $original['price_id'];
     $company_name = $original['company_name'];
-    $category = $original['category'];
+    
+    // Get category from canvas_items
+    $category = $original['category'] ?? '';
     $unit = $original['unit'] ?? 'pcs';
     
-    error_log("=== REORDER NOW - Purchase item_no: " . $correct_item_no);
+    // If category is still empty, try to get it directly from canvas_items
+    if (empty($category) && !empty($correct_item_no)) {
+        $cat_query = "SELECT category FROM canvas_items WHERE item_no = ?";
+        $cat_stmt = $conn->prepare($cat_query);
+        $cat_stmt->bind_param("s", $correct_item_no);
+        $cat_stmt->execute();
+        $cat_result = $cat_stmt->get_result();
+        if ($cat_result->num_rows > 0) {
+            $cat_row = $cat_result->fetch_assoc();
+            $category = $cat_row['category'] ?? '';
+        }
+        $cat_stmt->close();
+    }
     
     // Check current stock from company_prices
-    $stock_query = "SELECT quantity FROM company_prices WHERE id = ?";
+    $stock_query = "SELECT quantity FROM company_prices WHERE id = ? FOR UPDATE";
     $stock_stmt = $conn->prepare($stock_query);
     $stock_stmt->bind_param("i", $price_id);
     $stock_stmt->execute();
     $stock_result = $stock_stmt->get_result();
     $stock_data = $stock_result->fetch_assoc();
+    $stock_stmt->close();
     $current_stock = $stock_data['quantity'] ?? 0;
     
     if ($current_stock < $quantity_purchased) {
@@ -101,36 +171,45 @@ try {
     $update_stmt = $conn->prepare($update_stock);
     $update_stmt->bind_param("ii", $new_stock, $price_id);
     $update_stmt->execute();
+    $update_stmt->close();
     
-    // ========== CRITICAL FIX: ALWAYS CREATE NEW PRODUCT FOR EACH UNIQUE ITEM NO ==========
     // Check if product already exists with this EXACT item_no
-    $check_existing = "SELECT id, name, quantity FROM products WHERE item_no = ?";
+    $check_existing = "SELECT id, name, quantity, category FROM products WHERE item_no = ?";
     $check_stmt = $conn->prepare($check_existing);
     $check_stmt->bind_param("s", $correct_item_no);
     $check_stmt->execute();
     $existing_result = $check_stmt->get_result();
+    $check_stmt->close();
     
     $product_id = null;
     
     if ($existing_result->num_rows > 0) {
-        // Product already exists with this item_no - UPDATE it (add stock)
+        // Product already exists - UPDATE it
         $existing_product = $existing_result->fetch_assoc();
         $product_id = $existing_product['id'];
         
-        // Update existing product stock
-        $update_product = "UPDATE products SET 
-                           quantity = quantity + ?,
-                           updated_at = NOW() 
-                           WHERE id = ?";
-        $update_product_stmt = $conn->prepare($update_product);
-        $update_product_stmt->bind_param("ii", $quantity_purchased, $product_id);
-        $update_product_stmt->execute();
+        $update_fields = ["quantity = quantity + ?"];
+        $params = [$quantity_purchased];
+        $types = "i";
         
-        error_log("=== UPDATED existing product with item_no: $correct_item_no, ID: $product_id, New quantity: " . ($existing_product['quantity'] + $quantity_purchased));
+        if (!empty($category) && ($existing_product['category'] != $category)) {
+            $update_fields[] = "category = ?";
+            $params[] = $category;
+            $types .= "s";
+        }
+        
+        $update_fields[] = "updated_at = NOW()";
+        $update_sql = "UPDATE products SET " . implode(", ", $update_fields) . " WHERE id = ?";
+        $params[] = $product_id;
+        $types .= "i";
+        
+        $update_product_stmt = $conn->prepare($update_sql);
+        $update_product_stmt->bind_param($types, ...$params);
+        $update_product_stmt->execute();
+        $update_product_stmt->close();
         
     } else {
-        // ========== CREATE NEW PRODUCT FOR THIS ITEM NO ==========
-        // This ensures we preserve the old product (no.90) and create a new one (no.91)
+        // Create new product
         $product_name = $correct_item_no . ' - ' . $correct_description;
         
         $insert_product = "INSERT INTO products (name, item_no, description, quantity, unit, price, category, low_stock_threshold, created_at, updated_at) 
@@ -140,20 +219,10 @@ try {
                                        $quantity_purchased, $unit, $price_per_unit, $category);
         $insert_product_stmt->execute();
         $product_id = $conn->insert_id;
-        
-        error_log("=== CREATED NEW product with item_no: $correct_item_no, ID: $product_id");
+        $insert_product_stmt->close();
     }
     
-    // Verify the product was created/updated correctly
-    $verify_sql = "SELECT id, item_no, description, quantity FROM products WHERE id = ?";
-    $verify_stmt = $conn->prepare($verify_sql);
-    $verify_stmt->bind_param("i", $product_id);
-    $verify_stmt->execute();
-    $verify_result = $verify_stmt->get_result();
-    $verified_product = $verify_result->fetch_assoc();
-    error_log("=== VERIFIED product: ID: {$verified_product['id']}, item_no: {$verified_product['item_no']}, quantity: {$verified_product['quantity']}");
-    
-    // ========== Handle date for stock movement ==========
+    // Insert stock movement
     $reference = "PURCHASE #" . $original['purchase_number'];
     $notes = "Ordered from " . $company_name . " - Qty: " . $quantity_purchased;
     
@@ -161,33 +230,18 @@ try {
     $delivery_date = $original['delivery_date'];
     $movement_date = null;
     
-    // Format the date properly
     if (!empty($delivery_date) && $delivery_date != '0000-00-00') {
         $timestamp = strtotime($delivery_date);
         if ($timestamp !== false && $timestamp > 0) {
             $movement_date = date('Y-m-d H:i:s', $timestamp);
-            error_log("=== Using delivery_date: $delivery_date -> $movement_date");
         } else {
             $movement_date = date('Y-m-d H:i:s');
-            error_log("=== Failed to parse delivery_date, using current time: $movement_date");
         }
     } else {
-        if (!empty($original['purchase_date']) && $original['purchase_date'] != '0000-00-00 00:00:00') {
-            $timestamp = strtotime($original['purchase_date']);
-            if ($timestamp !== false && $timestamp > 0) {
-                $movement_date = date('Y-m-d H:i:s', $timestamp);
-                error_log("=== Using purchase_date: " . $original['purchase_date'] . " -> $movement_date");
-            } else {
-                $movement_date = date('Y-m-d H:i:s');
-                error_log("=== Using current time as fallback: $movement_date");
-            }
-        } else {
-            $movement_date = date('Y-m-d H:i:s');
-            error_log("=== No valid date, using current time: $movement_date");
-        }
+        $movement_date = date('Y-m-d H:i:s');
     }
     
-    // Insert stock movement with the determined date
+    // Insert stock movement
     $movement_sql = "INSERT INTO stock_movements (product_id, type, quantity, reference, notes, created_by, created_at) 
                      VALUES (?, 'in', ?, ?, ?, ?, ?)";
     $movement_stmt = $conn->prepare($movement_sql);
@@ -198,7 +252,7 @@ try {
     }
     
     $movement_id = $conn->insert_id;
-    error_log("=== Stock movement inserted with ID: $movement_id, created_at: $movement_date, product_id: $product_id");
+    $movement_stmt->close();
     
     // UPDATE THE ORIGINAL PURCHASE TO COMPLETED
     $update_original = "UPDATE purchases SET 
@@ -212,10 +266,10 @@ try {
     $update_original_stmt = $conn->prepare($update_original);
     $update_original_stmt->bind_param("iiii", $movement_id, $product_id, $new_stock, $purchase_id);
     $update_original_stmt->execute();
+    $update_original_stmt->close();
     
     $conn->commit();
     
-    // Format the date for redirect
     $display_date = date('Y-m-d', strtotime($movement_date));
     
     echo json_encode([
@@ -226,10 +280,10 @@ try {
         'product_id' => $product_id,
         'item_no' => $correct_item_no,
         'description' => $correct_description,
+        'category' => $category,
         'quantity' => $quantity_purchased,
         'date' => $display_date,
-        'redirect_url' => "stock_tracker.php?date=" . $display_date . "&purchased=success&movement=" . $movement_id,
-        'verified_item_no' => $verified_product['item_no']
+        'redirect_url' => "stock_tracker.php?date=" . $display_date . "&purchased=success&movement=" . $movement_id
     ]);
     
 } catch (Exception $e) {

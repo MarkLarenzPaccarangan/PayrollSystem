@@ -1,5 +1,5 @@
 <?php
-// get_site_deployed_items.php
+// get_site_deployed_items.php - FIXED: Now properly subtracts deductions
 session_start();
 require_once 'config.php';
 
@@ -27,7 +27,9 @@ if (empty($selected_date)) {
     $selected_date = date('Y-m-d');
 }
 
-// Query to get cumulative quantity up to the selected date
+// ============================================================
+// FIXED: Calculate net quantity by subtracting deductions from out movements
+// ============================================================
 $sql = "SELECT 
             p.id as product_id,
             p.item_no,
@@ -35,18 +37,23 @@ $sql = "SELECT
             p.description,
             p.category,
             p.unit,
-            COALESCE(SUM(sm.quantity), 0) as total_quantity
+            COALESCE(SUM(CASE WHEN sm.type = 'out' THEN sm.quantity ELSE 0 END), 0) as out_quantity,
+            COALESCE(SUM(CASE WHEN sm.type = 'deduct' THEN sm.quantity ELSE 0 END), 0) as deducted_quantity,
+            COALESCE(SUM(CASE WHEN sm.type = 'out' THEN sm.quantity ELSE 0 END), 0) - 
+            COALESCE(SUM(CASE WHEN sm.type = 'deduct' THEN sm.quantity ELSE 0 END), 0) as total_quantity
         FROM products p
         LEFT JOIN stock_movements sm ON p.id = sm.product_id 
-            AND sm.type = 'out' 
+            AND (sm.type = 'out' OR sm.type = 'deduct')
             AND sm.site_location = ?
             AND DATE(sm.created_at) <= ?
+            AND (sm.status = 'active' OR sm.status IS NULL OR sm.status = '')
         WHERE p.id IN (
             SELECT DISTINCT product_id 
             FROM stock_movements 
-            WHERE type = 'out' 
+            WHERE (type = 'out' OR type = 'deduct')
             AND site_location = ?
             AND DATE(created_at) <= ?
+            AND (status = 'active' OR status IS NULL OR status = '')
         )
         GROUP BY p.id, p.item_no, p.name, p.description, p.category, p.unit
         HAVING total_quantity > 0
@@ -94,11 +101,6 @@ while ($row = $result->fetch_assoc()) {
         $category = 'Accessories';
     }
     
-    // If category is "Consumables", set to empty so it won't display
-    if (strtolower(trim($category)) === 'consumables') {
-        $category = '';
-    }
-    
     // Get unit, default to 'pcs'
     if (empty($unit)) {
         $unit = 'pcs';
@@ -116,17 +118,21 @@ while ($row = $result->fetch_assoc()) {
         }
     }
     
-    $quantity = abs($row['total_quantity']);
-    $total_quantity += $quantity;
+    $quantity = intval($row['total_quantity']);
     
-    $items[] = [
-        'product_id' => $row['product_id'],
-        'item_no' => $row['item_no'] ?: 'N/A',
-        'description' => $description ?: 'N/A',
-        'category' => $category,
-        'unit' => $unit,
-        'quantity' => $quantity
-    ];
+    // Only add items with positive quantity
+    if ($quantity > 0) {
+        $total_quantity += $quantity;
+        
+        $items[] = [
+            'product_id' => $row['product_id'],
+            'item_no' => $row['item_no'] ?: 'N/A',
+            'description' => $description ?: 'N/A',
+            'category' => $category,
+            'unit' => $unit,
+            'quantity' => $quantity
+        ];
+    }
 }
 
 echo json_encode([

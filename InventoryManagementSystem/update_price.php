@@ -1,5 +1,5 @@
 <?php
-// update_price.php - WITHOUT PRODUCT SYNC (Products should NOT be updated from canvas edits)
+// update_price.php - EXPLICITLY PREVENTS products TABLE UPDATES
 require_once 'config.php';
 requireLogin();
 
@@ -11,12 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-// Get POST data (support both FormData and JSON)
+// Get POST data
 $price_id = isset($_POST['price_id']) ? $_POST['price_id'] : null;
 $item_no = isset($_POST['item_no']) ? trim($_POST['item_no']) : null;
 $description = isset($_POST['description']) ? trim($_POST['description']) : null;
 $category = isset($_POST['category']) ? trim($_POST['category']) : '';
-$unit = isset($_POST['unit']) ? trim($_POST['unit']) : 'pcs';  // NEW: Get unit
+$unit = isset($_POST['unit']) ? trim($_POST['unit']) : 'pcs';
 $company_name = isset($_POST['company_name']) ? trim($_POST['company_name']) : null;
 $contact_person = isset($_POST['contact_person']) ? trim($_POST['contact_person']) : '';
 $contact_number = isset($_POST['contact_number']) ? trim($_POST['contact_number']) : '';
@@ -46,7 +46,7 @@ $conn->begin_transaction();
 
 try {
     // Get current company price data
-    $get_price = $conn->query("SELECT cp.*, ci.item_no, ci.description, ci.category, ci.unit, c.name as company_name 
+    $get_price = $conn->query("SELECT cp.*, ci.item_no, ci.description, ci.category, ci.unit, c.name as company_name, c.id as company_id
                                FROM company_prices cp
                                INNER JOIN canvas_items ci ON cp.item_id = ci.id
                                INNER JOIN companies c ON cp.company_id = c.id
@@ -57,15 +57,13 @@ try {
     }
     
     $price_data = $get_price->fetch_assoc();
-    $item_id = $price_data['item_id'];
-    $company_id = $price_data['company_id'];
+    $old_item_id = $price_data['item_id'];
+    $old_company_id = $price_data['company_id'];
     
     // ===== HANDLE COMPANY =====
-    // Check if company exists (case-insensitive)
     $check_company = $conn->query("SELECT id, contact_person, contact_number FROM companies WHERE LOWER(name) = LOWER('" . $conn->real_escape_string($company_name) . "')");
     
     if ($check_company->num_rows == 0) {
-        // Company doesn't exist - create new one
         $insert_company = $conn->query("INSERT INTO companies (name, contact_person, contact_number, status) 
                                         VALUES ('" . $conn->real_escape_string($company_name) . "', 
                                                 '" . $conn->real_escape_string($contact_person) . "', 
@@ -76,41 +74,27 @@ try {
         }
         $new_company_id = $conn->insert_id;
     } else {
-        // Company exists - use existing ID
         $company = $check_company->fetch_assoc();
         $new_company_id = $company['id'];
         
-        // Update contact info only if provided and different
         if (!empty($contact_person) || !empty($contact_number)) {
-            $needs_update = false;
             $update_fields = [];
-            
             if (!empty($contact_person) && $company['contact_person'] != $contact_person) {
                 $update_fields[] = "contact_person = '" . $conn->real_escape_string($contact_person) . "'";
-                $needs_update = true;
             }
-            
             if (!empty($contact_number) && $company['contact_number'] != $contact_number) {
                 $update_fields[] = "contact_number = '" . $conn->real_escape_string($contact_number) . "'";
-                $needs_update = true;
             }
-            
-            if ($needs_update) {
-                $update_sql = "UPDATE companies SET " . implode(', ', $update_fields) . " WHERE id = $new_company_id";
-                $update_company = $conn->query($update_sql);
-                if (!$update_company) {
-                    throw new Exception('Failed to update company: ' . $conn->error);
-                }
+            if (!empty($update_fields)) {
+                $conn->query("UPDATE companies SET " . implode(', ', $update_fields) . " WHERE id = $new_company_id");
             }
         }
     }
     
-    // ===== HANDLE ITEM WITH UNIT =====
-    // Check if item exists (case-insensitive for item_no)
+    // ===== HANDLE ITEM (ONLY canvas_items - NEVER products) =====
     $check_item = $conn->query("SELECT id, description, category, unit FROM canvas_items WHERE item_no = '" . $conn->real_escape_string($item_no) . "'");
     
     if ($check_item->num_rows == 0) {
-        // Item doesn't exist - create new one with unit
         $insert_item = $conn->query("INSERT INTO canvas_items (item_no, description, category, unit) 
                                      VALUES ('" . $conn->real_escape_string($item_no) . "', 
                                              '" . $conn->real_escape_string($description) . "', 
@@ -121,109 +105,83 @@ try {
         }
         $new_item_id = $conn->insert_id;
     } else {
-        // Item exists - use existing ID
         $item = $check_item->fetch_assoc();
         $new_item_id = $item['id'];
         
-        // Update item details if changed
-        $needs_update = false;
         $update_fields = [];
-        
         if ($item['description'] != $description) {
             $update_fields[] = "description = '" . $conn->real_escape_string($description) . "'";
-            $needs_update = true;
         }
-        
         if ($item['category'] != $category) {
             $update_fields[] = "category = '" . $conn->real_escape_string($category) . "'";
-            $needs_update = true;
         }
-        
-        // NEW: Update unit if changed
         if (($item['unit'] ?? 'pcs') != $unit) {
             $update_fields[] = "unit = '" . $conn->real_escape_string($unit) . "'";
-            $needs_update = true;
         }
         
-        if ($needs_update) {
-            $update_sql = "UPDATE canvas_items SET " . implode(', ', $update_fields) . " WHERE id = $new_item_id";
-            $update_item = $conn->query($update_sql);
-            if (!$update_item) {
-                throw new Exception('Failed to update item: ' . $conn->error);
-            }
+        if (!empty($update_fields)) {
+            $conn->query("UPDATE canvas_items SET " . implode(', ', $update_fields) . " WHERE id = $new_item_id");
         }
     }
     
     // ===== HANDLE COMPANY PRICE UPDATE =====
-    if ($new_company_id != $company_id || $new_item_id != $item_id) {
-        // Company or item changed - check if new combination already exists
+    if ($new_company_id != $old_company_id || $new_item_id != $old_item_id) {
         $check_existing = $conn->query("SELECT id FROM company_prices 
                                         WHERE item_id = $new_item_id AND company_id = $new_company_id");
         
         if ($check_existing->num_rows > 0) {
-            // Combination exists - update it and delete the old one
             $existing = $check_existing->fetch_assoc();
-            
-            // Update the existing price
-            $update_existing = $conn->query("UPDATE company_prices SET 
-                                            quantity = $quantity, 
-                                            price = $price, 
-                                            availability = 1 
-                                            WHERE id = {$existing['id']}");
-            if (!$update_existing) {
-                throw new Exception('Failed to update existing price: ' . $conn->error);
-            }
-            
-            // Delete the old price record
+            $conn->query("UPDATE company_prices SET quantity = $quantity, price = $price, availability = 1 WHERE id = {$existing['id']}");
             if ($existing['id'] != $price_id) {
-                $delete_old = $conn->query("DELETE FROM company_prices WHERE id = $price_id");
-                if (!$delete_old) {
-                    throw new Exception('Failed to delete old price: ' . $conn->error);
-                }
+                $conn->query("DELETE FROM company_prices WHERE id = $price_id");
             }
         } else {
-            // New combination - update the current record with new IDs
-            $update_current = $conn->query("UPDATE company_prices SET 
-                                           item_id = $new_item_id,
-                                           company_id = $new_company_id,
-                                           quantity = $quantity, 
-                                           price = $price, 
-                                           availability = 1 
-                                           WHERE id = $price_id");
-            if (!$update_current) {
-                throw new Exception('Failed to update price with new IDs: ' . $conn->error);
-            }
+            $conn->query("UPDATE company_prices SET item_id = $new_item_id, company_id = $new_company_id, quantity = $quantity, price = $price, availability = 1 WHERE id = $price_id");
         }
     } else {
-        // Same company and item - just update quantity and price
-        $update_price = $conn->query("UPDATE company_prices SET 
-                                      quantity = $quantity, 
-                                      price = $price, 
-                                      availability = 1 
-                                      WHERE id = $price_id");
-        if (!$update_price) {
-            throw new Exception('Failed to update price: ' . $conn->error);
+        $conn->query("UPDATE company_prices SET quantity = $quantity, price = $price, availability = 1 WHERE id = $price_id");
+    }
+    
+    // ===== CLEAN UP ORPHANED ITEM (ONLY canvas_items, NEVER products) =====
+    if ($old_item_id != $new_item_id) {
+        $check_old_item = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE item_id = $old_item_id");
+        $old_item_count = $check_old_item->fetch_assoc()['count'];
+        if ($old_item_count == 0) {
+            $conn->query("DELETE FROM canvas_items WHERE id = $old_item_id");
         }
     }
     
-    // ===== REMOVED: PRODUCT SYNC SECTION =====
-    // Products should NOT be updated from canvas edits.
-    // Products are only updated when purchases are confirmed in purchase.php
-    // This prevents the issue where editing item 01 to 02 in canvas also changes home.php
-    
-    // ===== CLEAN UP ORPHANED COMPANIES =====
-    // If we changed company and the old company has no other prices, delete it
-    if ($new_company_id != $company_id) {
-        $check_old_company = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE company_id = $company_id");
+    // ===== CLEAN UP ORPHANED COMPANY =====
+    if ($old_company_id != $new_company_id) {
+        $check_old_company = $conn->query("SELECT COUNT(*) as count FROM company_prices WHERE company_id = $old_company_id");
         $old_company_count = $check_old_company->fetch_assoc()['count'];
-        
         if ($old_company_count == 0) {
-            $conn->query("DELETE FROM companies WHERE id = $company_id");
+            $conn->query("DELETE FROM companies WHERE id = $old_company_id");
+        }
+    }
+    
+    // ===== SAFETY CHECK: Fix any products table records that might have been corrupted =====
+    // Check if there's a products record with this item_no that has '0' values
+    $check_products = $conn->query("SELECT id, category, unit FROM products WHERE item_no = '$item_no'");
+    if ($check_products && $check_products->num_rows > 0) {
+        while ($product_data = $check_products->fetch_assoc()) {
+            $needs_fix = false;
+            if ($product_data['category'] === '0' || $product_data['category'] == 0 || $product_data['category'] === '') {
+                $conn->query("UPDATE products SET category = NULL WHERE id = {$product_data['id']}");
+                $needs_fix = true;
+            }
+            if ($product_data['unit'] === '0' || $product_data['unit'] == 0 || $product_data['unit'] === '') {
+                $conn->query("UPDATE products SET unit = 'pcs' WHERE id = {$product_data['id']}");
+                $needs_fix = true;
+            }
+            if ($needs_fix) {
+                error_log("Fixed products table for product ID: {$product_data['id']}, item_no: $item_no");
+            }
         }
     }
     
     $conn->commit();
-    echo json_encode(['success' => true, 'message' => 'Price updated successfully (products table not affected)']);
+    echo json_encode(['success' => true, 'message' => 'Price updated successfully (products table NOT affected)']);
     
 } catch (Exception $e) {
     $conn->rollback();

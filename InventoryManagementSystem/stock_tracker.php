@@ -1,5 +1,5 @@
 <?php
-// stock_tracker.php - COMPLETE WITH PURCHASE INTEGRATION AND ENHANCED DATE PICKER
+// stock_tracker.php - COMPLETE WITH EXPORT DATE RANGE AND PRINT FUNCTIONALITY
 ob_start();
 require_once 'config.php';
 requireLogin();
@@ -36,17 +36,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reference = $conn->real_escape_string($_POST['reference']);
         $notes = $conn->real_escape_string($_POST['notes']);
         
-        // Start transaction
         $conn->begin_transaction();
         
         try {
-            // Update product stock
             $update_sql = "UPDATE products SET quantity = quantity + ? WHERE id = ?";
             $stmt = $conn->prepare($update_sql);
             $stmt->bind_param("ii", $quantity, $product_id);
             $stmt->execute();
             
-            // Record stock movement
             $movement_sql = "INSERT INTO stock_movements (product_id, type, quantity, reference, notes, created_by) 
                              VALUES (?, 'in', ?, ?, ?, ?)";
             $stmt = $conn->prepare($movement_sql);
@@ -64,54 +61,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
     
-   if (isset($_POST['add_stock_out'])) {
+ if (isset($_POST['add_stock_out'])) {
     $product_id = intval($_POST['product_id']);
     $quantity = intval($_POST['quantity']);
     $reference = $conn->real_escape_string($_POST['reference']);
     $notes = $conn->real_escape_string($_POST['notes']);
     $site_location = isset($_POST['site_location']) ? trim($_POST['site_location']) : '';
 
-    // Get custom pull-out date and time - IMPORTANT FOR CUMULATIVE LOGIC
     $pullout_date = isset($_POST['pullout_date']) && !empty($_POST['pullout_date']) ? $_POST['pullout_date'] : date('Y-m-d');
-    $pullout_time = isset($_POST['pullout_time']) && !empty($_POST['pullout_time']) ? $_POST['pullout_time'] : date('H:i:s');
-    $custom_datetime = $pullout_date . ' ' . $pullout_time . ':00';
+    // No time needed - use start of day or current time for timestamp
+    $custom_datetime = $pullout_date . ' ' . date('H:i:s');
     
-    // Check if enough stock at the time of pull-out? 
-    // For simplicity, we check current stock
-    $check_sql = "SELECT quantity as current_stock FROM products WHERE id = ?";
+    // Calculate stock AS OF the selected pull-out date
+    $check_sql = "SELECT 
+                    COALESCE(
+                        (SELECT SUM(CASE WHEN sm.type = 'in' THEN sm.quantity ELSE 0 END) 
+                         FROM stock_movements sm 
+                         WHERE sm.product_id = ? AND DATE(sm.created_at) <= ?), 0
+                    ) -
+                    COALESCE(
+                        (SELECT SUM(CASE WHEN sm.type = 'out' THEN sm.quantity ELSE 0 END) 
+                         FROM stock_movements sm 
+                         WHERE sm.product_id = ? AND DATE(sm.created_at) <= ?), 0
+                    ) as available_stock";
+    
     $stmt = $conn->prepare($check_sql);
-    $stmt->bind_param("i", $product_id);
+    $stmt->bind_param("isis", $product_id, $pullout_date, $product_id, $pullout_date);
     $stmt->execute();
     $result = $stmt->get_result();
-    $product = $result->fetch_assoc();
+    $stock_data = $result->fetch_assoc();
+    $available_stock = intval($stock_data['available_stock']);
     
-    if ($product['current_stock'] < $quantity) {
-        $_SESSION['error'] = "Insufficient stock! Available: " . $product['current_stock'];
+    if ($available_stock < $quantity) {
+        $_SESSION['error'] = "Insufficient stock as of " . date('M d, Y', strtotime($pullout_date)) . "! Available: " . $available_stock;
         header("Location: stock_tracker.php");
         exit();
     }
     
-    // Check if site_location column exists, if not add it
+    // Rest of the stock-out logic continues...
+    // Continue with the rest of the stock-out logic...
     $check_column = "SHOW COLUMNS FROM stock_movements LIKE 'site_location'";
+    // ... existing code continues ...
     $column_result = $conn->query($check_column);
     if ($column_result->num_rows == 0) {
         $conn->query("ALTER TABLE stock_movements ADD COLUMN site_location VARCHAR(255) DEFAULT NULL");
     }
     
-    // Start transaction
     $conn->begin_transaction();
     
     try {
-        // Update product stock - DEDUCT STOCK
         $update_sql = "UPDATE products SET quantity = quantity - ? WHERE id = ?";
         $stmt = $conn->prepare($update_sql);
         $stmt->bind_param("ii", $quantity, $product_id);
         $stmt->execute();
         
-        // Set site_location to NULL if empty
         $site_location_value = !empty($site_location) ? $site_location : null;
         
-        // Insert stock movement with custom datetime - CRITICAL FOR CUMULATIVE LOGIC
         $movement_sql = "INSERT INTO stock_movements (product_id, type, quantity, reference, notes, created_by, site_location, created_at) 
                          VALUES (?, 'out', ?, ?, ?, ?, ?, ?)";
         $stmt = $conn->prepare($movement_sql);
@@ -137,7 +142,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get date filter (default to today)
 $selected_date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
-// Get stock movements for the selected date - FIXED QUERY
+// Get stock movements for the selected date
 $movements_sql = "SELECT 
                     sm.id,
                     sm.created_at,
@@ -162,13 +167,14 @@ $movements_sql = "SELECT
                   FROM stock_movements sm
                   LEFT JOIN products p ON sm.product_id = p.id
                   WHERE DATE(sm.created_at) = ?
+                  AND sm.type != 'deduct'
                   ORDER BY sm.created_at DESC";
 $stmt = $conn->prepare($movements_sql);
 $stmt->bind_param("s", $selected_date);
 $stmt->execute();
 $daily_movements = $stmt->get_result();
 
-// Get all stock out movements for history with optional date range - WITH CATEGORY AND SITE LOCATION
+// Get all stock out movements for history with optional date range
 $date_from = isset($_GET['from']) ? $_GET['from'] : date('Y-m-d', strtotime('-30 days'));
 $date_to = isset($_GET['to']) ? $_GET['to'] : date('Y-m-d');
 
@@ -197,6 +203,8 @@ $all_stock_out_sql = "SELECT
                       FROM stock_movements sm
                       LEFT JOIN products p ON sm.product_id = p.id
                       WHERE sm.type = 'out'
+                      AND sm.site_location IS NOT NULL
+                      AND sm.site_location != ''
                       AND DATE(sm.created_at) BETWEEN ? AND ?
                       ORDER BY sm.created_at DESC";
 
@@ -204,20 +212,6 @@ $stmt = $conn->prepare($all_stock_out_sql);
 $stmt->bind_param("ss", $date_from, $date_to);
 $stmt->execute();
 $all_stock_out = $stmt->get_result();
-
-// Get current stock balances for all products - WITH CATEGORY
-$balances_sql = "SELECT 
-                    p.id,
-                    p.name,
-                    p.item_no,
-                    p.description,
-                    p.category,
-                    p.quantity as current_balance,
-                    p.unit,
-                    p.low_stock_threshold
-                 FROM products p
-                 ORDER BY p.name";
-$balances = $conn->query($balances_sql);
 
 // Get statistics
 $total_products = $conn->query("SELECT COUNT(*) as count FROM products")->fetch_assoc()['count'] ?? 0;
@@ -229,24 +223,31 @@ require_once 'include/header.php';
 ?>
 
 <style>
-    /* Date and Time Picker Styles */
+    .search-result-item {
+        transition: all 0.2s ease;
+    }
+    .search-result-item:hover {
+        background: var(--hover-bg);
+        transform: translateX(5px);
+    }
+    .search-result-item:hover .select-this-badge {
+        background: #e84393 !important;
+        color: white !important;
+    }
     input[type="date"].form-control,
     input[type="time"].form-control {
         cursor: pointer;
     }
-
     input[type="date"].form-control::-webkit-calendar-picker-indicator,
     input[type="time"].form-control::-webkit-calendar-picker-indicator {
         filter: invert(0.5);
         cursor: pointer;
     }
-
     input[type="date"].form-control:hover,
     input[type="time"].form-control:hover {
         border-color: #75e6da;
     }
     
-    /* Purchase Success Badge - NEW */
     .purchase-success-badge {
         background: linear-gradient(135deg, #00b894, #75e6da);
         color: #1a1c3c;
@@ -260,20 +261,15 @@ require_once 'include/header.php';
         animation: slideInRight 0.3s ease;
     }
     
+    
     .purchase-success-badge i {
         font-size: 20px;
     }
     
-    /* Rest of your existing styles remain the same */
     .stock-tracker-container {
         padding: 20px;
         max-width: 1600px;
         margin: 0 auto;
-    }
-
-    /* Add styles for site dropdown */
-    .site-quick-select {
-        margin-top: 10px;
     }
 
     .site-quick-select select {
@@ -287,9 +283,14 @@ require_once 'include/header.php';
         cursor: pointer;
     }
 
+    .site-quick-select select option {
+        background-color: #1a1c3c;
+        color: #75e6da;
+    }
+
     .site-quick-select select:focus {
         outline: none;
-        border-color: #e84393;
+        border-color: #1a1c3c;
     }
 
     .site-input-group {
@@ -302,7 +303,6 @@ require_once 'include/header.php';
         flex: 1;
     }
 
-    /* Site badge for history */
     .site-badge {
         display: inline-flex;
         align-items: center;
@@ -315,7 +315,6 @@ require_once 'include/header.php';
         color: #1a1c3c;
     }
 
-    /* ========== STATS CARDS ========== */
     .stats-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -404,7 +403,6 @@ require_once 'include/header.php';
         color: #f39c12;
     }
 
-    /* ========== WELCOME SECTION ========== */
     .welcome-section {
         display: flex;
         justify-content: space-between;
@@ -419,10 +417,6 @@ require_once 'include/header.php';
         font-weight: 800;
         color: var(--text-primary);
         margin-bottom: 5px;
-        background: linear-gradient(135deg, #ffffff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
     }
 
     .welcome-text p {
@@ -430,7 +424,6 @@ require_once 'include/header.php';
         font-size: 15px;
     }
 
-    /* ========== ACTION BUTTONS ========== */
     .action-buttons {
         display: flex;
         gap: 15px;
@@ -471,7 +464,6 @@ require_once 'include/header.php';
         box-shadow: 0 8px 25px rgba(232, 67, 147, 0.4);
     }
 
-    /* ========== DATE NAVIGATION ========== */
     .date-navigation {
         background: var(--bg-primary);
         border: 1px solid var(--border-color);
@@ -519,10 +511,6 @@ require_once 'include/header.php';
         font-weight: 700;
         color: var(--text-primary);
         padding: 0 15px;
-        background: linear-gradient(135deg, #ffffff, #ffffff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
     }
 
     .date-actions {
@@ -532,7 +520,6 @@ require_once 'include/header.php';
         align-items: center;
     }
 
-    /* ========== ENHANCED DATE PICKER STYLES ========== */
     .date-picker-wrapper {
         position: relative;
         width: 100%;
@@ -569,6 +556,8 @@ require_once 'include/header.php';
         outline: none;
     }
 
+    
+
     .calendar-dropdown-btn {
         position: absolute;
         right: 12px;
@@ -594,17 +583,21 @@ require_once 'include/header.php';
     .calendar-wrapper {
         position: absolute;
         top: calc(100% + 5px);
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        width: 40% !important;
-        min-width: 240px;
+        left: 0 !important;
         right: auto !important;
+        transform: none !important;
+        width: 280px !important;
+        min-width: 280px;
         background: var(--bg-primary);
         border: 2px solid #75e6da;
         border-radius: 12px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        z-index: 2000;
+        z-index: 10000;
         display: none;
+    }
+
+    .modal .calendar-wrapper {
+        z-index: 10002;
     }
 
     .calendar-wrapper.show {
@@ -813,9 +806,7 @@ require_once 'include/header.php';
     }
 
     @media (max-width: 768px) {
-        .calendar-wrapper,
-        #fromCalendar.calendar-wrapper,
-        #toCalendar.calendar-wrapper {
+        .calendar-wrapper {
             width: 90% !important;
             min-width: 260px;
         }
@@ -851,66 +842,6 @@ require_once 'include/header.php';
         box-shadow: 0 5px 15px rgba(232, 67, 147, 0.3);
     }
 
-    /* ========== TAB NAVIGATION ========== */
-    .tab-navigation {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 25px;
-        border-bottom: 2px solid var(--border-color);
-        padding-bottom: 10px;
-    }
-
-    .tab-btn {
-        padding: 12px 25px;
-        border-radius: 10px 10px 0 0;
-        background: transparent;
-        border: none;
-        color: var(--text-secondary);
-        cursor: pointer;
-        font-size: 15px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        position: relative;
-    }
-
-    .tab-btn:hover {
-        color: var(--text-primary);
-        background: var(--hover-bg);
-    }
-
-    .tab-btn.active {
-        color: #e84393;
-        background: var(--bg-secondary);
-    }
-
-    .tab-btn.active::after {
-        content: '';
-        position: absolute;
-        bottom: -12px;
-        left: 0;
-        width: 100%;
-        height: 3px;
-        background: linear-gradient(135deg, #ffffff);
-        border-radius: 3px 3px 0 0;
-    }
-
-    .tab-btn i {
-        font-size: 16px;
-    }
-
-    .tab-content {
-        display: none;
-    }
-
-    .tab-content.active {
-        display: block;
-        animation: fadeIn 0.5s ease;
-    }
-
-    /* ========== TRACKER CONTAINER ========== */
     .tracker-container {
         background: var(--bg-primary);
         border: 1px solid var(--border-color);
@@ -958,11 +889,10 @@ require_once 'include/header.php';
         box-shadow: 0 4px 10px rgba(232, 67, 147, 0.3);
     }
 
-    /* ========== TABLES ========== */
     .tracker-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 1200px;
+        min-width: 800px;
     }
 
     .tracker-table th {
@@ -1014,91 +944,7 @@ require_once 'include/header.php';
         font-size: 16px;
     }
 
-    .tracker-table .stock-balance {
-        color: #e84393;
-        font-weight: 800;
-        font-size: 16px;
-    }
-
-    /* Category Badge */
-    .category-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 5px 12px;
-        border-radius: 30px;
-        font-size: 12px;
-        font-weight: 600;
-        background: linear-gradient(135deg, #667eea, #764ba2);
-        color: white;
-        white-space: nowrap;
-        box-shadow: 0 2px 5px rgba(102, 126, 234, 0.3);
-    }
-
-    .category-badge i {
-        font-size: 11px;
-    }
-
-    /* Reference Tags */
-    .reference-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 5px 12px;
-        border-radius: 30px;
-        font-size: 12px;
-        font-weight: 500;
-        white-space: nowrap;
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        background: var(--bg-secondary);
-        border: 1px solid var(--border-color);
-    }
-
-    .reference-purchase {
-        background: linear-gradient(135deg, #6c5ce7, #a463f5);
-        color: white;
-        border: none;
-    }
-
-    .reference-other {
-        background: linear-gradient(135deg, #00b894, #75e6da);
-        color: white;
-        border: none;
-    }
-
-    /* Type Badge */
-    .type-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 5px 12px;
-        border-radius: 30px;
-        font-size: 12px;
-        font-weight: 600;
-        white-space: nowrap;
-    }
-
-    .type-badge.stock-in {
-        background: rgba(0, 184, 148, 0.15);
-        color: #00b894;
-        border: 1px solid #00b894;
-    }
-
-    .type-badge.stock-out {
-        background: rgba(214, 48, 49, 0.15);
-        color: #d63031;
-        border: 1px solid #d63031;
-    }
-
-    .type-badge.warning {
-        background: rgba(243, 156, 18, 0.15);
-        color: #f39c12;
-        border: 1px solid #f39c12;
-    }
-
-    /* ========== FOOTER STATS ========== */
+    
     .footer-stats {
         display: flex;
         justify-content: space-between;
@@ -1117,7 +963,6 @@ require_once 'include/header.php';
         margin-right: 8px;
     }
 
-    /* ========== MODAL STYLES ========== */
     .modal {
         display: none;
         position: fixed;
@@ -1201,29 +1046,46 @@ require_once 'include/header.php';
         transform: rotate(90deg);
     }
 
-    .modal-body {
-        padding: 20px;
-        max-height: calc(90vh - 140px);
-        min-height: 500px;
-        overflow-y: auto;
-        background: var(--bg-primary);
-        scrollbar-width: thin;
-        scrollbar-color: #08e2ff var(--bg-secondary);
-    }
+.modal-body {
+    padding: 20px;
+    max-height: calc(90vh - 140px);
+    min-height: 300px;
+    overflow-y: scroll !important;
+    overflow-x: hidden;
+    background: var(--bg-primary);
+    scrollbar-width: thin;
+    scrollbar-color: #75e6da var(--bg-secondary);
+    box-sizing: border-box;
+}
 
-    .modal-body::-webkit-scrollbar {
-        width: 6px;
-    }
+/* Always visible scrollbar INSIDE the modal body */
+.modal-body::-webkit-scrollbar {
+    width: 10px !important;
+    display: block !important;
+    background: transparent;
+}
 
-    .modal-body::-webkit-scrollbar-track {
-        background: var(--bg-secondary);
-        border-radius: 8px;
-    }
+.modal-body::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin: 5px 0;
+}
 
-    .modal-body::-webkit-scrollbar-thumb {
-        background: linear-gradient(135deg, #e84393, #d63031);
-        border-radius: 8px;
-    }
+.modal-body::-webkit-scrollbar-thumb {
+    background: #75e6da;
+    border-radius: 8px;
+    border: 2px solid var(--bg-secondary);
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+    background: #5fd9d0;
+}
+
+/* Firefox scrollbar inside modal */
+.modal-body {
+    scrollbar-width: thin;
+    scrollbar-color: #75e6da var(--bg-secondary);
+}
 
     .form-group {
         margin-bottom: 15px;
@@ -1381,21 +1243,73 @@ require_once 'include/header.php';
         box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
     }
 
-    /* View Modal Specific */
-    .date-range-picker {
-        display: flex;
-        gap: 5px;
-        margin-bottom: 15px;
-        align-items: flex-end;
-        flex-wrap: wrap;
-        justify-content: flex-start;
-    }
+ /* Date Range Container - EXACT MATCH to Calendar Size (280px) */
+.date-range-picker {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+}
 
+.date-range-item {
+    flex: 0 0 280px;
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+}
+
+.date-range-item .date-picker-wrapper {
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+}
+
+/* Make the date field match calendar wrapper width EXACTLY */
+.date-range-item .date-field {
+    width: 280px;
+    min-width: 280px;
+    max-width: 280px;
+}
+
+/* Ensure calendar wrapper aligns perfectly with container */
+.date-range-item .calendar-wrapper {
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+}
+
+/* For mobile responsiveness */
+@media (max-width: 768px) {
     .date-range-item {
-        flex: 0 1 auto;
-        min-width: 140px;
-        margin-right: 2px;
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
     }
+    
+    .date-range-item .date-picker-wrapper,
+    .date-range-item .date-field,
+    .date-range-item .calendar-wrapper {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+    }
+}
+/* For mobile responsiveness */
+@media (max-width: 768px) {
+    .date-range-item {
+        width: 100%;
+        min-width: 100%;
+    }
+    
+    .date-range-item .date-picker-wrapper,
+    .date-range-item .date-field,
+    .date-range-item .calendar-wrapper {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+}
 
     .date-range-item label {
         display: block;
@@ -1464,7 +1378,7 @@ require_once 'include/header.php';
     .view-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 1200px;
+        min-width: 1000px;
     }
 
     .view-table th {
@@ -1686,20 +1600,6 @@ require_once 'include/header.php';
             align-items: stretch;
         }
         
-        .tab-navigation {
-            flex-direction: column;
-            gap: 5px;
-        }
-        
-        .tab-btn {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        .tab-btn.active::after {
-            display: none;
-        }
-        
         .modal-content {
             margin: 15px;
             width: auto;
@@ -1756,7 +1656,8 @@ require_once 'include/header.php';
 </style>
 
 <div class="stock-tracker-container">
-    <!-- Purchase Success Notification - NEW -->
+    
+    <!-- Purchase Success Notification -->
     <?php if(isset($_GET['purchased']) && $_GET['purchased'] == 'success'): ?>
     <div class="purchase-success-badge" id="purchaseSuccessAlert">
         <i class="fas fa-check-circle"></i>
@@ -1771,7 +1672,7 @@ require_once 'include/header.php';
     <!-- Welcome Section -->
     <div class="welcome-section">
         <div class="welcome-text">
-            <h1>Stock In - Out - Balance Tracker</h1>
+            <h1>Stock In - Out</h1>
             <p>Monitor daily inventory movements from purchases and manual entries</p>
         </div>
         <div class="action-buttons">
@@ -1849,118 +1750,58 @@ require_once 'include/header.php';
                 </div>
             </div>
             <button class="btn-date btn-today" onclick="goToToday()"><i class="fas fa-calendar-day"></i> Today</button>
-            <button class="btn-date btn-export" onclick="exportDailyData()"><i class="fas fa-download"></i> Export</button>
+            <button class="btn-date btn-export" onclick="openExportDateRangeModal()"><i class="fas fa-download"></i> Export</button>
         </div>
-    </div>
-
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
-        <button class="tab-btn active" onclick="switchTab('daily')" id="tabDaily"><i class="fas fa-calendar-day"></i> DAILY TRACKER</button>
-        <button class="tab-btn" onclick="switchTab('balances')" id="tabBalances"><i class="fas fa-balance-scale"></i> CURRENT BALANCES</button>
     </div>
 
     <!-- Daily Tracker Tab -->
-    <div id="dailyTab" class="tab-content active">
-        <div class="tracker-container">
-            <div class="tracker-header">
-                <h3><i class="fas fa-clipboard-list"></i> Stock Movements for <?php echo date('M d, Y', strtotime($selected_date)); ?></h3>
-                <span class="tracker-badge"><i class="fas fa-box"></i> <?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?> items</span>
-            </div>
-            <table class="tracker-table">
-                <thead>
-                    <tr>
-                        <th>Item No</th>
-                        <th>Description</th>
-                        <th>Category</th>
-                        <th>Unit</th>
-                        <th>Date & Time</th>
-                        <th>Quantity</th>
-                        <th>Reference</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if ($daily_movements && $daily_movements->num_rows > 0): ?>
-                        <?php while($movement = $daily_movements->fetch_assoc()): ?>
-                        <tr>
-                            <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong></td>
-                            <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?></td>
-                            <td><?php if(!empty($movement['category'])): ?><span class="category-badge"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($movement['category']); ?></span><?php else: ?><span class="text-muted">—</span><?php endif; ?></td>
-                            <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?></td>
-                            <td><?php echo date('M d, Y h:i:s A', strtotime($movement['created_at'])); ?></td>
-                            <td class="<?php echo $movement['type'] == 'in' ? 'stock-in' : 'stock-out'; ?>"><?php echo $movement['type'] == 'in' ? '+' : '-'; ?><?php echo number_format($movement['quantity']); ?></td>
-                            <td><span class="reference-tag <?php echo strpos($movement['reference'], 'PURCHASE') !== false ? 'reference-purchase' : 'reference-other'; ?>"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($movement['reference'] ?: 'N/A'); ?></span></td>
-                        </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;"><i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>No stock movements found for this date: <?php echo date('M d, Y', strtotime($selected_date)); ?></td></tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-            <div class="footer-stats"><div><i class="fas fa-boxes" style="color: #75e6da;"></i> Total Items: <strong style="color: #75e6da;"><?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?></strong></div><div><i class="fas fa-calendar" style="color: #6c5ce7;"></i> Date: <strong style="color: #6c5ce7;"><?php echo date('F d, Y', strtotime($selected_date)); ?></strong></div></div>
+    <div class="tracker-container">
+        <div class="tracker-header">
+            <h3><i class="fas fa-clipboard-list"></i> Stock Movements for <?php echo date('M d, Y', strtotime($selected_date)); ?></h3>
+            <span class="tracker-badge"><i class="fas fa-box"></i> <?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?> items</span>
         </div>
-    </div>
-
-    <!-- Current Balances Tab -->
-    <div id="balancesTab" class="tab-content">
-        <div class="tracker-container">
-            <div class="tracker-header">
-                <h3><i class="fas fa-boxes"></i> Current Stock Balances</h3>
-                <span class="tracker-badge"><i class="fas fa-box"></i> <?php echo ($balances) ? $balances->num_rows : 0; ?> products</span>
-            </div>
-            <table class="tracker-table">
-                <thead>
+        <table class="tracker-table">
+            <thead>
+                <tr>
+                    <th>Item No</th>
+                    <th>Description</th>
+                    <th>Category</th>
+                    <th>Unit</th>
+                    <th>Date & Time</th>
+                    <th>Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($daily_movements && $daily_movements->num_rows > 0): ?>
+                    <?php while($movement = $daily_movements->fetch_assoc()): ?>
                     <tr>
-                        <th>Item No</th>
-                        <th>Description</th>
-                        <th>Category</th>
-                        <th>Unit</th>
-                        <th>Current Balance</th>
-                        <th>Status</th>
-                        <th>Last Movement</th>
+                        <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong></td>
+                        <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?></td>
+                     <td>
+    <?php 
+    $category = isset($movement['category']) ? trim($movement['category']) : '';
+    if (!empty($category) && $category !== '0'): 
+        echo htmlspecialchars($category);
+    else: 
+        echo '—';
+    endif; 
+    ?>
+</td>
+                        <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?></td>
+                        <td><?php echo date('M d, Y', strtotime($movement['created_at'])); ?></td>
+                        <td class="<?php echo $movement['type'] == 'in' ? 'stock-in' : 'stock-out'; ?>"><?php echo $movement['type'] == 'in' ? '+' : '-'; ?><?php echo number_format($movement['quantity']); ?></td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php if ($balances && $balances->num_rows > 0): ?>
-                        <?php while($product = $balances->fetch_assoc()): 
-                            $balance = $product['current_balance'] ?? 0;
-                            $threshold = $product['low_stock_threshold'] ?? 10;
-                            if ($balance <= 0) { $status_class = 'stock-out'; $status_text = 'Out of Stock'; }
-                            elseif ($balance < $threshold) { $status_class = 'warning'; $status_text = 'Low Stock'; }
-                            else { $status_class = 'stock-in'; $status_text = 'In Stock'; }
-                            $item_no_display = $product['item_no'] ?? '';
-                            $description_display = $product['description'] ?? $product['name'] ?? '';
-                            if (empty($item_no_display) && isset($product['name']) && strpos($product['name'], ' - ') !== false) {
-                                $parts = explode(' - ', $product['name'], 2);
-                                $item_no_display = $parts[0];
-                                $description_display = $parts[1];
-                            }
-                            $last_mov_sql = "SELECT reference, created_at FROM stock_movements WHERE product_id = ? ORDER BY created_at DESC LIMIT 1";
-                            $last_stmt = $conn->prepare($last_mov_sql);
-                            $last_stmt->bind_param("i", $product['id']);
-                            $last_stmt->execute();
-                            $last_result = $last_stmt->get_result();
-                            $last_mov = $last_result->fetch_assoc();
-                        ?>
-                        <tr>
-                            <td><strong><?php echo htmlspecialchars($item_no_display ?: 'N/A'); ?></strong></td>
-                            <td><?php echo htmlspecialchars($description_display ?: 'N/A'); ?></td>
-                            <td><?php if(!empty($product['category'])): ?><span class="category-badge"><i class="fas fa-tag"></i> <?php echo htmlspecialchars($product['category']); ?></span><?php else: ?><span class="text-muted">—</span><?php endif; ?></td>
-                            <td><?php echo htmlspecialchars($product['unit'] ?? 'pcs'); ?></td>
-                            <td class="stock-balance"><?php echo number_format($balance); ?></td>
-                            <td><span class="type-badge <?php echo $status_class; ?>"><?php echo $status_text; ?></span></td>
-                            <td><?php if ($last_mov): ?><span style="font-size: 11px;"><?php echo htmlspecialchars($last_mov['reference'] ?? 'N/A'); ?><br><small><?php echo date('M d, Y h:i:s A', strtotime($last_mov['created_at'])); ?></small></span><?php else: ?><span class="text-muted">No movements</span><?php endif; ?></td>
-                        </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="7" style="text-align: center; padding: 40px;"><i class="fas fa-box-open" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>No products found.</td></tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <tr><td colspan="6" style="text-align: center; padding: 40px;"><i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>No stock movements found for this date: <?php echo date('M d, Y', strtotime($selected_date)); ?></td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+        <div class="footer-stats"><div><i class="fas fa-boxes" style="color: #75e6da;"></i> Total Items: <strong style="color: #75e6da;"><?php echo ($daily_movements) ? $daily_movements->num_rows : 0; ?></strong></div><div><i class="fas fa-calendar" style="color: #6c5ce7;"></i> Date: <strong style="color: #6c5ce7;"><?php echo date('F d, Y', strtotime($selected_date)); ?></strong></div></div>
     </div>
 </div>
 
-<!-- STOCK OUT MODAL - RECORD STOCK OUT (WITH SITE QUICK SELECT DROPDOWN) -->
+<!-- STOCK OUT MODAL -->
 <div id="stockOutModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1973,107 +1814,97 @@ require_once 'include/header.php';
                 <input type="hidden" name="add_stock_out" value="1">
                 <input type="hidden" name="product_id" id="selectedProductId">
                 
-                <!-- UPPER SECTION - Item Search -->
-                <div class="upper-section">
-                    <div class="form-group">
-                        <label><i class="fas fa-barcode"></i> Item Number / Product Name</label>
-                        <input type="text" id="itemSearchInput" class="form-control" placeholder="Type item number or product name..." onkeyup="searchItems()" autocomplete="off" required>
-                        <div id="searchResults"></div>
-                    </div>
-                    
-                    <div id="selectedProductInfo" style="display: none; margin-bottom: 10px;">
-                        <div style="background: rgba(232, 67, 147, 0.08); padding: 8px 10px; border-radius: 6px; border-left: 3px solid #e84393;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="flex: 1;">
-                                    <span style="font-size: 9px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Selected:</span>
-                                    <h4 id="selectedProductName" style="margin: 2px 0 0; font-size: 13px; font-weight: 600;"></h4>
-                                    <p id="selectedProductDetails" style="margin: 2px 0 0; font-size: 10px; color: var(--text-secondary);"></p>
-                                </div>
-                                <span class="availability-badge available" id="selectedStockBadge" style="padding: 3px 8px; font-size: 10px;">In Stock</span>
+                <!-- PULL-OUT DATE - FIRST FIELD -->
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> Pull-out Date *</label>
+                    <input type="date" name="pullout_date" id="pulloutDate" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
+                    <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
+                        <i class="fas fa-info-circle"></i> Select the date when item was pulled out. Stock availability will be based on this date.
+                    </small>
+                </div>
+                
+                <hr style="margin: 15px 0; border: 1px dashed var(--border-color); opacity: 0.5;">
+                
+                <!-- ITEM SEARCH - SECOND FIELD -->
+                <div class="form-group">
+                    <label><i class="fas fa-barcode"></i> Item Number / Product Name</label>
+                    <input type="text" id="itemSearchInput" class="form-control" placeholder="Type item number or product name..." onkeyup="searchItems()" autocomplete="off" required>
+                    <div id="searchResults"></div>
+                </div>
+                
+                <div id="selectedProductInfo" style="display: none; margin-bottom: 10px;">
+                    <div style="background: rgba(232, 67, 147, 0.08); padding: 8px 10px; border-radius: 6px; border-left: 3px solid #e84393;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <span style="font-size: 9px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Selected:</span>
+                                <h4 id="selectedProductName" style="margin: 2px 0 0; font-size: 13px; font-weight: 600;"></h4>
+                                <p id="selectedProductDetails" style="margin: 2px 0 0; font-size: 10px; color: var(--text-secondary);"></p>
                             </div>
+                            <span class="availability-badge available" id="selectedStockBadge" style="padding: 3px 8px; font-size: 10px;">In Stock</span>
                         </div>
                     </div>
                 </div>
 
                 <hr style="margin: 8px 0 12px; border: 1px dashed var(--border-color); opacity: 0.5;">
 
-                <!-- LOWER SECTION - WITH SITE QUICK SELECT DROPDOWN -->
-                <div class="lower-section">
-                    <div class="two-column">
-                        <div class="form-group">
-                            <label><i class="fas fa-cubes"></i> Quantity</label>
-                            <input type="number" name="quantity" id="stockOutQuantity" min="1" required placeholder="Enter quantity" onkeyup="updateAvailableStock()" class="form-control">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label><i class="fas fa-boxes"></i> Available Stock</label>
-                            <input type="text" id="availableStock" readonly disabled class="form-control" value="0">
-                        </div>
-                    </div>
-                    
-                   <!-- DATE AND TIME PICKER SECTION - UPDATED -->
-<div class="two-column">
-    <div class="form-group">
-        <label><i class="fas fa-calendar-alt"></i> Pull-out Date *</label>
-        <input type="date" name="pullout_date" id="pulloutDate" class="form-control" value="<?php echo date('Y-m-d'); ?>" required>
-        <small style="color: var(--text-secondary); font-size: 11px;">
-            <i class="fas fa-info-circle"></i> Select the date when item was pulled out (affects cumulative total)
-        </small>
-    </div>
-    
-    <div class="form-group">
-        <label><i class="fas fa-clock"></i> Pull-out Time</label>
-        <input type="time" name="pullout_time" id="pulloutTime" class="form-control" value="<?php echo date('H:i'); ?>">
-        <small style="color: var(--text-secondary); font-size: 11px;">
-            <i class="fas fa-info-circle"></i> Optional: Select the time of pull-out
-        </small>
-    </div>
-</div>
-                    
-                    <div id="quantityWarningContainer"></div>
-                    
+                <!-- QUANTITY AND AVAILABLE STOCK - TWO COLUMNS -->
+                <div class="two-column">
                     <div class="form-group">
-                        <label><i class="fas fa-map-marker-alt"></i> Site / Location</label>
-                        <div class="site-input-group">
-                            <input type="text" name="site_location" id="siteLocation" class="form-control" placeholder="Enter site/location where item will be deployed" autocomplete="off">
-                        </div>
-                    </div>
-                    
-                    <!-- QUICK SELECT DROPDOWN -->
-                    <?php if (!empty($sites_for_dropdown)): ?>
-                    <div class="form-group site-quick-select">
-                        <label><i class="fas fa-building"></i> Quick Select Site</label>
-                        <select id="quickSiteSelect" onchange="selectQuickSite()">
-                            <option value="">-- Select from existing sites --</option>
-                            <?php foreach ($sites_for_dropdown as $site): ?>
-                                <option value="<?php echo htmlspecialchars($site); ?>"><?php echo htmlspecialchars($site); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
-                            <i class="fas fa-info-circle"></i> Choose a site from the list or type a new one above
-                        </small>
-                    </div>
-                    <?php else: ?>
-                    <div class="form-group site-quick-select">
-                        <label><i class="fas fa-building"></i> Quick Select Site</label>
-                        <select id="quickSiteSelect" onchange="selectQuickSite()">
-                            <option value="">-- No sites available, add one in Site tab --</option>
-                        </select>
-                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
-                            <i class="fas fa-info-circle"></i> Go to <strong>Site</strong> tab to add locations
-                        </small>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div class="form-group">
-                        <label><i class="fas fa-hashtag"></i> Reference</label>
-                        <input type="text" name="reference" class="form-control" placeholder="e.g., SO-2024-001">
+                        <label><i class="fas fa-cubes"></i> Quantity to Pull Out *</label>
+                        <input type="number" name="quantity" id="stockOutQuantity" min="1" required placeholder="Enter quantity" onkeyup="updateAvailableStock()" class="form-control">
                     </div>
                     
                     <div class="form-group">
-                        <label><i class="fas fa-sticky-note"></i> Notes</label>
-                        <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
+                        <label><i class="fas fa-boxes"></i> Available Stock</label>
+                        <input type="text" id="availableStock" readonly disabled class="form-control" value="0">
                     </div>
+                </div>
+                
+                <div id="quantityWarningContainer"></div>
+                
+                <!-- SITE / LOCATION -->
+                <div class="form-group">
+                    <label><i class="fas fa-map-marker-alt"></i> Site / Location</label>
+                    <div class="site-input-group">
+                        <input type="text" name="site_location" id="siteLocation" class="form-control" placeholder="Enter site/location where item will be deployed" autocomplete="off">
+                    </div>
+                </div>
+                
+                <?php if (!empty($sites_for_dropdown)): ?>
+                <div class="form-group site-quick-select">
+                    <label><i class="fas fa-building"></i> Quick Select Site</label>
+                    <select id="quickSiteSelect" onchange="selectQuickSite()">
+                        <option value="">-- Select from existing sites --</option>
+                        <?php foreach ($sites_for_dropdown as $site): ?>
+                            <option value="<?php echo htmlspecialchars($site); ?>"><?php echo htmlspecialchars($site); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
+                        <i class="fas fa-info-circle"></i> Choose a site from the list or type a new one above
+                    </small>
+                </div>
+                <?php else: ?>
+                <div class="form-group site-quick-select">
+                    <label><i class="fas fa-building"></i> Quick Select Site</label>
+                    <select id="quickSiteSelect" onchange="selectQuickSite()">
+                        <option value="">-- No sites available, add one in Site tab --</option>
+                    </select>
+                    <small style="color: var(--text-secondary); font-size: 11px; margin-top: 5px; display: block;">
+                        <i class="fas fa-info-circle"></i> Go to <strong>Site</strong> tab to add locations
+                    </small>
+                </div>
+                <?php endif; ?>
+                
+                <!-- REFERENCE -->
+                <div class="form-group">
+                    <label><i class="fas fa-hashtag"></i> Reference (Optional)</label>
+                    <input type="text" name="reference" class="form-control" placeholder="e.g., SO-2024-001">
+                </div>
+                
+                <!-- NOTES -->
+                <div class="form-group">
+                    <label><i class="fas fa-sticky-note"></i> Notes (Optional)</label>
+                    <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes..."></textarea>
                 </div>
             </div>
             
@@ -2085,7 +1916,7 @@ require_once 'include/header.php';
     </div>
 </div>
 
-<!-- VIEW STOCK OUT MODAL - WITH SITE LOCATION COLUMN -->
+<!-- VIEW STOCK OUT MODAL -->
 <div id="viewStockOutModal" class="modal">
     <div class="modal-content large-modal">
         <div class="modal-header view-header">
@@ -2123,7 +1954,7 @@ require_once 'include/header.php';
 
             <div class="search-bar">
                 <i class="fas fa-search"></i>
-                <input type="text" id="stockOutSearch" placeholder="Search by Item No, Description, Category, Site, Reference..." onkeyup="searchStockOut()">
+                <input type="text" id="stockOutSearch" placeholder="Search by Item No, Description, Category, Site..." onkeyup="searchStockOut()">
             </div>
             
             <div class="view-table-container">
@@ -2134,51 +1965,42 @@ require_once 'include/header.php';
                             <th>Description</th>
                             <th>Category</th>
                             <th>Unit</th>
-                            <th>Date & Time (with seconds)</th>
+                            <th>Date & Time</th>
                             <th>Quantity</th>
                             <th>Site / Location</th>
-                            <th>Reference</th>
                         </tr>
                     </thead>
                     <tbody id="stockOutTableBody">
                         <?php if ($all_stock_out && $all_stock_out->num_rows > 0): ?>
                             <?php while($movement = $all_stock_out->fetch_assoc()): ?>
                             <tr class="stock-out-row">
-                                <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong>   </tr>
-                                <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?>   </tr>
-                                <td>
-                                    <?php 
-                                    $category = isset($movement['category']) ? trim($movement['category']) : '';
-                                    if (!empty($category)): 
-                                    ?>
-                                        <span class="category-badge">
-                                            <i class="fas fa-tag"></i> <?php echo htmlspecialchars($category); ?>
-                                        </span>
-                                    <?php else: ?>
-                                        <span class="text-muted">—</span>
-                                    <?php endif; ?>
-                                  </tr>
-                                <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?>   </tr>
-                                <td><?php echo date('M d, Y h:i:s A', strtotime($movement['created_at'])); ?>   </tr>
-                                <td class="stock-out">-<?php echo number_format($movement['quantity']); ?>   </tr>
+                                <td><strong><?php echo htmlspecialchars($movement['item_no'] ?: 'N/A'); ?></strong></td>
+                                <td><?php echo htmlspecialchars($movement['description'] ?: 'N/A'); ?></td>
+                               <td>
+    <?php 
+    $category = isset($movement['category']) ? trim($movement['category']) : '';
+    if (!empty($category) && $category !== '0'): 
+        echo htmlspecialchars($category);
+    else: 
+        echo '—';
+    endif; 
+    ?>
+</td>
+                                <td><?php echo htmlspecialchars($movement['unit'] ?: 'pcs'); ?></td>
+                                <td><?php echo date('M d, Y', strtotime($movement['created_at'])); ?></td>
+                                <td class="stock-out">-<?php echo number_format($movement['quantity']); ?></td>
                                 <td>
                                     <?php if (!empty($movement['site_location'])): ?>
                                         <span class="site-badge"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($movement['site_location']); ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">—</span>
                                     <?php endif; ?>
-                                  </tr>
-                                <td>
-                                    <span class="reference-tag reference-other">
-                                        <i class="fas fa-tag"></i> 
-                                        <?php echo htmlspecialchars($movement['reference'] ?: 'N/A'); ?>
-                                    </span>
-                                  </tr>
+                                </td>
                             </tr>
                             <?php endwhile; ?>
                         <?php else: ?>
-                            <tr>
-                                <td colspan="8" style="text-align: center; padding: 40px;">
+                            <td>
+                                <td colspan="7" style="text-align: center; padding: 40px;">
                                     <i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 10px; display: block;"></i>
                                     No stock out records found for the selected date range.
                                 </td>
@@ -2195,7 +2017,8 @@ require_once 'include/header.php';
         
         <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="closeViewStockOutModal()"><i class="fas fa-times"></i> Close</button>
-            <button type="button" class="btn btn-primary" onclick="exportStockOutData()"><i class="fas fa-download"></i> Export</button>
+            <button type="button" class="btn btn-primary" onclick="exportStockOutData()"><i class="fas fa-file-excel"></i> Export Excel</button>
+            <button type="button" class="btn btn-primary" onclick="printPulloutHistory()" style="background: linear-gradient(135deg, #e84393, #d63031);"><i class="fas fa-print"></i> Print PDF</button>
         </div>
     </div>
 </div>
@@ -2214,24 +2037,48 @@ require_once 'include/header.php';
 <?php endif; ?>
 
 <script>
-// Calendar state (adapted from employee.php)
+// Calendar state
 let activeCalendar = null;
 let calendarDates = {
     main: { currentDate: new Date(), selectedDate: '<?php echo $selected_date; ?>' },
     from: { currentDate: new Date(), selectedDate: '<?php echo $date_from; ?>' },
-    to: { currentDate: new Date(), selectedDate: '<?php echo $date_to; ?>' }
+    to: { currentDate: new Date(), selectedDate: '<?php echo $date_to; ?>' },
+    exportFrom: { currentDate: new Date(), selectedDate: '<?php echo date('Y-m-d', strtotime('-30 days')); ?>' },
+    exportTo: { currentDate: new Date(), selectedDate: '<?php echo date('Y-m-d'); ?>' }
 };
 
-// Initialize year dropdowns
+// Inside DOMContentLoaded, add this:
+const pulloutDateInput = document.getElementById('pulloutDate');
+if (pulloutDateInput) {
+    pulloutDateInput.addEventListener('change', function() {
+        // Clear search and selected product when date changes
+        document.getElementById('itemSearchInput').value = '';
+        document.getElementById('selectedProductInfo').style.display = 'none';
+        document.getElementById('searchResults').style.display = 'none';
+        document.getElementById('selectedProductId').value = '';
+        document.getElementById('availableStock').value = '0';
+        document.getElementById('stockOutQuantity').value = '';
+        document.getElementById('submitStockOutBtn').disabled = true;
+        document.getElementById('quantityWarningContainer').innerHTML = '';
+        
+        // Reset quantity input styling
+        const quantityInput = document.getElementById('stockOutQuantity');
+        quantityInput.style.borderColor = '';
+        quantityInput.style.boxShadow = '';
+    });
+}
+
 function initializeYearSelects() {
-    const yearSelects = ['mainYearSelect', 'fromYearSelect', 'toYearSelect'];
+    const yearSelects = ['mainYearSelect', 'fromYearSelect', 'toYearSelect', 'exportFromYearSelect', 'exportToYearSelect'];
     const currentYear = new Date().getFullYear();
+    const startYear = 2000;
+    const endYear = 2030;
     
     yearSelects.forEach(selectId => {
         const select = document.getElementById(selectId);
         if (select) {
             select.innerHTML = '';
-            for (let year = 2000; year <= 2030; year++) {
+            for (let year = startYear; year <= endYear; year++) {
                 const option = document.createElement('option');
                 option.value = year;
                 option.textContent = year;
@@ -2243,10 +2090,8 @@ function initializeYearSelects() {
         }
     });
 }
-
-// Update calendar display
 function updateCalendar(calendarId) {
-    const date = calendarDates[calendarId].currentDate || new Date();
+    const date = calendarDates[calendarId]?.currentDate || new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
     
@@ -2258,15 +2103,36 @@ function updateCalendar(calendarId) {
     const monthSelect = document.getElementById(calendarId + 'MonthSelect');
     const yearSelect = document.getElementById(calendarId + 'YearSelect');
     
-    if (monthSelect) monthSelect.value = month;
-    if (yearSelect) yearSelect.value = year;
+    if (monthSelect) {
+        monthSelect.value = month;
+    }
+    
+    if (yearSelect) {
+        // Make sure the year option exists, if not add it
+        let yearOptionExists = false;
+        for (let i = 0; i < yearSelect.options.length; i++) {
+            if (parseInt(yearSelect.options[i].value) === year) {
+                yearOptionExists = true;
+                break;
+            }
+        }
+        
+        if (!yearOptionExists) {
+            // Add the missing year
+            const option = document.createElement('option');
+            option.value = year;
+            option.textContent = year;
+            yearSelect.appendChild(option);
+        }
+        
+        yearSelect.value = year;
+    }
     
     generateCalendarDays(calendarId);
 }
 
-// Generate calendar days
 function generateCalendarDays(calendarId) {
-    const date = calendarDates[calendarId].currentDate || new Date();
+    const date = calendarDates[calendarId]?.currentDate || new Date();
     const year = date.getFullYear();
     const month = date.getMonth();
     const daysGrid = document.getElementById(calendarId + 'DaysGrid');
@@ -2276,11 +2142,10 @@ function generateCalendarDays(calendarId) {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const today = new Date();
-    const selectedDate = calendarDates[calendarId].selectedDate;
+    const selectedDate = calendarDates[calendarId]?.selectedDate;
     
     let html = '';
     
-    // Previous month days
     const prevMonthDays = new Date(year, month, 0).getDate();
     for (let i = firstDay - 1; i >= 0; i--) {
         const day = prevMonthDays - i;
@@ -2288,7 +2153,6 @@ function generateCalendarDays(calendarId) {
         html += `<div class="calendar-day other-month" onclick="selectDate('${calendarId}', '${dateStr}')">${day}</div>`;
     }
     
-    // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
@@ -2303,7 +2167,6 @@ function generateCalendarDays(calendarId) {
         html += `<div class="${classes}" onclick="selectDate('${calendarId}', '${dateStr}')">${day}</div>`;
     }
     
-    // Next month days
     const totalCells = 42;
     const cellsUsed = firstDay + daysInMonth;
     const nextMonthDays = totalCells - cellsUsed;
@@ -2315,7 +2178,6 @@ function generateCalendarDays(calendarId) {
     daysGrid.innerHTML = html;
 }
 
-// Toggle calendar
 function toggleCalendar(calendarId) {
     const calendar = document.getElementById(calendarId + 'Calendar');
     if (calendar) {
@@ -2336,14 +2198,12 @@ function toggleCalendar(calendarId) {
     }
 }
 
-// Navigate months
 function navigateMonth(calendarId, direction) {
     const date = calendarDates[calendarId].currentDate;
     date.setMonth(date.getMonth() + direction);
     updateCalendar(calendarId);
 }
 
-// Change month/year from selects
 function changeMonthYear(calendarId) {
     const monthSelect = document.getElementById(calendarId + 'MonthSelect');
     const yearSelect = document.getElementById(calendarId + 'YearSelect');
@@ -2372,7 +2232,6 @@ function selectDate(calendarId, dateStr) {
         case 'main':
             fieldId = 'datePickerField';
             hiddenId = 'datePicker';
-            // Update the page with the selected date
             updatePageDate(dateStr);
             break;
         case 'from':
@@ -2383,18 +2242,21 @@ function selectDate(calendarId, dateStr) {
             fieldId = 'dateToField';
             hiddenId = 'dateTo';
             break;
+        case 'exportFrom':
+            fieldId = 'exportFromField';
+            hiddenId = 'exportFrom';
+            break;
+        case 'exportTo':
+            fieldId = 'exportToField';
+            hiddenId = 'exportTo';
+            break;
     }
     
     const field = document.getElementById(fieldId);
     const hidden = document.getElementById(hiddenId);
     
-    if (field) {
-        field.value = formattedDisplay;
-    }
-    
-    if (hidden) {
-        hidden.value = dateStr;
-    }
+    if (field) field.value = formattedDisplay;
+    if (hidden) hidden.value = dateStr;
     
     calendarDates[calendarId].selectedDate = dateStr;
     
@@ -2404,9 +2266,7 @@ function selectDate(calendarId, dateStr) {
     
     updateCalendar(calendarId);
     
-    // If it's the main calendar, also update the arrows and display
     if (calendarId === 'main') {
-        // Update the current date display
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                             'July', 'August', 'September', 'October', 'November', 'December'];
         const month = monthNames[date.getMonth()];
@@ -2416,7 +2276,6 @@ function selectDate(calendarId, dateStr) {
     }
 }
 
-// Clear date
 function clearDate(calendarId) {
     let fieldId = '';
     let hiddenId = '';
@@ -2433,6 +2292,14 @@ function clearDate(calendarId) {
         case 'to':
             fieldId = 'dateToField';
             hiddenId = 'dateTo';
+            break;
+        case 'exportFrom':
+            fieldId = 'exportFromField';
+            hiddenId = 'exportFrom';
+            break;
+        case 'exportTo':
+            fieldId = 'exportToField';
+            hiddenId = 'exportTo';
             break;
     }
     
@@ -2451,7 +2318,6 @@ function clearDate(calendarId) {
     updateCalendar(calendarId);
 }
 
-// Set today's date
 function setToday(calendarId) {
     const today = new Date();
     const year = today.getFullYear();
@@ -2463,7 +2329,6 @@ function setToday(calendarId) {
     selectDate(calendarId, dateStr);
 }
 
-// Close calendar when clicking outside
 document.addEventListener('click', function(e) {
     const isCalendarClick = e.target.closest('.calendar-wrapper') || e.target.closest('.date-input-group');
     if (!isCalendarClick && activeCalendar) {
@@ -2472,8 +2337,6 @@ document.addEventListener('click', function(e) {
         activeCalendar = null;
     }
 });
-
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initializeYearSelects();
     
@@ -2481,7 +2344,9 @@ document.addEventListener('DOMContentLoaded', function() {
         updateCalendar(calId);
     });
 
-    // Set initial selected dates
+    // Don't initialize export calendars here because the modal doesn't exist yet
+    // They will be initialized when the modal opens
+
     const mainDate = '<?php echo $selected_date; ?>';
     const fromDate = '<?php echo $date_from; ?>';
     const toDate = '<?php echo $date_to; ?>';
@@ -2489,42 +2354,24 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mainDate) {
         calendarDates.main.selectedDate = mainDate;
         const date = new Date(mainDate);
-        document.getElementById('datePickerField').value = date.toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-        });
-        
-        // Also update the current date display
+        document.getElementById('datePickerField').value = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
                             'July', 'August', 'September', 'October', 'November', 'December'];
-        const month = monthNames[date.getMonth()];
-        const day = date.getDate();
-        const year = date.getFullYear();
-        document.getElementById('currentDateDisplay').textContent = `${month} ${day}, ${year}`;
+        document.getElementById('currentDateDisplay').textContent = `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
     }
     
     if (fromDate) {
         calendarDates.from.selectedDate = fromDate;
         const date = new Date(fromDate);
-        document.getElementById('dateFromField').value = date.toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-        });
+        document.getElementById('dateFromField').value = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     }
     
     if (toDate) {
         calendarDates.to.selectedDate = toDate;
         const date = new Date(toDate);
-        document.getElementById('dateToField').value = date.toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
-        });
+        document.getElementById('dateToField').value = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     }
     
-    // Auto-hide purchase success alert after 5 seconds
     setTimeout(() => {
         const alert = document.getElementById('purchaseSuccessAlert');
         if (alert) {
@@ -2534,60 +2381,82 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 5000);
 });
 
-
-// Search items function for Record Stock Out
 function searchItems() {
     const searchTerm = document.getElementById('itemSearchInput').value.trim();
     const resultsDiv = document.getElementById('searchResults');
+    const pulloutDate = document.getElementById('pulloutDate').value;
     
     if (searchTerm.length < 1) {
         resultsDiv.style.display = 'none';
         return;
     }
     
-    resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center;">Searching...</div>';
+    if (!pulloutDate) {
+        resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #d63031;"><i class="fas fa-exclamation-triangle"></i> Please select a pull-out date first</div>';
+        resultsDiv.style.display = 'block';
+        return;
+    }
+    
+    resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center;"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
     resultsDiv.style.display = 'block';
     
-    fetch('search_products.php?term=' + encodeURIComponent(searchTerm))
+    // Pass the pull-out date to the backend
+    fetch('search_products.php?term=' + encodeURIComponent(searchTerm) + '&date=' + encodeURIComponent(pulloutDate))
         .then(response => response.json())
         .then(data => {
             if (data.length > 0) {
                 let html = '';
                 data.forEach(product => {
-                    const stockValue = product.quantity || 0;
-                    const stockStatus = stockValue > 0 ? 'available' : 'unavailable';
-                    const stockText = stockValue > 0 ? 'Stock: ' + stockValue : 'Out of Stock';
+                    let displayText = product.name;
+                    if (product.item_no) {
+                        let cleanName = product.name;
+                        if (product.name.indexOf(product.item_no) === 0) {
+                            let afterItemNo = product.name.substring(product.item_no.length).trim();
+                            if (afterItemNo.startsWith('-')) afterItemNo = afterItemNo.substring(1).trim();
+                            cleanName = afterItemNo;
+                        }
+                        if (cleanName.match(/^\d+\s*-\s*\d+/)) cleanName = cleanName.replace(/^\d+\s*-\s*\d+\s*-\s*/, '');
+                        displayText = product.item_no + ' - ' + cleanName;
+                    }
+                    
+                    const stockAvailable = product.quantity || 0;
+                    const stockWarning = stockAvailable === 0 ? 'style="opacity: 0.6;"' : '';
+                    const formattedDate = formatDisplayDate(pulloutDate);
                     
                     html += `
-                        <div class="search-result-item" onclick="selectProduct(${product.id}, '${product.name.replace(/'/g, "\\'")}', '${product.item_no || ''}', ${stockValue}, '${product.unit || 'pcs'}')">
+                        <div class="search-result-item" onclick="selectProduct(${product.id}, '${product.name.replace(/'/g, "\\'")}', '${product.item_no || ''}', ${stockAvailable}, '${product.unit || 'pcs'}')" style="cursor: pointer; padding: 12px 15px; border-bottom: 1px solid var(--border-color); transition: all 0.2s ease;" ${stockWarning}>
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
-                                    <strong>${product.item_no ? product.item_no + ' - ' : ''}${product.name}</strong>
-                                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 3px;">
-                                        ${product.description || ''} | 
-                                        Unit: ${product.unit || 'pcs'} | 
-                                        Category: <span style="color: #667eea;">${product.category || 'N/A'}</span>
+                                    <strong>${displayText}</strong>
+                                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 3px;">
+                                        Stock as of ${formattedDate}: <strong style="color: ${stockAvailable > 0 ? '#00b894' : '#d63031'};">${stockAvailable}</strong> ${product.unit || 'pcs'}
                                     </div>
                                 </div>
-                                <span class="availability-badge ${stockStatus}" style="font-size: 12px; padding: 5px 12px;">
-                                    ${stockText}
-                                </span>
+                                <div style="background: ${stockAvailable > 0 ? '#75e6da' : '#95a5a6'}; color: #1a1c3c; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                                    <i class="fas fa-hand-pointer"></i> ${stockAvailable > 0 ? 'Select' : 'No Stock'}
+                                </div>
                             </div>
                         </div>
                     `;
                 });
                 resultsDiv.innerHTML = html;
             } else {
-                resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--text-secondary);">No products found</div>';
+                resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--text-secondary);"><i class="fas fa-info-circle"></i> No products found</div>';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #d63031;">Error loading products</div>';
+            resultsDiv.innerHTML = '<div style="padding: 15px; text-align: center; color: #d63031;"><i class="fas fa-exclamation-circle"></i> Error loading products</div>';
         });
 }
 
-// Select product from search results
+// Helper function to format date for display
+function formatDisplayDate(dateStr) {
+    const date = new Date(dateStr);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${monthNames[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+}
+
 function selectProduct(id, name, itemNo, stock, unit) {
     let availableStock = 0;
     if (stock !== undefined && stock !== null) {
@@ -2596,9 +2465,22 @@ function selectProduct(id, name, itemNo, stock, unit) {
     }
     
     document.getElementById('selectedProductId').value = id;
-    document.getElementById('itemSearchInput').value = itemNo ? itemNo + ' - ' + name : name;
-    document.getElementById('selectedProductName').textContent = name;
-    document.getElementById('selectedProductDetails').textContent = `Item No: ${itemNo || 'N/A'} | Unit: ${unit}`;
+    
+    let displayValue = name;
+    if (itemNo) {
+        let cleanName = name;
+        if (name.indexOf(itemNo) === 0) {
+            let afterItemNo = name.substring(itemNo.length).trim();
+            if (afterItemNo.startsWith('-')) afterItemNo = afterItemNo.substring(1).trim();
+            cleanName = afterItemNo;
+        }
+        if (cleanName.match(/^\d+\s*-\s*\d+/)) cleanName = cleanName.replace(/^\d+\s*-\s*\d+\s*-\s*/, '');
+        displayValue = itemNo + ' - ' + cleanName;
+    }
+    
+    document.getElementById('itemSearchInput').value = displayValue;
+    document.getElementById('selectedProductName').textContent = displayValue;
+    document.getElementById('selectedProductDetails').textContent = `Unit: ${unit}`;
     document.getElementById('availableStock').value = availableStock;
     
     const badge = document.getElementById('selectedStockBadge');
@@ -2623,7 +2505,6 @@ function selectProduct(id, name, itemNo, stock, unit) {
     quantityInput.focus();
 }
 
-// Update available stock with validation
 function updateAvailableStock() {
     const quantity = parseInt(document.getElementById('stockOutQuantity').value) || 0;
     const available = parseInt(document.getElementById('availableStock').value) || 0;
@@ -2636,15 +2517,8 @@ function updateAvailableStock() {
     if (quantity > available) {
         quantityInput.style.borderColor = '#d63031';
         quantityInput.style.boxShadow = '0 0 0 4px rgba(214, 48, 49, 0.15)';
-        
-        container.innerHTML = `
-            <div class="warning-message">
-                <i class="fas fa-exclamation-circle"></i> ERROR: Insufficient stock! Available: ${available}
-            </div>
-        `;
-        
+        container.innerHTML = `<div class="warning-message"><i class="fas fa-exclamation-circle"></i> ERROR: Insufficient stock! Available: ${available}</div>`;
         submitBtn.disabled = true;
-        
     } else if (quantity > 0 && quantity <= available) {
         quantityInput.style.borderColor = '#00b894';
         quantityInput.style.boxShadow = '0 0 0 4px rgba(0, 184, 148, 0.15)';
@@ -2656,107 +2530,56 @@ function updateAvailableStock() {
     }
 }
 
-// Validate before submit - updated to check date
 function validateStockOut() {
     const productId = document.getElementById('selectedProductId').value;
     const quantity = parseInt(document.getElementById('stockOutQuantity').value);
     const available = parseInt(document.getElementById('availableStock').value);
     const pulloutDate = document.getElementById('pulloutDate').value;
     
-    if (!productId) {
-        alert('Please select a product first');
-        return false;
-    }
-    
-    if (isNaN(quantity) || quantity <= 0) {
-        alert('Please enter a valid quantity');
-        return false;
-    }
-    
-    if (quantity > available) {
-        alert('Error: Insufficient stock! Available: ' + available);
-        return false;
-    }
-    
-    if (!pulloutDate) {
-        alert('Please select the pull-out date');
-        return false;
-    }
-    
+    if (!productId) { alert('Please select a product first'); return false; }
+    if (isNaN(quantity) || quantity <= 0) { alert('Please enter a valid quantity'); return false; }
+    if (quantity > available) { alert('Error: Insufficient stock! Available: ' + available); return false; }
+    if (!pulloutDate) { alert('Please select the pull-out date'); return false; }
     return true;
 }
 
-// Quick Select Site function
 function selectQuickSite() {
     const select = document.getElementById('quickSiteSelect');
     const siteInput = document.getElementById('siteLocation');
-    if (select.value) {
-        siteInput.value = select.value;
-    }
+    if (select.value) siteInput.value = select.value;
 }
 
-// Filter by date range
 function filterByDateRange() {
     const fromDate = document.getElementById('dateFrom').value;
     const toDate = document.getElementById('dateTo').value;
-    
-    if (!fromDate || !toDate) {
-        alert('Please select both from and to dates');
-        return;
-    }
-    
+    if (!fromDate || !toDate) { alert('Please select both from and to dates'); return; }
     window.location.href = 'stock_tracker.php?from=' + fromDate + '&to=' + toDate + '#viewStockOutModal';
-    setTimeout(() => {
-        openViewStockOutModal();
-    }, 100);
+    setTimeout(() => openViewStockOutModal(), 100);
 }
 
-// Reset date range
 function resetDateRange() {
     const today = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
-    
-    const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
-    const toDate = today.toISOString().split('T')[0];
-    
-    window.location.href = 'stock_tracker.php?from=' + fromDate + '&to=' + toDate + '#viewStockOutModal';
-    setTimeout(() => {
-        openViewStockOutModal();
-    }, 100);
+    window.location.href = 'stock_tracker.php?from=' + thirtyDaysAgo.toISOString().split('T')[0] + '&to=' + today.toISOString().split('T')[0] + '#viewStockOutModal';
+    setTimeout(() => openViewStockOutModal(), 100);
 }
 
-// Search function for Stock Out History
 function searchStockOut() {
     const searchTerm = document.getElementById('stockOutSearch').value.toLowerCase().trim();
     const rows = document.querySelectorAll('#stockOutTableBody .stock-out-row');
     let visibleCount = 0;
-    
     rows.forEach(row => {
         const cells = row.cells;
         let rowText = '';
-        
-        for(let i = 0; i < cells.length; i++) {
-            rowText += cells[i]?.textContent.toLowerCase() + ' ';
-        }
-        
-        if (searchTerm === '') {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            if (rowText.includes(searchTerm)) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        }
+        for(let i = 0; i < cells.length; i++) rowText += cells[i]?.textContent.toLowerCase() + ' ';
+        if (searchTerm === '') { row.style.display = ''; visibleCount++; }
+        else if (rowText.includes(searchTerm)) { row.style.display = ''; visibleCount++; }
+        else { row.style.display = 'none'; }
     });
-    
     document.getElementById('stockOutCount').textContent = visibleCount;
 }
 
-// Close modals
 function closeStockOutModal() {
     document.getElementById('stockOutModal').style.display = 'none';
     document.body.style.overflow = 'auto';
@@ -2767,114 +2590,38 @@ function closeViewStockOutModal() {
     document.body.style.overflow = 'auto';
 }
 
-// Tab switching
-function switchTab(tab) {
-    const dailyTab = document.getElementById('dailyTab');
-    const balancesTab = document.getElementById('balancesTab');
-    const tabDaily = document.getElementById('tabDaily');
-    const tabBalances = document.getElementById('tabBalances');
-    
-    if (tab === 'daily') {
-        dailyTab.classList.add('active');
-        balancesTab.classList.remove('active');
-        tabDaily.classList.add('active');
-        tabBalances.classList.remove('active');
-    } else {
-        dailyTab.classList.remove('active');
-        balancesTab.classList.add('active');
-        tabDaily.classList.remove('active');
-        tabBalances.classList.add('active');
-    }
-}
-
 function changeDate(days) {
     const currentDateStr = document.getElementById('datePicker').value;
     const currentDate = new Date(currentDateStr || new Date());
     currentDate.setDate(currentDate.getDate() + days);
     const newDateStr = currentDate.toISOString().split('T')[0];
-    
-    // Update the date picker field
-    const formattedDisplay = currentDate.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric'
-    });
+    const formattedDisplay = currentDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
     document.getElementById('datePickerField').value = formattedDisplay;
     document.getElementById('datePicker').value = newDateStr;
-    
-    // Update the calendar's selected date
     calendarDates.main.selectedDate = newDateStr;
     updateCalendar('main');
-    
-    // Update the current date display
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                        'July', 'August', 'September', 'October', 'November', 'December'];
-    const month = monthNames[currentDate.getMonth()];
-    const day = currentDate.getDate();
-    const year = currentDate.getFullYear();
-    document.getElementById('currentDateDisplay').textContent = `${month} ${day}, ${year}`;
-    
-    // Reload the page with the new date
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('currentDateDisplay').textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getDate()}, ${currentDate.getFullYear()}`;
     window.location.href = 'stock_tracker.php?date=' + newDateStr;
 }
 
 function goToToday() {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const formattedDisplay = today.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric'
-    });
-    
-    document.getElementById('datePickerField').value = formattedDisplay;
-    document.getElementById('datePicker').value = todayStr;
-    
-    // Update the calendar's selected date
-    calendarDates.main.selectedDate = todayStr;
-    updateCalendar('main');
-    
-    // Update the current date display
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                        'July', 'August', 'September', 'October', 'November', 'December'];
-    const month = monthNames[today.getMonth()];
-    const day = today.getDate();
-    const year = today.getFullYear();
-    document.getElementById('currentDateDisplay').textContent = `${month} ${day}, ${year}`;
-    
     window.location.href = 'stock_tracker.php?date=' + todayStr;
 }
-// Add this new function to update the page when date changes
+
 function updatePageDate(dateStr) {
-    // Update the hidden input
     document.getElementById('datePicker').value = dateStr;
-    
-    // Update the display format
     const displayDate = new Date(dateStr);
-    const formattedDisplay = displayDate.toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric'
-    });
-    document.getElementById('datePickerField').value = formattedDisplay;
-    
-    // Update the current date display (F d, Y format)
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                        'July', 'August', 'September', 'October', 'November', 'December'];
-    const month = monthNames[displayDate.getMonth()];
-    const day = displayDate.getDate();
-    const year = displayDate.getFullYear();
-    document.getElementById('currentDateDisplay').textContent = `${month} ${day}, ${year}`;
-    
-    // Update the calendar's selected date
+    document.getElementById('datePickerField').value = displayDate.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('currentDateDisplay').textContent = `${monthNames[displayDate.getMonth()]} ${displayDate.getDate()}, ${displayDate.getFullYear()}`;
     calendarDates.main.selectedDate = dateStr;
     updateCalendar('main');
-    
-    // Reload the page with the new date
     window.location.href = 'stock_tracker.php?date=' + dateStr;
 }
 
-// Open modals
 function openStockOutModal() {
     document.getElementById('stockOutModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -2891,49 +2638,266 @@ function openViewStockOutModal() {
     }, 100);
 }
 
-// Export functions
-function exportDailyData() {
-    const date = document.getElementById('datePicker').value;
-    const rows = document.querySelectorAll('#dailyTab .tracker-table tbody tr');
-    let csv = 'Date,Item No,Description,Category,Unit,Quantity,Reference\n';
+// ========== EXPORT FUNCTIONS ==========
+
+function openExportDateRangeModal() {
+    const modalHtml = `
+        <div id="exportDateRangeModal" class="modal" style="display: block; z-index: 10001;">
+            <div class="modal-content" style="max-width: 700px; width: 90%;">
+                <div class="modal-header" style="background: linear-gradient(135deg, #75e6da, #5fd9d0); padding: 20px 25px;">
+                    <h2><i class="fas fa-calendar-alt"></i> Export Stock Movements</h2>
+                    <button class="close-btn" onclick="closeExportDateRangeModal()">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 30px; min-height: 350px;">
+                    <div style="display: flex; gap: 30px; align-items: flex-start; flex-wrap: wrap;">
+                        <!-- From Date Column -->
+                        <div style="flex: 1; min-width: 250px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 10px;"><i class="fas fa-calendar-alt" style="color: #75e6da; margin-right: 8px;"></i> From Date</label>
+                                <div class="date-picker-wrapper" style="position: relative;">
+                                    <div class="date-input-group">
+                                        <input type="text" id="exportFromField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('exportFrom')" style="cursor: pointer; width: 100%; padding: 12px 15px; font-size: 14px; height: 45px;">
+                                        <input type="hidden" id="exportFrom" value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>">
+                                        <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('exportFrom')" style="font-size: 16px;"><i class="fas fa-chevron-down"></i></button>
+                                    </div>
+                                    <div class="calendar-wrapper" id="exportFromCalendar" style="position: absolute; top: 100%; left: 0; right: auto; transform: none; width: 300px; z-index: 10002;">
+                                        <div class="calendar-box">
+                                            <div class="calendar-header"><div class="calendar-month-year" id="exportFromMonthYear"></div><div class="calendar-nav"><button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportFrom', -1)">‹</button><button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportFrom', 1)">›</button></div></div>
+                                            <div class="calendar-selectors"><select id="exportFromMonthSelect" class="calendar-select" onchange="changeMonthYear('exportFrom')"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select><select id="exportFromYearSelect" class="calendar-select" onchange="changeMonthYear('exportFrom')"></select></div>
+                                            <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                            <div class="calendar-days-grid" id="exportFromDaysGrid"></div>
+                                            <div class="calendar-footer"><button type="button" class="calendar-action-btn clear" onclick="clearDate('exportFrom')"><i class="fas fa-times"></i> Clear</button><button type="button" class="calendar-action-btn today" onclick="setToday('exportFrom')"><i class="fas fa-calendar-check"></i> Today</button></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- To Date Column -->
+                        <div style="flex: 1; min-width: 250px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 14px; margin-bottom: 10px;"><i class="fas fa-calendar-alt" style="color: #75e6da; margin-right: 8px;"></i> To Date</label>
+                                <div class="date-picker-wrapper" style="position: relative;">
+                                    <div class="date-input-group">
+                                        <input type="text" id="exportToField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('exportTo')" style="cursor: pointer; width: 100%; padding: 12px 15px; font-size: 14px; height: 45px;">
+                                        <input type="hidden" id="exportTo" value="<?php echo date('Y-m-d'); ?>">
+                                        <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('exportTo')" style="font-size: 16px;"><i class="fas fa-chevron-down"></i></button>
+                                    </div>
+                                    <div class="calendar-wrapper" id="exportToCalendar" style="position: absolute; top: 100%; left: 0; right: auto; transform: none; width: 300px; z-index: 10002;">
+                                        <div class="calendar-box">
+                                            <div class="calendar-header"><div class="calendar-month-year" id="exportToMonthYear"></div><div class="calendar-nav"><button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportTo', -1)">‹</button><button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportTo', 1)">›</button></div></div>
+                                            <div class="calendar-selectors"><select id="exportToMonthSelect" class="calendar-select" onchange="changeMonthYear('exportTo')"><option value="0">January</option><option value="1">February</option><option value="2">March</option><option value="3">April</option><option value="4">May</option><option value="5">June</option><option value="6">July</option><option value="7">August</option><option value="8">September</option><option value="9">October</option><option value="10">November</option><option value="11">December</option></select><select id="exportToYearSelect" class="calendar-select" onchange="changeMonthYear('exportTo')"></select></div>
+                                            <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                            <div class="calendar-days-grid" id="exportToDaysGrid"></div>
+                                            <div class="calendar-footer"><button type="button" class="calendar-action-btn clear" onclick="clearDate('exportTo')"><i class="fas fa-times"></i> Clear</button><button type="button" class="calendar-action-btn today" onclick="setToday('exportTo')"><i class="fas fa-calendar-check"></i> Today</button></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 20px 25px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeExportDateRangeModal()" style="padding: 10px 20px; font-size: 14px;"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="exportWithDateRange()" style="background: linear-gradient(135deg, #75e6da, #5fd9d0); padding: 10px 25px; font-size: 14px;"><i class="fas fa-download"></i> Export</button>
+                </div>
+            </div>
+        </div>
+    `;
     
-    rows.forEach(row => {
-        if (row.style.display !== 'none' && row.cells.length > 1) {
-            const cells = row.querySelectorAll('td');
-            csv += `"${document.getElementById('currentDateDisplay').textContent}","${cells[0]?.textContent.trim() || ''}","${cells[1]?.textContent.trim() || ''}","${cells[2]?.textContent.trim() || ''}","${cells[3]?.textContent.trim() || ''}","${cells[5]?.textContent.trim() || ''}","${cells[6]?.textContent.trim() || ''}"\n`;
+    const existingModal = document.getElementById('exportDateRangeModal');
+    if (existingModal) existingModal.remove();
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize year selects for export calendars after modal is added to DOM
+    setTimeout(() => {
+        // Populate year selects for export calendars
+        const exportFromYearSelect = document.getElementById('exportFromYearSelect');
+        const exportToYearSelect = document.getElementById('exportToYearSelect');
+        const currentYear = new Date().getFullYear();
+        const startYear = 2000;
+        const endYear = 2030;
+        
+        if (exportFromYearSelect) {
+            exportFromYearSelect.innerHTML = '';
+            for (let year = startYear; year <= endYear; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                exportFromYearSelect.appendChild(option);
+            }
         }
-    });
+        
+        if (exportToYearSelect) {
+            exportToYearSelect.innerHTML = '';
+            for (let year = startYear; year <= endYear; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentYear) {
+                    option.selected = true;
+                }
+                exportToYearSelect.appendChild(option);
+            }
+        }
+        
+        // Initialize calendar dates for export
+        const fromDate = '<?php echo date('Y-m-d', strtotime('-30 days')); ?>';
+        const toDate = '<?php echo date('Y-m-d'); ?>';
+        
+        if (fromDate) {
+            calendarDates.exportFrom.selectedDate = fromDate;
+            calendarDates.exportFrom.currentDate = new Date(fromDate);
+            const date = new Date(fromDate);
+            const fromField = document.getElementById('exportFromField');
+            if (fromField) {
+                fromField.value = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+            }
+        }
+        
+        if (toDate) {
+            calendarDates.exportTo.selectedDate = toDate;
+            calendarDates.exportTo.currentDate = new Date(toDate);
+            const date = new Date(toDate);
+            const toField = document.getElementById('exportToField');
+            if (toField) {
+                toField.value = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+            }
+        }
+        
+        // Update calendars
+        updateCalendar('exportFrom');
+        updateCalendar('exportTo');
+        
+        // Position calendars to prevent overlap
+        const fromCalendar = document.getElementById('exportFromCalendar');
+        const toCalendar = document.getElementById('exportToCalendar');
+        
+        if (fromCalendar) {
+            fromCalendar.style.position = 'absolute';
+            fromCalendar.style.top = '100%';
+            fromCalendar.style.left = '0';
+            fromCalendar.style.right = 'auto';
+            fromCalendar.style.transform = 'none';
+        }
+        
+        if (toCalendar) {
+            toCalendar.style.position = 'absolute';
+            toCalendar.style.top = '100%';
+            toCalendar.style.left = '0';
+            toCalendar.style.right = 'auto';
+            toCalendar.style.transform = 'none';
+        }
+    }, 50);
+}
+
+function closeExportDateRangeModal() {
+    const modal = document.getElementById('exportDateRangeModal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            modal.remove();
+            document.body.style.overflow = 'auto';
+        }, 200);
+    }
+}
+
+function exportWithDateRange() {
+    const fromDate = document.getElementById('exportFrom')?.value;
+    const toDate = document.getElementById('exportTo')?.value;
     
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'stock_tracker_' + date + '.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    alert('Daily data exported successfully!');
+    if (!fromDate || !toDate) {
+        showCustomNotification('Please select both from and to dates', 'error');
+        return;
+    }
+    
+    closeExportDateRangeModal();
+    
+    showCustomNotification('Generating report...', 'info');
+    
+    window.location.href = `export_stock_range.php?from=${fromDate}&to=${toDate}&type=detailed`;
 }
 
 function exportStockOutData() {
-    const rows = document.querySelectorAll('#stockOutTableBody .stock-out-row');
-    let csv = 'Item No,Description,Category,Unit,Date & Time,Quantity,Site/Location,Reference\n';
+    // Get the date range values
+    const fromDateField = document.getElementById('dateFromField');
+    const toDateField = document.getElementById('dateToField');
+    const fromDate = fromDateField ? fromDateField.value : '';
+    const toDate = toDateField ? toDateField.value : '';
     
-    rows.forEach(row => {
-        if (row.style.display !== 'none') {
-            const cells = row.querySelectorAll('td');
-            csv += `"${cells[0]?.textContent.trim() || ''}","${cells[1]?.textContent.trim() || ''}","${cells[2]?.textContent.trim() || ''}","${cells[3]?.textContent.trim() || ''}","${cells[4]?.textContent.trim() || ''}","${cells[5]?.textContent.trim() || ''}","${cells[6]?.textContent.trim() || ''}","${cells[7]?.textContent.trim() || ''}"\n`;
+    // Get data from the pull-out history table
+    const tbody = document.getElementById('stockOutTableBody');
+    const rows = tbody.querySelectorAll('.stock-out-row');
+    
+    // Filter visible rows only
+    const visibleRows = Array.from(rows).filter(row => row.style.display !== 'none');
+    
+    if (visibleRows.length === 0) {
+        showCustomNotification('No data to export', 'error');
+        return;
+    }
+    
+    // Create CSV content with title and date range headers
+    let csv = '';
+    
+    // Add title
+    csv += '"PULL-OUT HISTORY REPORT"\n';
+    csv += '\n';
+    
+    // Add date range information
+    csv += `"From Date:","${fromDate}"\n`;
+    csv += `"To Date:","${toDate}"\n`;
+    csv += `"Export Date:","${new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}"\n`;
+    csv += `"Total Records:","${visibleRows.length}"\n`;
+    csv += '\n';
+    
+    // Add column headers (7 columns including Site/Location)
+  csv += 'Item No,Description,Category,Unit,Date,Quantity,Site / Location\n';
+    
+    visibleRows.forEach(row => {
+        const cells = row.cells;
+        if (cells.length >= 7) {
+            const itemNo = cells[0]?.textContent.trim() || '';
+            const description = cells[1]?.textContent.trim() || '';
+            
+            // Category - get plain text without badge styling
+            let category = cells[2]?.textContent.trim() || '';
+            if (category === '—' || category === '-') category = '';
+            
+            const unit = cells[3]?.textContent.trim() || '';
+            const dateTime = cells[4]?.textContent.trim() || '';
+            
+            // Quantity - keep the negative sign and number
+            let quantity = cells[5]?.textContent.trim() || '0';
+            
+            // Site/Location - get text without badge styling
+            let siteLocation = cells[6]?.textContent.trim() || '';
+            if (siteLocation === '—' || siteLocation === '-') siteLocation = '';
+            
+            csv += `"${itemNo}","${description}","${category}","${unit}","${dateTime}","${quantity}","${siteLocation}"\n`;
         }
     });
     
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'stock_out_history_' + new Date().toISOString().split('T')[0] + '.csv';
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    
+    // Create filename with date range
+    const filename = `pullout_history_${fromDate.replace(/\//g, '-')}_to_${toDate.replace(/\//g, '-')}.csv`;
+    a.download = filename;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(a.href);
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     
     showCustomNotification('Pull-out History exported successfully!', 'success');
 }
-
 function showCustomNotification(message, type = 'success') {
     const existing = document.querySelector('.custom-notification');
     if (existing) existing.remove();
@@ -2941,26 +2905,13 @@ function showCustomNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = 'custom-notification';
     notification.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 99999;
-        padding: 15px 25px;
-        background: ${type === 'success' ? 'linear-gradient(135deg, #00b894, #75e6da)' : '#d63031'};
-        color: ${type === 'success' ? '#1a1c3c' : 'white'};
-        border-radius: 8px;
-        box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
-        animation: slideInRight 0.3s ease;
-        max-width: 400px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        position: fixed; top: 20px; right: 20px; z-index: 99999; padding: 15px 25px;
+        background: ${type === 'success' ? 'linear-gradient(135deg, #75e6da, #5fd9d0)' : (type === 'error' ? '#d63031' : '#3498db')};
+        color: ${type === 'success' ? '#1a1c3c' : 'white'}; border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(117, 230, 218, 0.3); animation: slideInRight 0.3s ease;
+        max-width: 400px; font-weight: 600; display: flex; align-items: center; gap: 10px;
     `;
-    notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}" style="font-size: 20px;"></i>
-        <span>${message}</span>
-    `;
+    notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle')}" style="font-size: 20px;"></i><span>${message}</span>`;
     document.body.appendChild(notification);
     
     setTimeout(() => {
@@ -2969,17 +2920,79 @@ function showCustomNotification(message, type = 'success') {
     }, 3000);
 }
 
-// Close modal when clicking outside
+function printPulloutHistory() {
+    const fromDate = document.getElementById('dateFromField')?.value || '';
+    const toDate = document.getElementById('dateToField')?.value || '';
+    
+    const visibleRows = Array.from(document.querySelectorAll('#stockOutTableBody .stock-out-row')).filter(row => row.style.display !== 'none');
+    
+    if (visibleRows.length === 0) {
+        showCustomNotification('No data to print', 'error');
+        return;
+    }
+    
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Pull-out History Report</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; padding: 20px; }
+                h2 { color: #333; border-bottom: 2px solid #75e6da; padding-bottom: 10px; }
+                .report-header { margin-bottom: 20px; }
+                .report-header p { margin: 5px 0; color: #666; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th { background: linear-gradient(135deg, #75e6da, #62d4c8); color: white; padding: 10px; text-align: left; border: 1px solid #ddd; }
+                td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+                .stock-out { color: #d63031; font-weight: bold; }
+                .category-badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+                .site-badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; background: linear-gradient(135deg, #00b894, #75e6da); color: #1a1c3c; }
+                .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 20px; }
+                @media print { body { margin: 0; padding: 10px; } }
+            </style>
+        </head>
+        <body>
+            <div class="report-header">
+                <h2>Pull-out History Report</h2>
+                <p><strong>Date Range:</strong> ${fromDate} - ${toDate}</p>
+                <p><strong>Generated on:</strong> ${new Date().toLocaleString()}</p>
+                <p><strong>Total Records:</strong> ${visibleRows.length}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Item No</th><th>Description</th><th>Category</th><th>Unit</th><th>Date</th><th>Quantity</th><th>Site / Location</th></tr>
+                </thead>
+                <tbody>
+                    ${visibleRows.map(row => {
+                        const cells = row.cells;
+                        return `<tr>
+                            <td>${cells[0]?.textContent.trim() || 'N/A'}</td>
+                            <td>${cells[1]?.textContent.trim() || 'N/A'}</td>
+                            <td>${cells[2]?.innerHTML || '—'}</td>
+                            <td>${cells[3]?.textContent.trim() || 'pcs'}</td>
+                            <td>${cells[4]?.textContent.trim() || 'N/A'}</td>
+                            <td class="stock-out">${cells[5]?.textContent.trim() || '0'}</td>
+                            <td>${cells[6]?.textContent.trim() || '—'}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>
+            <div class="footer"><p>This is a system-generated report from Stock Tracker</p></div>
+            <script>window.onload = function() { window.print(); setTimeout(function() { window.close(); }, 500); };<\/script>
+        </body>
+        </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+}
+
 window.onclick = function(event) {
-    if (event.target == document.getElementById('stockOutModal')) {
-        closeStockOutModal();
-    }
-    if (event.target == document.getElementById('viewStockOutModal')) {
-        closeViewStockOutModal();
-    }
+    if (event.target == document.getElementById('stockOutModal')) closeStockOutModal();
+    if (event.target == document.getElementById('viewStockOutModal')) closeViewStockOutModal();
 };
 
-// Auto-hide alerts
 setTimeout(() => {
     document.querySelectorAll('.alert').forEach(alert => {
         alert.style.opacity = '0';
@@ -2987,11 +3000,8 @@ setTimeout(() => {
     });
 }, 3000);
 
-// Check if URL has hash to open modal
 if (window.location.hash === '#viewStockOutModal') {
-    setTimeout(() => {
-        openViewStockOutModal();
-    }, 100);
+    setTimeout(() => openViewStockOutModal(), 100);
 }
 </script>
 

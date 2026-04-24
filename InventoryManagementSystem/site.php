@@ -24,7 +24,7 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Create deduction_history table if not exists
+// Create deduction_history table if not exists (with remarks)
 $create_history_table = "CREATE TABLE IF NOT EXISTS deduction_history (
     id INT AUTO_INCREMENT PRIMARY KEY,
     site_id INT NOT NULL,
@@ -37,6 +37,7 @@ $create_history_table = "CREATE TABLE IF NOT EXISTS deduction_history (
     new_quantity INT NOT NULL,
     reference VARCHAR(100),
     notes TEXT,
+    remarks TEXT,
     deducted_by INT,
     deducted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE CASCADE,
@@ -45,6 +46,14 @@ $create_history_table = "CREATE TABLE IF NOT EXISTS deduction_history (
     INDEX idx_site_id (site_id)
 )";
 $conn->query($create_history_table);
+
+// Add remarks column if not exists (for existing tables)
+$check_column_sql = "SHOW COLUMNS FROM deduction_history LIKE 'remarks'";
+$check_result = $conn->query($check_column_sql);
+if ($check_result && $check_result->num_rows == 0) {
+    $add_remarks_column = "ALTER TABLE deduction_history ADD COLUMN remarks TEXT AFTER notes";
+    $conn->query($add_remarks_column);
+}
 
 // Create sites table if not exists
 $create_sites_table = "CREATE TABLE IF NOT EXISTS sites (
@@ -135,10 +144,9 @@ $date_to = isset($_GET['to']) ? $_GET['to'] : date('Y-m-d');
 $single_date = isset($_GET['date']) ? $_GET['date'] : '';
 $site_filter = isset($_GET['site']) ? $_GET['site'] : '';
 
-// Get sites - FILTER BY SITE IF SELECTED
+// Get sites
 $sites_sql = "SELECT id, site_name, location_description, created_at FROM sites ORDER BY site_name";
 
-// Apply site filter if selected
 if (!empty($site_filter)) {
     $sites_sql = "SELECT id, site_name, location_description, created_at FROM sites WHERE site_name = ? ORDER BY site_name";
     $sites_stmt = $conn->prepare($sites_sql);
@@ -158,17 +166,16 @@ if ($sites_result) {
     }
 }
 
-// Close prepared statement if used
 if (isset($sites_stmt)) {
     $sites_stmt->close();
 }
+
 // Get selected site for viewing deployed items
 $selected_site = isset($_GET['view_site']) ? $_GET['view_site'] : '';
 $deployed_items = [];
 $selected_site_details = null;
 
 if ($selected_site) {
-    // Get site details
     $site_detail_sql = "SELECT * FROM sites WHERE site_name = ?";
     $site_detail_stmt = $conn->prepare($site_detail_sql);
     $site_detail_stmt->bind_param("s", $selected_site);
@@ -176,7 +183,6 @@ if ($selected_site) {
     $site_detail_result = $site_detail_stmt->get_result();
     $selected_site_details = $site_detail_result->fetch_assoc();
     
-    // Get deployed items for this site
     $deployed_sql = "SELECT 
                         sm.id,
                         sm.created_at,
@@ -200,8 +206,7 @@ if ($selected_site) {
     $deployed_items = $deployed_stmt->get_result();
 }
 
-// Get statistics for filtered date range
-// Get statistics for filtered date and site
+// Get statistics
 $stats_sql = "SELECT 
                 COUNT(*) as total_pullouts,
                 SUM(quantity) as total_quantity
@@ -289,52 +294,39 @@ body.light-theme {
     --hover-bg: #f8fafc;
 }
 
-/* Main Content Area */
+html, body {
+    margin: 0;
+    padding: 0;
+    border: none;
+    background-color: var(--bg-primary) !important;
+}
+
 .content {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
+    display: block;
+    height: auto;
+    overflow: visible;
+    background-color: var(--bg-primary) !important;
 }
 
 .main-content {
-    flex: 1;
     padding: 20px 40px 0 40px;
     width: 100%;
-    height: 100%;
-   overflow-y: auto;  /* Only shows scrollbar when needed */
-    overflow-x: hidden;
-    background-color: var(--bg-primary);
+    background-color: var(--bg-primary) !important;
     color: var(--text-primary);
     position: relative;
     display: flex;
     justify-content: center;
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
     transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-.main-content::-webkit-scrollbar {
-    width: 12px;
-}
-
-.main-content::-webkit-scrollbar-track {
-    background: var(--bg-secondary);
-    border-radius: 10px;
-}
-
-.main-content::-webkit-scrollbar-thumb {
-    background: var(--accent-color);
-    border-radius: 10px;
-    border: 3px solid var(--bg-secondary);
-}
-
-.main-content::-webkit-scrollbar-thumb:hover {
-    background: #62d4c8;
+    overflow: visible !important;
+    height: auto !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 .dashboard-container {
-    overflow: visible;  /* No internal scrolling */
+    overflow: visible;
+    width: 100%;
 }
 
 /* Dashboard Header */
@@ -463,6 +455,9 @@ body.light-theme {
     font-size: 42px;
     color: var(--accent-color);
     opacity: 0.8;
+    background: transparent !important;
+    box-shadow: none !important;
+    border: none !important;
 }
 
 /* Filter Section */
@@ -551,17 +546,18 @@ body.light-theme {
     transform: translateY(-50%) scale(1.1);
 }
 
+/* COMPACT CALENDAR STYLES - SUPER COMPACT FOR DEDUCTION HISTORY */
 .calendar-wrapper {
     position: absolute;
     top: calc(100% + 5px);
     left: 50% !important;
     transform: translateX(-50%) !important;
-    width: 40% !important;
+    width: 240px !important;
     min-width: 240px;
     right: auto !important;
     background: var(--card-bg);
     border: 2px solid var(--accent-color);
-    border-radius: 12px;
+    border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     z-index: 2000;
     display: none;
@@ -574,7 +570,7 @@ body.light-theme {
 .calendar-box {
     width: 100%;
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: 8px;
     overflow: hidden;
 }
 
@@ -584,16 +580,17 @@ body.light-theme {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 8px;
+    padding: 3px 5px;
 }
 
 .calendar-month-year {
-    font-size: 0.8rem;
+    font-size: 0.6rem;
+    font-weight: 600;
 }
 
 .calendar-nav {
     display: flex;
-    gap: 8px;
+    gap: 3px;
 }
 
 .calendar-nav-btn {
@@ -601,14 +598,14 @@ body.light-theme {
     border: none;
     color: white;
     border-radius: 50%;
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.3s;
-    font-size: 0.9rem;
+    font-size: 0.7rem;
 }
 
 .calendar-nav-btn:hover {
@@ -618,32 +615,28 @@ body.light-theme {
 
 .calendar-selectors {
     display: flex;
-    gap: 8px;
-    padding: 10px 10px 5px 10px;
+    gap: 3px;
+    padding: 4px 4px 2px 4px;
     background: var(--card-bg);
 }
 
 .calendar-select {
     flex: 1;
-    border: 2px solid var(--border-color);
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
     font-weight: 600;
     color: var(--text-primary);
     background: var(--bg-primary);
     cursor: pointer;
     transition: all 0.3s;
     outline: none;
-    padding: 3px 5px;
-    font-size: 0.65rem;
+    padding: 1px 2px;
+    font-size: 0.5rem;
+    height: 18px;
 }
 
 .calendar-select:hover {
     border-color: var(--accent-color);
-}
-
-.calendar-select:focus {
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.25);
 }
 
 .calendar-weekdays {
@@ -653,15 +646,15 @@ body.light-theme {
     text-align: center;
     font-weight: 600;
     color: var(--text-primary);
-    padding: 5px 2px;
-    font-size: 0.65rem;
+    padding: 2px 1px;
+    font-size: 0.5rem;
 }
 
 .calendar-days-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
-    padding: 8px 5px;
+    padding: 3px 2px;
     background: var(--card-bg);
 }
 
@@ -678,8 +671,8 @@ body.light-theme {
     border: none;
     background: none;
     width: 100%;
-    padding: 3px;
-    font-size: 0.7rem;
+    padding: 1px;
+    font-size: 0.55rem;
 }
 
 .calendar-day:hover {
@@ -694,7 +687,7 @@ body.light-theme {
 }
 
 .calendar-day.today {
-    border: 2px solid var(--accent-color);
+    border: 1px solid var(--accent-color);
     font-weight: 600;
 }
 
@@ -704,7 +697,7 @@ body.light-theme {
 
 .calendar-day.other-month {
     color: var(--text-secondary);
-    opacity: 0.5;
+    opacity: 0.4;
 }
 
 .calendar-footer {
@@ -712,21 +705,21 @@ body.light-theme {
     border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
-    padding: 5px 8px;
+    padding: 2px 4px;
 }
 
 .calendar-action-btn {
-    border-radius: 5px;
+    border-radius: 3px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s;
     text-decoration: none;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     border: none;
-    padding: 3px 8px;
-    font-size: 0.65rem;
+    padding: 2px 4px;
+    font-size: 0.5rem;
 }
 
 .calendar-action-btn.clear {
@@ -750,7 +743,6 @@ body.light-theme {
 .calendar-action-btn.today:hover {
     background: #62d4c8;
 }
-
 .filter-group select {
     width: 100%;
     padding: 10px 12px;
@@ -819,6 +811,7 @@ body.light-theme {
     width: 100%;
     border: 1px solid var(--border-color);
     margin-bottom: 20px;
+    overflow: visible;
 }
 
 .sites-header {
@@ -846,11 +839,9 @@ body.light-theme {
     color: var(--accent-color);
 }
 
-/* Sites List */
 .sites-list {
-   margin-bottom: 20px;
-    overflow: visible;  /* No scrollbar */
-    max-height: none;   /* No height restriction */
+    overflow: visible;
+    max-height: none;
 }
 
 .site-item {
@@ -1004,20 +995,309 @@ body.light-theme {
     animation: slideInUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Extra Large Modal for Deployed Items */
+/* Extra Large Modal for Deployed Items and Deduction History */
 .modal-content-extra-large {
     max-width: 1400px !important;
     width: 95% !important;
     margin: 20px auto !important;
     max-height: 90vh !important;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-content-extra-large .modal-body {
-    max-height: calc(90vh - 130px);
+    flex: 1;
     overflow-y: auto;
     padding: 20px;
+    min-height: 0;
+}
+
+/* Large Modal for Deduction - WITH SCROLLBAR AND ALWAYS VISIBLE FOOTER */
+.modal-content-large {
+    max-width: 1200px !important;
+    width: 90% !important;
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.modal-content-large .modal-header {
+    flex-shrink: 0 !important;
+}
+
+.modal-content-large .modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    padding: 20px;
+    min-height: 150px !important; /* Minimum height even when empty */
+}
+
+.modal-content-large .modal-footer {
+    flex-shrink: 0 !important;
+    padding: 15px 25px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 12px;
+}
+
+/* ============================================ */
+/* DEDUCTION MODAL - WITH SCROLLBAR AND ALWAYS VISIBLE FOOTER */
+/* ============================================ */
+.modal-content-large {
+    max-width: 1200px !important;
+    width: 90% !important;
+    max-height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+.modal-content-large .modal-header {
+    flex-shrink: 0 !important;
+}
+
+.modal-content-large .modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    padding: 20px;
+    min-height: 150px !important;
+}
+
+.modal-content-large .modal-footer {
+    flex-shrink: 0 !important;
+    padding: 15px 25px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex !important;
+    justify-content: flex-end !important;
+    gap: 12px;
+}
+
+/* Deduction Modal specific fixes */
+#deductionModal .modal-content {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    max-height: 85vh !important;
+}
+
+#deductionModal .modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    min-height: 150px !important;
+}
+
+#deductionModal .modal-footer {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+
+#deductionForm {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+}
+
+#deductionForm .modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    min-height: 150px !important;
+}
+
+#deductionItemsContainer {
+    min-height: 120px;
+}
+
+#deductionItemsContainer .empty-deployed {
+    padding: 30px 20px !important;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#deductionItemsContainer .empty-deployed i {
+    font-size: 48px !important;
+    margin-bottom: 12px !important;
+}
+
+#deductionItemsContainer .empty-deployed p {
+    margin-bottom: 8px;
+}
+
+#deductionItemsContainer .empty-deployed .sub-text {
+    font-size: 13px;
+}
+
+#deductionItemsContainer .loading-spinner {
+    padding: 30px 20px !important;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#deductionItemsContainer .loading-spinner i {
+    font-size: 36px !important;
+    margin-bottom: 12px !important;
+}
+
+/* Remarks Section Toggle */
+#remarksSection {
+    margin-top: 20px;
+    display: none;
+}
+
+/* ============================================ */
+/* DEDUCTION HISTORY MODAL - INCREASED HEIGHT WITH VISIBLE SCROLLBAR */
+/* ============================================ */
+#deductionHistoryModal .modal-content {
+    max-width: 1400px !important;
+    width: 95% !important;
+    margin: 20px auto !important;
+    max-height: 90vh !important;
+    height: 85vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+#deductionHistoryModal .modal-header {
+    flex-shrink: 0 !important;
+}
+
+#deductionHistoryModal .modal-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    padding: 20px;
+    min-height: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#deductionHistoryModal .modal-footer {
+    flex-shrink: 0 !important;
+    padding: 15px 25px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+/* History Stats - Compact with Dark Background */
+.history-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 12px 15px;
+     background: var(--bg-primary);
+    border-radius: 12px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.history-stat-item {
+    flex: 1;
+    text-align: center;
+}
+
+.history-stat-item .label {
+    font-size: 11px;
+    opacity: 0.9;
+    margin-bottom: 4px;
+}
+
+.history-stat-item .value {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+/* History Table Container - NO INNER SCROLLBAR (Modal body handles scrolling) */
+#historyTableContainer {
+    flex: 1 1 auto;
+    min-height: 200px;
+    overflow: visible;
+}
+
+#historyTableContainer .deployed-table-container {
+    max-height: none !important;
+    overflow-y: visible !important;
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+/* Horizontal scrollbar only (for wide tables) */
+#historyTableContainer .deployed-table-container::-webkit-scrollbar {
+    height: 8px;
+    width: 0;  /* No vertical scrollbar */
+}
+
+#historyTableContainer .deployed-table-container::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: 10px;
+}
+
+#historyTableContainer .deployed-table-container::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 10px;
+}
+
+#historyTableContainer .deployed-table-container::-webkit-scrollbar-thumb:hover {
+    background: #62d4c8;
+}
+
+#historyTableContainer .deployed-table-container::-webkit-scrollbar-corner {
+    background: var(--bg-secondary);
+}
+
+/* Make table header sticky */
+#historyTableContainer .deployed-table th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Deduction History Modal - Table Header Background #272757 */
+#historyTableContainer .deployed-table th {
+    background: #272757 !important;
+    color: white !important;
+    padding: 12px 12px;
+    font-size: 12px;
+    white-space: nowrap;
+    border-bottom: 2px solid var(--border-color);
+}
+#historyTableContainer .deployed-table td {
+    padding: 10px 12px;
+    font-size: 12px;
+}
+
+/* Responsive for History Modal */
+@media (max-width: 768px) {
+    #deductionHistoryModal .modal-content {
+        width: 98% !important;
+        height: 90vh !important;
+        margin: 10px !important;
+    }
+    
+    #historyTableContainer .deployed-table-container {
+        max-height: 350px;
+    }
+}
+
+@media (max-width: 480px) {
+    #historyTableContainer .deployed-table-container {
+        max-height: 300px;
+    }
 }
 
 /* Search Bar Styles */
@@ -1086,7 +1366,7 @@ body.light-theme {
     font-size: 16px;
 }
 
-/* Deployed Table Container - Scrollable */
+/* Deployed Table Container */
 .deployed-table-container {
     overflow-x: auto;
     overflow-y: auto;
@@ -1114,7 +1394,11 @@ body.light-theme {
     top: 0;
     z-index: 10;
 }
-
+/* Override table header background for deduction history */
+#historyTableContainer .deployed-table th {
+    background: #272757 !important;
+    color: white !important;
+}
 .deployed-table td {
     padding: 12px 15px;
     border-bottom: 1px solid var(--border-color);
@@ -1127,7 +1411,6 @@ body.light-theme {
     background: var(--bg-secondary);
 }
 
-/* Keep Item No and Description left-aligned for readability */
 .deployed-table td:first-child,
 .deployed-table th:first-child {
     text-align: left;
@@ -1138,51 +1421,109 @@ body.light-theme {
     text-align: left;
 }
 
-/* All other columns centered */
-.deployed-table td:nth-child(3),
-.deployed-table th:nth-child(3),
-.deployed-table td:nth-child(4),
-.deployed-table th:nth-child(4),
-.deployed-table td:nth-child(5),
-.deployed-table th:nth-child(5) {
+/* Deduction Items Table */
+.deduction-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.deduction-items-table th {
+    background: var(--bg-secondary);
+    padding: 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.deduction-items-table td {
+    padding: 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    vertical-align: middle;
+}
+
+.deduction-items-table tr:hover {
+    background: var(--bg-secondary);
+}
+
+.deduction-items-table input[type="number"] {
+    width: 100px;
+    padding: 8px 10px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
     text-align: center;
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
-/* Category badge styling */
-.category-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
+.deduction-items-table input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(117,230,218,0.2);
+}
+
+.current-qty-badge {
+    display: inline-block;
+    background: var(--accent-gradient);
     padding: 4px 12px;
     border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    white-space: nowrap;
-}
-
-/* Unit badge styling */
-.unit-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #6c5ce7, #75e6da);
-    color: white;
-    white-space: nowrap;
-}
-
-/* Quantity styling */
-.deployed-table td:nth-child(4) {
-    color: #e74c3c;
+    font-size: 13px;
     font-weight: 700;
-    font-size: 18px;
+    color: white;
+}
+
+/* Plain text category and unit display */
+.category-plain {
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.unit-plain {
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+/* Remarks Textarea */
+.remarks-textarea {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.3s;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.remarks-textarea:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+}
+
+.remarks-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.remarks-label i {
+    color: var(--accent-color);
+    margin-right: 8px;
 }
 
 /* Empty State */
@@ -1213,7 +1554,13 @@ body.light-theme {
     display: block;
 }
 
-/* Scrollbar Styling */
+/* View Deployed Items Modal - Table Header Background #272757 */
+#viewSiteItemsContainer .deployed-table th {
+    background: #272757 !important;
+    color: white !important;
+}
+
+/* Scrollbar Styling - VISIBLE */
 .deployed-table-container::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -1233,79 +1580,27 @@ body.light-theme {
     background: #62d4c8;
 }
 
-/* Deduction Items Styles */
-.deduction-items-table {
-    width: 100%;
-    border-collapse: collapse;
+/* Modal Body Scrollbar - ALWAYS VISIBLE */
+.modal-content-large .modal-body::-webkit-scrollbar,
+.modal-content-extra-large .modal-body::-webkit-scrollbar {
+    width: 8px;
 }
 
-.deduction-items-table th {
+.modal-content-large .modal-body::-webkit-scrollbar-track,
+.modal-content-extra-large .modal-body::-webkit-scrollbar-track {
     background: var(--bg-secondary);
-    padding: 12px;
-    text-align: left;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    border-bottom: 2px solid var(--border-color);
+    border-radius: 10px;
 }
 
-.deduction-items-table td {
-    padding: 12px;
-    font-size: 13px;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-secondary);
+.modal-content-large .modal-body::-webkit-scrollbar-thumb,
+.modal-content-extra-large .modal-body::-webkit-scrollbar-thumb {
+    background: var(--accent-color);
+    border-radius: 10px;
 }
 
-.deduction-items-table tr:hover {
-    background: var(--bg-secondary);
-}
-
-.quantity-input-group {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-wrap: wrap;
-}
-
-.quantity-input-group input {
-    width: 100px;
-    padding: 6px 10px;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    text-align: center;
-    font-size: 13px;
-    background: var(--bg-primary);
-    color: var(--text-primary);
-}
-
-.quantity-input-group input:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(117,230,218,0.1);
-}
-
-.current-qty-badge {
-    background: var(--bg-secondary);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 12px;
-    color: var(--text-secondary);
-}
-
-.btn-deduct-all {
-    background: var(--warning-color);
-    color: white;
-    border: none;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-deduct-all:hover {
-    background: #d35400;
-    transform: scale(1.05);
+.modal-content-large .modal-body::-webkit-scrollbar-thumb:hover,
+.modal-content-extra-large .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #62d4c8;
 }
 
 /* Toast Message */
@@ -1332,6 +1627,298 @@ body.light-theme {
 
 .toast-message.error {
     border-left-color: var(--danger-color);
+}
+
+/* Modal Header */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: var(--bg-secondary);
+    border-bottom: 2px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.modal-header h3 i {
+    color: var(--accent-color);
+    margin-right: 10px;
+}
+
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.close-modal:hover {
+    color: var(--danger-color);
+    transform: scale(1.1);
+}
+
+.modal-body {
+    padding: 25px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.modal-footer {
+    padding: 15px 25px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* Form Groups */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.form-group label i {
+    margin-right: 8px;
+    color: var(--accent-color);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+}
+
+textarea.form-control {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: none;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--accent-gradient);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(117,230,218,0.3);
+}
+
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(231,76,60,0.3);
+}
+
+/* Export Modal - LARGER HEIGHT, COMPACT CALENDAR, 3-COLUMN LAYOUT */
+#exportModal .modal-content {
+    max-width: 900px !important;
+    width: 90% !important;
+    max-height: 650px !important;
+    height: 600px !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#exportModal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 25px;
+}
+
+/* Export Date Row - 3 Columns Side by Side */
+.export-date-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 0;
+    align-items: flex-end;
+}
+
+.export-date-row .form-group {
+    flex: 1;
+    margin-bottom: 0;
+    min-width: 0;
+}
+
+/* Site filter in same row */
+.export-site-group {
+    flex: 1;
+    min-width: 0;
+}
+
+.export-site-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.export-site-group label i {
+    margin-right: 8px;
+    color: var(--accent-color);
+}
+
+.export-site-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    font-size: 14px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    height: 42px;
+}
+
+.export-site-group select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.1);
+}
+
+/* History Filter Section with Compact Calendar */
+.history-filter-section {
+    background: var(--bg-secondary);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.history-filter-group {
+    flex: 1;
+    min-width: 180px;
+}
+
+.history-filter-group label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+
+.history-filter-group input,
+.history-filter-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 42px;
+}
+
+.history-filter-group input:focus,
+.history-filter-group select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+/* History Stats - Dark Background */
+.history-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 15px;
+     background: var(--bg-primary);
+    border-radius: 12px;
+    color: white;
+}
+.history-stat-item {
+    flex: 1;
+    text-align: center;
+}
+
+.history-stat-item .label {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-bottom: 5px;
+}
+
+.history-stat-item .value {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* Info Box */
+.info-box {
+    margin-top: 15px;
+    padding: 10px 15px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.info-box small {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.info-box i {
+    color: var(--accent-color);
+    margin-right: 5px;
 }
 
 /* Animations */
@@ -1406,13 +1993,23 @@ body.light-theme {
         justify-content: center;
     }
     
+    .modal-content-extra-large,
     .modal-content-large {
-        width: 95%;
-        margin: 10px;
+        width: 98% !important;
+        margin: 10px !important;
     }
     
     .calendar-wrapper {
-        width: 90% !important;
+        width: 260px !important;
+    }
+    
+    .export-date-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    #exportModal .modal-content {
+        max-height: 80vh !important;
     }
 }
 
@@ -1500,133 +2097,133 @@ body.light-theme {
                 </div>
             </div>
 
-      <!-- Filter Section with Date and Site Filters ONLY -->
-<div class="filter-section">
-    <div class="filter-group">
-        <label><i class="fas fa-calendar-day"></i> Search by Date</label>
-        <div class="date-picker-wrapper">
-            <div class="date-input-group">
-                <input type="text" id="singleDateField" class="date-field" value="<?php echo $single_date ? date('m/d/Y', strtotime($single_date)) : ''; ?>" placeholder="Select date to view inventory" autocomplete="off" readonly onclick="toggleCalendar('single')">
-                <input type="hidden" id="singleDate" name="singleDate" value="<?php echo $single_date; ?>">
-                <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('single')"><i class="fas fa-chevron-down"></i></button>
-            </div>
-            <div class="calendar-wrapper" id="singleCalendar">
-                <div class="calendar-box">
-                    <div class="calendar-header">
-                        <div class="calendar-month-year" id="singleMonthYear"></div>
-                        <div class="calendar-nav">
-                            <button type="button" class="calendar-nav-btn" onclick="navigateMonth('single', -1)">‹</button>
-                            <button type="button" class="calendar-nav-btn" onclick="navigateMonth('single', 1)">›</button>
+            <!-- Filter Section -->
+            <div class="filter-section">
+                <div class="filter-group">
+                    <label><i class="fas fa-calendar-day"></i> Search by Date</label>
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="singleDateField" class="date-field" value="<?php echo $single_date ? date('m/d/Y', strtotime($single_date)) : ''; ?>" placeholder="Select date to view inventory" autocomplete="off" readonly onclick="toggleCalendar('single')">
+                            <input type="hidden" id="singleDate" name="singleDate" value="<?php echo $single_date; ?>">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('single')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="singleCalendar">
+                            <div class="calendar-box">
+                                <div class="calendar-header">
+                                    <div class="calendar-month-year" id="singleMonthYear"></div>
+                                    <div class="calendar-nav">
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('single', -1)">‹</button>
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('single', 1)">›</button>
+                                    </div>
+                                </div>
+                                <div class="calendar-selectors">
+                                    <select id="singleMonthSelect" class="calendar-select" onchange="changeMonthYear('single')">
+                                        <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+                                        <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+                                        <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+                                        <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                                    </select>
+                                    <select id="singleYearSelect" class="calendar-select" onchange="changeMonthYear('single')"></select>
+                                </div>
+                                <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                <div class="calendar-days-grid" id="singleDaysGrid"></div>
+                                <div class="calendar-footer">
+                                    <button type="button" class="calendar-action-btn clear" onclick="clearDate('single')"><i class="fas fa-times"></i> Clear</button>
+                                    <button type="button" class="calendar-action-btn today" onclick="setToday('single')"><i class="fas fa-calendar-check"></i> Today</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="calendar-selectors">
-                        <select id="singleMonthSelect" class="calendar-select" onchange="changeMonthYear('single')">
-                            <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-                            <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-                            <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-                            <option value="9">October</option><option value="10">November</option><option value="11">December</option>
-                        </select>
-                        <select id="singleYearSelect" class="calendar-select" onchange="changeMonthYear('single')"></select>
-                    </div>
-                    <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
-                    <div class="calendar-days-grid" id="singleDaysGrid"></div>
-                    <div class="calendar-footer">
-                        <button type="button" class="calendar-action-btn clear" onclick="clearDate('single')"><i class="fas fa-times"></i> Clear</button>
-                        <button type="button" class="calendar-action-btn today" onclick="setToday('single')"><i class="fas fa-calendar-check"></i> Today</button>
-                    </div>
                 </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-location-dot"></i> Site Location</label>
+                    <select id="siteFilter">
+                        <option value="">All Sites</option>
+                        <?php 
+                        $all_sites_sql = "SELECT site_name FROM sites ORDER BY site_name";
+                        $all_sites_result = $conn->query($all_sites_sql);
+                        if ($all_sites_result) {
+                            while($site_row = $all_sites_result->fetch_assoc()): 
+                        ?>
+                            <option value="<?php echo htmlspecialchars($site_row['site_name']); ?>" <?php echo $site_filter == $site_row['site_name'] ? 'selected' : ''; ?>>
+                                <?php echo htmlspecialchars($site_row['site_name']); ?>
+                            </option>
+                        <?php 
+                            endwhile;
+                        }
+                        ?>
+                    </select>
+                </div>
+                <button class="btn-filter" onclick="applyFilters()"><i class="fas fa-filter"></i> Apply Filter</button>
+                <button class="btn-filter btn-reset" onclick="resetFilters()"><i class="fas fa-undo"></i> Reset</button>
+                <button class="btn-filter" onclick="openExportModal()"><i class="fas fa-download"></i> Export</button>
             </div>
-        </div>
-    </div>
-    <div class="filter-group">
-        <label><i class="fas fa-location-dot"></i> Site Location</label>
-        <select id="siteFilter">
-            <option value="">All Sites</option>
-            <?php 
-            // Get all sites for dropdown (unfiltered)
-            $all_sites_sql = "SELECT site_name FROM sites ORDER BY site_name";
-            $all_sites_result = $conn->query($all_sites_sql);
-            if ($all_sites_result) {
-                while($site_row = $all_sites_result->fetch_assoc()): 
-            ?>
-                <option value="<?php echo htmlspecialchars($site_row['site_name']); ?>" <?php echo $site_filter == $site_row['site_name'] ? 'selected' : ''; ?>>
-                    <?php echo htmlspecialchars($site_row['site_name']); ?>
-                </option>
-            <?php 
-                endwhile;
-            }
-            ?>
-        </select>
-    </div>
-    <button class="btn-filter" onclick="applyFilters()"><i class="fas fa-filter"></i> Apply Filter</button>
-    <button class="btn-filter btn-reset" onclick="resetFilters()"><i class="fas fa-undo"></i> Reset</button>
-    <button class="btn-filter" onclick="openExportModal()"><i class="fas fa-download"></i> Export</button>
-</div>
+            
             <!-- Sites List Section -->
-<div class="sites-container">
-    <div class="sites-header">
-        <h2>
-            <i class="fas fa-building"></i>
-            Saved Sites
-            <?php if (!empty($site_filter)): ?>
-                <span style="font-size: 14px; background: var(--accent-gradient); padding: 4px 12px; border-radius: 20px; margin-left: 10px;">
-                    <i class="fas fa-filter"></i> Filtered: <?php echo htmlspecialchars($site_filter); ?>
-                </span>
-            <?php endif; ?>
-        </h2>
-        <span style="color: var(--text-secondary); font-size: 13px; background: var(--bg-secondary); padding: 5px 12px; border-radius: 20px;">
-            <i class="fas fa-database"></i> Total: <?php echo count($sites); ?> sites
-            <?php if (!empty($site_filter) && count($sites) > 0): ?>
-                <span style="color: var(--accent-color);">(filtered)</span>
-            <?php endif; ?>
-        </span>
-    </div>
-    
-    <?php if (empty($sites)): ?>
-        <div class="empty-deployed">
-            <i class="fas fa-building"></i>
-            <p>No sites found</p>
-            <?php if (!empty($site_filter)): ?>
-                <div class="sub-text">No site matching "<?php echo htmlspecialchars($site_filter); ?>" found. <a href="#" onclick="resetFilters(); return false;" style="color: var(--accent-color);">Clear filter</a> to see all sites.</div>
-            <?php else: ?>
-                <div class="sub-text">Click "Add New Site" to create your first site location.</div>
-            <?php endif; ?>
-        </div>
-    <?php else: ?>
-        <div class="sites-list" id="sitesList">
-            <?php foreach ($sites as $site): ?>
-                <div class="site-item" data-site-name="<?php echo htmlspecialchars(strtolower($site['site_name'])); ?>">
-                    <div class="site-info">
-                        <h4>
-                            <i class="fas fa-map-marker-alt"></i> 
-                            <?php echo htmlspecialchars($site['site_name']); ?>
-                        </h4>
-                        <?php if (!empty($site['location_description'])): ?>
-                            <p><i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($site['location_description']); ?></p>
+            <div class="sites-container">
+                <div class="sites-header">
+                    <h2>
+                        <i class="fas fa-building"></i>
+                        Saved Sites
+                        <?php if (!empty($site_filter)): ?>
+                            <span style="font-size: 14px; background: var(--accent-gradient); padding: 4px 12px; border-radius: 20px; margin-left: 10px;">
+                                <i class="fas fa-filter"></i> Filtered: <?php echo htmlspecialchars($site_filter); ?>
+                            </span>
                         <?php endif; ?>
-                        <div class="site-date">
-                            <i class="fas fa-calendar-alt"></i> Created: <?php echo date('M d, Y', strtotime($site['created_at'])); ?>
-                        </div>
-                    </div>
-                    <div class="site-actions">
-                        <button class="action-btn btn-view" onclick="openViewSiteModal('<?php echo addslashes($site['site_name']); ?>')">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <button class="action-btn btn-deduction" onclick="openDeductionModal('<?php echo addslashes($site['site_name']); ?>', <?php echo $site['id']; ?>)">
-                            <i class="fas fa-minus-circle"></i> Deduct
-                        </button>
-                        <button class="action-btn btn-edit" onclick="openEditSiteModal(<?php echo $site['id']; ?>, '<?php echo addslashes($site['site_name']); ?>', '<?php echo addslashes($site['location_description']); ?>')">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="action-btn btn-delete" onclick="openDeleteSiteModal(<?php echo $site['id']; ?>, '<?php echo addslashes($site['site_name']); ?>')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
+                    </h2>
+                    <span style="color: var(--text-secondary); font-size: 13px; background: var(--bg-secondary); padding: 5px 12px; border-radius: 20px;">
+                        <i class="fas fa-database"></i> Total: <?php echo count($sites); ?> sites
+                        <?php if (!empty($site_filter) && count($sites) > 0): ?>
+                            <span style="color: var(--accent-color);">(filtered)</span>
+                        <?php endif; ?>
+                    </span>
                 </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</div>
+                
+                <?php if (empty($sites)): ?>
+                    <div class="empty-deployed">
+                        <i class="fas fa-building"></i>
+                        <p>No sites found</p>
+                        <?php if (!empty($site_filter)): ?>
+                            <div class="sub-text">No site matching "<?php echo htmlspecialchars($site_filter); ?>" found. <a href="#" onclick="resetFilters(); return false;" style="color: var(--accent-color);">Clear filter</a> to see all sites.</div>
+                        <?php else: ?>
+                            <div class="sub-text">Click "Add New Site" to create your first site location.</div>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="sites-list" id="sitesList">
+                        <?php foreach ($sites as $site): ?>
+                            <div class="site-item" data-site-name="<?php echo htmlspecialchars(strtolower($site['site_name'])); ?>">
+                                <div class="site-info">
+                                    <h4>
+                                        <i class="fas fa-map-marker-alt"></i> 
+                                        <?php echo htmlspecialchars($site['site_name']); ?>
+                                    </h4>
+                                    <?php if (!empty($site['location_description'])): ?>
+                                        <p><i class="fas fa-info-circle"></i> <?php echo htmlspecialchars($site['location_description']); ?></p>
+                                    <?php endif; ?>
+                                    <div class="site-date">
+                                        <i class="fas fa-calendar-alt"></i> Created: <?php echo date('M d, Y', strtotime($site['created_at'])); ?>
+                                    </div>
+                                </div>
+                                <div class="site-actions">
+                                    <button class="action-btn btn-view" onclick="openViewSiteModal('<?php echo addslashes($site['site_name']); ?>')">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                    <button class="action-btn btn-deduction" onclick="openDeductionModal('<?php echo addslashes($site['site_name']); ?>', <?php echo $site['id']; ?>)">
+                                        <i class="fas fa-minus-circle"></i> Deduct
+                                    </button>
+                                    <button class="action-btn btn-edit" onclick="openEditSiteModal(<?php echo $site['id']; ?>, '<?php echo addslashes($site['site_name']); ?>', '<?php echo addslashes($site['location_description']); ?>')">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="action-btn btn-delete" onclick="openDeleteSiteModal(<?php echo $site['id']; ?>, '<?php echo addslashes($site['site_name']); ?>')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
     </div>
 </main>
@@ -1643,7 +2240,7 @@ body.light-theme {
                 <input type="hidden" name="add_site" value="1">
                 <div class="form-group">
                     <label><i class="fas fa-location-dot"></i> Site Name</label>
-                    <input type="text" name="site_name" class="form-control" placeholder="e.g., Makati Site, BGC Office, Project Site A..." required>
+                    <input type="text" name="site_name" class="form-control" placeholder="e.g., Makati Site, BGC Office..." required>
                 </div>
                 <div class="form-group">
                     <label><i class="fas fa-info-circle"></i> Location Description</label>
@@ -1710,7 +2307,7 @@ body.light-theme {
     </div>
 </div>
 
-<!-- View Site Modal - ENLARGED WITH SEARCH -->
+<!-- View Site Modal -->
 <div id="viewSiteModal" class="modal">
     <div class="modal-content modal-content-extra-large">
         <div class="modal-header">
@@ -1725,7 +2322,6 @@ body.light-theme {
             <button class="close-modal" onclick="closeViewSiteModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- Search Bar -->
             <div class="view-search-bar">
                 <div class="search-input-wrapper">
                     <i class="fas fa-search"></i>
@@ -1750,7 +2346,7 @@ body.light-theme {
     </div>
 </div>
 
-<!-- Export Modal -->
+<!-- Export Modal - 3-COLUMN LAYOUT WITH SITE IN SAME ROW -->
 <div id="exportModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -1758,86 +2354,89 @@ body.light-theme {
             <button class="close-modal" onclick="closeExportModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <div class="form-group">
-                <label><i class="fas fa-calendar-alt"></i> From Date</label>
-                <div class="date-picker-wrapper">
-                    <div class="date-input-group">
-                        <input type="text" id="exportFromField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('exportFrom')">
-                        <input type="hidden" id="exportFrom" name="exportFrom">
-                        <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('exportFrom')"><i class="fas fa-chevron-down"></i></button>
-                    </div>
-                    <div class="calendar-wrapper" id="exportFromCalendar">
-                        <div class="calendar-box">
-                            <div class="calendar-header">
-                                <div class="calendar-month-year" id="exportFromMonthYear"></div>
-                                <div class="calendar-nav">
-                                    <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportFrom', -1)">‹</button>
-                                    <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportFrom', 1)">›</button>
+            <!-- 3-COLUMN ROW: From Date, To Date, Site (Optional) -->
+            <div class="export-date-row">
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> From Date</label>
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="exportFromField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('exportFrom')">
+                            <input type="hidden" id="exportFrom" name="exportFrom">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('exportFrom')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="exportFromCalendar">
+                            <div class="calendar-box">
+                                <div class="calendar-header">
+                                    <div class="calendar-month-year" id="exportFromMonthYear"></div>
+                                    <div class="calendar-nav">
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportFrom', -1)">‹</button>
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportFrom', 1)">›</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="calendar-selectors">
-                                <select id="exportFromMonthSelect" class="calendar-select" onchange="changeMonthYear('exportFrom')">
-                                    <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-                                    <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-                                    <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-                                    <option value="9">October</option><option value="10">November</option><option value="11">December</option>
-                                </select>
-                                <select id="exportFromYearSelect" class="calendar-select" onchange="changeMonthYear('exportFrom')"></select>
-                            </div>
-                            <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
-                            <div class="calendar-days-grid" id="exportFromDaysGrid"></div>
-                            <div class="calendar-footer">
-                                <button type="button" class="calendar-action-btn clear" onclick="clearDate('exportFrom')"><i class="fas fa-times"></i> Clear</button>
-                                <button type="button" class="calendar-action-btn today" onclick="setToday('exportFrom')"><i class="fas fa-calendar-check"></i> Today</button>
+                                <div class="calendar-selectors">
+                                    <select id="exportFromMonthSelect" class="calendar-select" onchange="changeMonthYear('exportFrom')">
+                                        <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+                                        <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+                                        <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+                                        <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                                    </select>
+                                    <select id="exportFromYearSelect" class="calendar-select" onchange="changeMonthYear('exportFrom')"></select>
+                                </div>
+                                <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                <div class="calendar-days-grid" id="exportFromDaysGrid"></div>
+                                <div class="calendar-footer">
+                                    <button type="button" class="calendar-action-btn clear" onclick="clearDate('exportFrom')"><i class="fas fa-times"></i> Clear</button>
+                                    <button type="button" class="calendar-action-btn today" onclick="setToday('exportFrom')"><i class="fas fa-calendar-check"></i> Today</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label><i class="fas fa-calendar-alt"></i> To Date</label>
-                <div class="date-picker-wrapper">
-                    <div class="date-input-group">
-                        <input type="text" id="exportToField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('exportTo')">
-                        <input type="hidden" id="exportTo" name="exportTo">
-                        <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('exportTo')"><i class="fas fa-chevron-down"></i></button>
-                    </div>
-                    <div class="calendar-wrapper" id="exportToCalendar">
-                        <div class="calendar-box">
-                            <div class="calendar-header">
-                                <div class="calendar-month-year" id="exportToMonthYear"></div>
-                                <div class="calendar-nav">
-                                    <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportTo', -1)">‹</button>
-                                    <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportTo', 1)">›</button>
+                <div class="form-group">
+                    <label><i class="fas fa-calendar-alt"></i> To Date</label>
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="exportToField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('exportTo')">
+                            <input type="hidden" id="exportTo" name="exportTo">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('exportTo')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="exportToCalendar">
+                            <div class="calendar-box">
+                                <div class="calendar-header">
+                                    <div class="calendar-month-year" id="exportToMonthYear"></div>
+                                    <div class="calendar-nav">
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportTo', -1)">‹</button>
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('exportTo', 1)">›</button>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="calendar-selectors">
-                                <select id="exportToMonthSelect" class="calendar-select" onchange="changeMonthYear('exportTo')">
-                                    <option value="0">January</option><option value="1">February</option><option value="2">March</option>
-                                    <option value="3">April</option><option value="4">May</option><option value="5">June</option>
-                                    <option value="6">July</option><option value="7">August</option><option value="8">September</option>
-                                    <option value="9">October</option><option value="10">November</option><option value="11">December</option>
-                                </select>
-                                <select id="exportToYearSelect" class="calendar-select" onchange="changeMonthYear('exportTo')"></select>
-                            </div>
-                            <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
-                            <div class="calendar-days-grid" id="exportToDaysGrid"></div>
-                            <div class="calendar-footer">
-                                <button type="button" class="calendar-action-btn clear" onclick="clearDate('exportTo')"><i class="fas fa-times"></i> Clear</button>
-                                <button type="button" class="calendar-action-btn today" onclick="setToday('exportTo')"><i class="fas fa-calendar-check"></i> Today</button>
+                                <div class="calendar-selectors">
+                                    <select id="exportToMonthSelect" class="calendar-select" onchange="changeMonthYear('exportTo')">
+                                        <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+                                        <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+                                        <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+                                        <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                                    </select>
+                                    <select id="exportToYearSelect" class="calendar-select" onchange="changeMonthYear('exportTo')"></select>
+                                </div>
+                                <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                <div class="calendar-days-grid" id="exportToDaysGrid"></div>
+                                <div class="calendar-footer">
+                                    <button type="button" class="calendar-action-btn clear" onclick="clearDate('exportTo')"><i class="fas fa-times"></i> Clear</button>
+                                    <button type="button" class="calendar-action-btn today" onclick="setToday('exportTo')"><i class="fas fa-calendar-check"></i> Today</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="form-group">
-                <label><i class="fas fa-location-dot"></i> Site (Optional)</label>
-                <select id="exportSiteFilter" class="form-control">
-                    <option value="">All Sites</option>
-                    <?php foreach ($site_names as $site): ?>
-                        <option value="<?php echo htmlspecialchars($site); ?>"><?php echo htmlspecialchars($site); ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <div class="export-site-group">
+                    <label><i class="fas fa-location-dot"></i> Site (Optional)</label>
+                    <select id="exportSiteFilter">
+                        <option value="">All Sites</option>
+                        <?php foreach ($site_names as $site): ?>
+                            <option value="<?php echo htmlspecialchars($site); ?>"><?php echo htmlspecialchars($site); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -1846,64 +2445,135 @@ body.light-theme {
         </div>
     </div>
 </div>
-
-<!-- Deduction Modal -->
+<!-- Deduction Modal - WITH VISIBLE SCROLLBAR AND ALWAYS VISIBLE BUTTONS -->
 <div id="deductionModal" class="modal">
-    <div class="modal-content modal-content-large">
+    <div class="modal-content modal-content-large" style="display: flex !important; flex-direction: column !important; overflow: hidden !important;">
         <div class="modal-header">
             <h3><i class="fas fa-minus-circle"></i> Deduct Items from <span id="deductionSiteName"></span></h3>
             <button class="close-modal" onclick="closeDeductionModal()">&times;</button>
         </div>
-        <form id="deductionForm" method="POST" action="process_deduction.php">
-            <div class="modal-body">
+        <form id="deductionForm" method="POST" action="process_deduction.php" style="display: flex !important; flex-direction: column !important; flex: 1 1 auto !important; min-height: 0 !important; overflow: hidden !important;">
+            <div class="modal-body" style="flex: 1 1 auto !important; overflow-y: auto !important; min-height: 150px !important;">
                 <input type="hidden" name="site_id" id="deductionSiteId">
                 <input type="hidden" name="site_name" id="deductionSiteNameInput">
                 
-                <div id="deductionItemsContainer">
+                <div id="deductionItemsContainer" style="min-height: 120px;">
                     <div class="loading-spinner">
                         <i class="fas fa-spinner fa-spin"></i>
                         <p>Loading items...</p>
                     </div>
                 </div>
+                
+                <!-- REMARKS FIELD - WRAPPED IN DIV FOR TOGGLE -->
+                <div id="remarksSection" style="margin-top: 20px; display: none;">
+                    <label class="remarks-label"><i class="fas fa-comment"></i> Remarks</label>
+                    <textarea name="remarks" id="deductionRemarks" class="remarks-textarea" rows="3" placeholder="Enter remarks for this deduction (e.g., reason for deduction, damaged items, etc.)"></textarea>
+                </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-shrink: 0 !important; display: flex !important; justify-content: flex-end !important;">
                 <button type="button" class="btn btn-secondary" onclick="closeDeductionModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="saveDeductionBtn"><i class="fas fa-save"></i> Save Deduction</button>
             </div>
         </form>
     </div>
 </div>
-
-<!-- Deduction History Modal -->
+<!-- Deduction History Modal - COMPACT CALENDAR WITH VISIBLE SCROLLBAR -->
 <div id="deductionHistoryModal" class="modal">
-    <div class="modal-content modal-content-large">
+    <div class="modal-content" style="display: flex !important; flex-direction: column !important; overflow: hidden !important;">
         <div class="modal-header">
             <h3><i class="fas fa-history"></i> Deduction History</h3>
             <button class="close-modal" onclick="closeDeductionHistoryModal()">&times;</button>
         </div>
-        <div class="modal-body">
-            <!-- History Filter Section -->
-            <div class="history-filter-section" style="background: var(--bg-secondary); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
-                <div class="history-filter-group" style="flex: 1; min-width: 150px;">
-                    <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600;"><i class="fas fa-calendar-alt"></i> From Date</label>
-                    <input type="date" id="historyFromDate" value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary);">
+        <div class="modal-body" style="flex: 1 1 auto !important; overflow-y: auto !important; display: flex; flex-direction: column;">
+            <!-- History Filter Section with Compact Calendar -->
+            <div class="history-filter-section">
+                <!-- From Date with Compact Calendar -->
+                <div class="history-filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> From Date</label>
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="historyFromField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('historyFrom')">
+                            <input type="hidden" id="historyFromDate" name="historyFromDate">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('historyFrom')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="historyFromCalendar">
+                            <!-- Calendar content remains the same -->
+                            <div class="calendar-box">
+                                <div class="calendar-header">
+                                    <div class="calendar-month-year" id="historyFromMonthYear"></div>
+                                    <div class="calendar-nav">
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('historyFrom', -1)">‹</button>
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('historyFrom', 1)">›</button>
+                                    </div>
+                                </div>
+                                <div class="calendar-selectors">
+                                    <select id="historyFromMonthSelect" class="calendar-select" onchange="changeMonthYear('historyFrom')">
+                                        <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+                                        <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+                                        <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+                                        <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                                    </select>
+                                    <select id="historyFromYearSelect" class="calendar-select" onchange="changeMonthYear('historyFrom')"></select>
+                                </div>
+                                <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                <div class="calendar-days-grid" id="historyFromDaysGrid"></div>
+                                <div class="calendar-footer">
+                                    <button type="button" class="calendar-action-btn clear" onclick="clearDate('historyFrom')"><i class="fas fa-times"></i> Clear</button>
+                                    <button type="button" class="calendar-action-btn today" onclick="setToday('historyFrom')"><i class="fas fa-calendar-check"></i> Today</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="history-filter-group" style="flex: 1; min-width: 150px;">
-                    <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600;"><i class="fas fa-calendar-alt"></i> To Date</label>
-                    <input type="date" id="historyToDate" value="<?php echo date('Y-m-d'); ?>" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary);">
+                <!-- To Date with Compact Calendar -->
+                <div class="history-filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> To Date</label>
+                    <div class="date-picker-wrapper">
+                        <div class="date-input-group">
+                            <input type="text" id="historyToField" class="date-field" placeholder="MM/DD/YYYY" autocomplete="off" readonly onclick="toggleCalendar('historyTo')">
+                            <input type="hidden" id="historyToDate" name="historyToDate">
+                            <button type="button" class="calendar-dropdown-btn" onclick="toggleCalendar('historyTo')"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                        <div class="calendar-wrapper" id="historyToCalendar">
+                            <div class="calendar-box">
+                                <div class="calendar-header">
+                                    <div class="calendar-month-year" id="historyToMonthYear"></div>
+                                    <div class="calendar-nav">
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('historyTo', -1)">‹</button>
+                                        <button type="button" class="calendar-nav-btn" onclick="navigateMonth('historyTo', 1)">›</button>
+                                    </div>
+                                </div>
+                                <div class="calendar-selectors">
+                                    <select id="historyToMonthSelect" class="calendar-select" onchange="changeMonthYear('historyTo')">
+                                        <option value="0">Jan</option><option value="1">Feb</option><option value="2">Mar</option>
+                                        <option value="3">Apr</option><option value="4">May</option><option value="5">Jun</option>
+                                        <option value="6">Jul</option><option value="7">Aug</option><option value="8">Sep</option>
+                                        <option value="9">Oct</option><option value="10">Nov</option><option value="11">Dec</option>
+                                    </select>
+                                    <select id="historyToYearSelect" class="calendar-select" onchange="changeMonthYear('historyTo')"></select>
+                                </div>
+                                <div class="calendar-weekdays"><div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div></div>
+                                <div class="calendar-days-grid" id="historyToDaysGrid"></div>
+                                <div class="calendar-footer">
+                                    <button type="button" class="calendar-action-btn clear" onclick="clearDate('historyTo')"><i class="fas fa-times"></i> Clear</button>
+                                    <button type="button" class="calendar-action-btn today" onclick="setToday('historyTo')"><i class="fas fa-calendar-check"></i> Today</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="history-filter-group" style="flex: 1; min-width: 150px;">
-                    <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600;"><i class="fas fa-location-dot"></i> Site</label>
-                    <select id="historySiteFilter" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary);">
+                <div class="history-filter-group">
+                    <label><i class="fas fa-location-dot"></i> Site</label>
+                    <select id="historySiteFilter">
                         <option value="">All Sites</option>
                         <?php foreach ($site_names as $site): ?>
                             <option value="<?php echo htmlspecialchars($site); ?>"><?php echo htmlspecialchars($site); ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <div class="history-filter-group" style="flex: 1; min-width: 150px;">
-                    <label style="display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 600;"><i class="fas fa-search"></i> Search</label>
-                    <input type="text" id="historySearch" placeholder="Item No, Description..." style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: var(--bg-primary); color: var(--text-primary);">
+                <div class="history-filter-group">
+                    <label><i class="fas fa-search"></i> Search</label>
+                    <input type="text" id="historySearch" placeholder="Item No, Description...">
                 </div>
                 <button class="btn-filter" onclick="loadDeductionHistory()"><i class="fas fa-search"></i> Filter</button>
                 <button class="btn-filter btn-reset" onclick="resetHistoryFilters()"><i class="fas fa-undo"></i> Reset</button>
@@ -1911,23 +2581,23 @@ body.light-theme {
             </div>
             
             <!-- History Stats -->
-            <div class="history-stats" id="historyStats" style="display: flex; gap: 20px; margin-bottom: 20px; padding: 15px; background: var(--accent-gradient); border-radius: 12px; color: white;">
-                <div class="history-stat-item" style="flex: 1; text-align: center;">
-                    <div class="label" style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Total Deductions</div>
-                    <div class="value" id="totalDeductions" style="font-size: 24px; font-weight: 700;">0</div>
+            <div class="history-stats" id="historyStats">
+                <div class="history-stat-item">
+                    <div class="label">Total Deductions</div>
+                    <div class="value" id="totalDeductions">0</div>
                 </div>
-                <div class="history-stat-item" style="flex: 1; text-align: center;">
-                    <div class="label" style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Total Quantity Deducted</div>
-                    <div class="value" id="totalDeductedQty" style="font-size: 24px; font-weight: 700;">0</div>
+                <div class="history-stat-item">
+                    <div class="label">Total Quantity Deducted</div>
+                    <div class="value" id="totalDeductedQty">0</div>
                 </div>
-                <div class="history-stat-item" style="flex: 1; text-align: center;">
-                    <div class="label" style="font-size: 12px; opacity: 0.9; margin-bottom: 5px;">Unique Items</div>
-                    <div class="value" id="uniqueItems" style="font-size: 24px; font-weight: 700;">0</div>
+                <div class="history-stat-item">
+                    <div class="label">Unique Items</div>
+                    <div class="value" id="uniqueItems">0</div>
                 </div>
             </div>
             
             <!-- History Table Container -->
-            <div id="historyTableContainer">
+            <div id="historyTableContainer" style="flex: 1 1 auto; min-height: 200px;">
                 <div class="loading-spinner">
                     <i class="fas fa-spinner fa-spin"></i>
                     <p>Loading history...</p>
@@ -1944,16 +2614,16 @@ body.light-theme {
 // Calendar state
 let activeCalendar = null;
 let calendarDates = {
-    from: { currentDate: new Date(), selectedDate: '<?php echo $date_from; ?>' },
-    to: { currentDate: new Date(), selectedDate: '<?php echo $date_to; ?>' },
     single: { currentDate: new Date(), selectedDate: '<?php echo $single_date; ?>' },
     exportFrom: { currentDate: new Date(), selectedDate: '' },
-    exportTo: { currentDate: new Date(), selectedDate: '' }
+    exportTo: { currentDate: new Date(), selectedDate: '' },
+    historyFrom: { currentDate: new Date(), selectedDate: '' },
+    historyTo: { currentDate: new Date(), selectedDate: '' }
 };
 
 // Initialize year dropdowns
 function initializeYearSelects() {
-    const yearSelects = ['fromYearSelect', 'toYearSelect', 'singleYearSelect', 'exportFromYearSelect', 'exportToYearSelect'];
+    const yearSelects = ['singleYearSelect', 'exportFromYearSelect', 'exportToYearSelect', 'historyFromYearSelect', 'historyToYearSelect'];
     const currentYear = new Date().getFullYear();
     
     yearSelects.forEach(selectId => {
@@ -2099,14 +2769,6 @@ function selectDate(calendarId, dateStr) {
     let hiddenId = '';
     
     switch(calendarId) {
-        case 'from':
-            fieldId = 'dateFromField';
-            hiddenId = 'dateFrom';
-            break;
-        case 'to':
-            fieldId = 'dateToField';
-            hiddenId = 'dateTo';
-            break;
         case 'single':
             fieldId = 'singleDateField';
             hiddenId = 'singleDate';
@@ -2119,18 +2781,21 @@ function selectDate(calendarId, dateStr) {
             fieldId = 'exportToField';
             hiddenId = 'exportTo';
             break;
+        case 'historyFrom':
+            fieldId = 'historyFromField';
+            hiddenId = 'historyFromDate';
+            break;
+        case 'historyTo':
+            fieldId = 'historyToField';
+            hiddenId = 'historyToDate';
+            break;
     }
     
     const field = document.getElementById(fieldId);
     const hidden = document.getElementById(hiddenId);
     
-    if (field) {
-        field.value = formattedDisplay;
-    }
-    
-    if (hidden) {
-        hidden.value = dateStr;
-    }
+    if (field) field.value = formattedDisplay;
+    if (hidden) hidden.value = dateStr;
     
     calendarDates[calendarId].selectedDate = dateStr;
     
@@ -2140,7 +2805,6 @@ function selectDate(calendarId, dateStr) {
     
     updateCalendar(calendarId);
     
-    // If single date is selected, apply filter automatically
     if (calendarId === 'single') {
         applyFilters();
     }
@@ -2152,14 +2816,6 @@ function clearDate(calendarId) {
     let hiddenId = '';
     
     switch(calendarId) {
-        case 'from':
-            fieldId = 'dateFromField';
-            hiddenId = 'dateFrom';
-            break;
-        case 'to':
-            fieldId = 'dateToField';
-            hiddenId = 'dateTo';
-            break;
         case 'single':
             fieldId = 'singleDateField';
             hiddenId = 'singleDate';
@@ -2171,6 +2827,14 @@ function clearDate(calendarId) {
         case 'exportTo':
             fieldId = 'exportToField';
             hiddenId = 'exportTo';
+            break;
+        case 'historyFrom':
+            fieldId = 'historyFromField';
+            hiddenId = 'historyFromDate';
+            break;
+        case 'historyTo':
+            fieldId = 'historyToField';
+            hiddenId = 'historyToDate';
             break;
     }
     
@@ -2188,7 +2852,6 @@ function clearDate(calendarId) {
     
     updateCalendar(calendarId);
     
-    // If single date is cleared, apply filters
     if (calendarId === 'single') {
         applyFilters();
     }
@@ -2214,28 +2877,55 @@ function applyFilters() {
     if (singleDate) url += 'date=' + singleDate + '&';
     if (siteFilter) url += 'site=' + encodeURIComponent(siteFilter);
     
-    // Remove trailing & if exists
-    if (url.endsWith('&')) {
-        url = url.slice(0, -1);
-    }
+    if (url.endsWith('&')) url = url.slice(0, -1);
     
     window.location.href = url;
 }
 
 function resetFilters() {
-    window.location.href = 'site.php';
+    document.getElementById('singleDate').value = '';
+    document.getElementById('singleDateField').value = '';
+    document.getElementById('siteFilter').value = '';
+    calendarDates.single.selectedDate = null;
+    updateCalendar('single');
+    applyFilters();
 }
 
-// Export Modal Functions
-function openExportModal() {
-    document.getElementById('exportModal').style.display = 'flex';
-    // Set default dates for export
+// Initialize history dates on modal open
+function setDefaultHistoryDates() {
     const today = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
     
     const fromDateStr = thirtyDaysAgo.toISOString().split('T')[0];
     const toDateStr = today.toISOString().split('T')[0];
+    
+    calendarDates.historyFrom.selectedDate = fromDateStr;
+    calendarDates.historyTo.selectedDate = toDateStr;
+    
+    selectDate('historyFrom', fromDateStr);
+    selectDate('historyTo', toDateStr);
+}
+
+function resetHistoryFilters() {
+    setDefaultHistoryDates();
+    document.getElementById('historySiteFilter').value = '';
+    document.getElementById('historySearch').value = '';
+    loadDeductionHistory();
+}
+
+// Export Modal Functions
+function openExportModal() {
+    document.getElementById('exportModal').style.display = 'flex';
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    
+    const fromDateStr = thirtyDaysAgo.toISOString().split('T')[0];
+    const toDateStr = today.toISOString().split('T')[0];
+    
+    calendarDates.exportFrom.selectedDate = fromDateStr;
+    calendarDates.exportTo.selectedDate = toDateStr;
     
     selectDate('exportFrom', fromDateStr);
     selectDate('exportTo', toDateStr);
@@ -2275,26 +2965,22 @@ function openViewSiteModal(siteName) {
 function closeViewSiteModal() {
     document.getElementById('viewSiteModal').style.display = 'none';
 }
-// Store deployed items globally for search and export
+
 let currentDeployedItems = [];
 
 function loadDeployedItemsForView(siteName) {
     const container = document.getElementById('viewSiteItemsContainer');
     container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Loading items...</p></div>';
     
-    // Reset header stats
     document.getElementById('viewAsOfDate').textContent = '--';
     document.getElementById('viewTotalItems').textContent = '0';
     document.getElementById('viewTotalQuantity').textContent = '0';
     document.getElementById('viewCumulativeDate').textContent = '--';
     
-    // Get the selected date from the filter
     const selectedDate = document.getElementById('singleDate').value;
     
     let url = `get_site_deployed_items.php?site_name=${encodeURIComponent(siteName)}`;
-    if (selectedDate) {
-        url += `&date=${encodeURIComponent(selectedDate)}`;
-    }
+    if (selectedDate) url += `&date=${encodeURIComponent(selectedDate)}`;
     
     fetch(url)
         .then(response => response.json())
@@ -2302,7 +2988,6 @@ function loadDeployedItemsForView(siteName) {
             if (data.success) {
                 currentDeployedItems = data.items;
                 
-                // Update header stats
                 const displayDate = formatDate(data.selected_date);
                 document.getElementById('viewAsOfDate').textContent = displayDate;
                 document.getElementById('viewTotalItems').textContent = data.total_items;
@@ -2320,7 +3005,8 @@ function loadDeployedItemsForView(siteName) {
                                         <th>Category</th>
                                         <th>Quantity</th>
                                         <th>Unit</th>
-                                    </thead>
+                                    </tr>
+                                </thead>
                                 <tbody id="deployedItemsTableBody">
                     `;
                     
@@ -2330,20 +3016,17 @@ function loadDeployedItemsForView(siteName) {
                     
                     tableHtml += `
                                 </tbody>
-                              </div>
-                            </div>
+                            </table>
+                        </div>
                     `;
                     
                     container.innerHTML = tableHtml;
-                    
-                    // Update search count
                     updateSearchCount();
                 } else {
                     container.innerHTML = `
                         <div class="empty-deployed">
                             <i class="fas fa-box-open"></i>
                             <p>No items have been deployed to this site as of ${displayDate}.</p>
-                            <div class="sub-text">Pull out items from stock tracker and assign them to this site.</div>
                         </div>
                     `;
                 }
@@ -2362,24 +3045,20 @@ function loadDeployedItemsForView(siteName) {
                 <div class="empty-deployed">
                     <i class="fas fa-exclamation-triangle"></i>
                     <p>Error loading items. Please try again.</p>
-                    <div class="sub-text">${error.message}</div>
                 </div>
             `;
         });
 }
 
-// Generate a single row for deployed item
 function generateDeployedItemRow(item) {
-    // Display category
     let categoryDisplay = '—';
     if (item.category && item.category !== '' && item.category !== '—') {
-        categoryDisplay = `<span class="category-badge"><i class="fas fa-tag"></i> ${escapeHtml(item.category)}</span>`;
+        categoryDisplay = `<span class="category-plain">${escapeHtml(item.category)}</span>`;
     }
     
-    // Display unit
     let unitDisplay = '—';
     if (item.unit && item.unit !== '') {
-        unitDisplay = `<span class="unit-badge">${escapeHtml(item.unit)}</span>`;
+        unitDisplay = `<span class="unit-plain">${escapeHtml(item.unit)}</span>`;
     }
     
     return `
@@ -2393,7 +3072,6 @@ function generateDeployedItemRow(item) {
     `;
 }
 
-// Filter deployed items by search term
 function filterDeployedItems() {
     const searchTerm = document.getElementById('deployedItemsSearch').value.trim().toLowerCase();
     const tbody = document.getElementById('deployedItemsTableBody');
@@ -2407,8 +3085,7 @@ function filterDeployedItems() {
         const cells = row.cells;
         let rowText = '';
         
-        // Search in Item No (cell 0), Description (cell 1), Category (cell 2)
-        if (cells.length >= 3) {
+        if (cells.length >= 5) {
             rowText += cells[0]?.textContent.toLowerCase() + ' ';
             rowText += cells[1]?.textContent.toLowerCase() + ' ';
             rowText += cells[2]?.textContent.toLowerCase() + ' ';
@@ -2427,11 +3104,9 @@ function filterDeployedItems() {
         }
     });
     
-    // Update search result count
     document.getElementById('searchResultCount').textContent = visibleCount;
 }
 
-// Update search count display
 function updateSearchCount() {
     const tbody = document.getElementById('deployedItemsTableBody');
     if (tbody) {
@@ -2442,10 +3117,9 @@ function updateSearchCount() {
     }
 }
 
-// Export deployed items to CSV
 function exportDeployedItems() {
     if (currentDeployedItems.length === 0) {
-        alert('No data to export');
+        showToast('No data to export', 'error');
         return;
     }
     
@@ -2454,7 +3128,6 @@ function exportDeployedItems() {
     
     let csv = 'Item No,Description,Category,Quantity,Unit\n';
     
-    // Get visible rows only (if search is applied)
     const tbody = document.getElementById('deployedItemsTableBody');
     let rowsToExport = [];
     
@@ -2490,30 +3163,12 @@ function exportDeployedItems() {
     showToast('Export completed!', 'success');
 }
 
-// Show toast notification
 function showToast(message, type) {
     const toast = document.createElement('div');
     toast.className = `toast-message ${type}`;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> <span>${message}</span>`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i> <span>${message}</span>`;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
-}
-
-// Add event listener for search input when modal opens
-document.addEventListener('DOMContentLoaded', function() {
-    // Listen for search input
-    const searchInput = document.getElementById('deployedItemsSearch');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', filterDeployedItems);
-    }
-});
-
-function resetHistoryFilters() {
-    document.getElementById('historyFromDate').value = getThirtyDaysAgo();
-    document.getElementById('historyToDate').value = getTodayDate();
-    document.getElementById('historySiteFilter').value = '';
-    document.getElementById('historySearch').value = '';
-    loadDeductionHistory();
 }
 
 function exportDeductionHistory() {
@@ -2522,20 +3177,14 @@ function exportDeductionHistory() {
     const siteFilter = document.getElementById('historySiteFilter').value;
     const searchTerm = document.getElementById('historySearch').value;
     
+    if (!fromDate || !toDate) {
+        showToast('Please select both from and to dates', 'error');
+        return;
+    }
+    
     let url = `export_deduction_history.php?from=${fromDate}&to=${toDate}&site=${encodeURIComponent(siteFilter)}&search=${encodeURIComponent(searchTerm)}`;
     window.open(url, '_blank');
     showToast('Export started!', 'success');
-}
-
-function getTodayDate() {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-}
-
-function getThirtyDaysAgo() {
-    const date = new Date();
-    date.setDate(date.getDate() - 30);
-    return date.toISOString().split('T')[0];
 }
 
 function formatDate(dateString) {
@@ -2585,92 +3234,335 @@ function closeDeleteSiteModal() {
     document.getElementById('deleteSiteModal').style.display = 'none';
 }
 
-function showToast(message, type) {
-    const toast = document.createElement('div');
-    toast.className = `toast-message ${type}`;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-info-circle'}"></i> <span>${message}</span>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+// ========== DEDUCTION MODAL FUNCTIONS ==========
+function openDeductionModal(siteName, siteId) {
+    document.getElementById('deductionSiteName').textContent = siteName;
+    document.getElementById('deductionSiteId').value = siteId;
+    document.getElementById('deductionSiteNameInput').value = siteName;
+    
+    // Clear remarks field and hide remarks section initially
+    document.getElementById('deductionRemarks').value = '';
+    const remarksSection = document.getElementById('remarksSection');
+    if (remarksSection) {
+        remarksSection.style.display = 'none';
+    }
+    
+    document.getElementById('deductionModal').style.display = 'flex';
+    loadConsolidatedDeductionItems(siteName);
 }
 
-// Handle deduction form submission
-document.getElementById('deductionForm').addEventListener('submit', function(e) {
-    e.preventDefault();
+function closeDeductionModal() {
+    document.getElementById('deductionModal').style.display = 'none';
+}
+
+// Load consolidated deduction items
+function loadConsolidatedDeductionItems(siteName) {
+    const container = document.getElementById('deductionItemsContainer');
+    const remarksSection = document.getElementById('remarksSection');
     
-    const formData = new FormData(this);
-    const items = [];
+    // Hide remarks section initially while loading
+    if (remarksSection) {
+        remarksSection.style.display = 'none';
+    }
     
-    const rows = document.querySelectorAll('#deductionItemsContainer table tbody tr');
-    rows.forEach(row => {
-        const qtyInput = row.querySelector('.deduct-qty');
-        const qty = parseInt(qtyInput.value);
-        
-        if (qty > 0) {
-            const movementId = row.querySelector('input[name$="[movement_id]"]').value;
-            const productId = row.querySelector('input[name$="[product_id]"]').value;
-            const currentQty = parseInt(row.querySelector('input[name$="[current_qty]"]').value);
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Loading items...</p></div>';
+    
+    fetch(`get_consolidated_site_items.php?site_name=${encodeURIComponent(siteName)}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && data.items && data.items.length > 0) {
+                // Show remarks section when items exist
+                if (remarksSection) {
+                    remarksSection.style.display = 'block';
+                }
+                
+                let tableHtml = `
+                    <div class="deployed-table-container">
+                        <table class="deduction-items-table" id="deductionItemsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%">Item No</th>
+                                    <th style="width: 35%">Description</th>
+                                    <th style="width: 15%">Category</th>
+                                    <th style="width: 10%">Quantity</th>
+                                    <th style="width: 10%">Unit</th>
+                                    <th style="width: 15%">Deduct Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deductionItemsTableBody">
+                `;
+                
+                data.items.forEach((item, index) => {
+                    let categoryDisplay = item.category || '—';
+                    if (categoryDisplay === '' || categoryDisplay === 'null' || categoryDisplay === 'NULL') {
+                        categoryDisplay = '—';
+                    }
+                    
+                    let unitDisplay = item.unit || 'pcs';
+                    if (unitDisplay === '' || unitDisplay === 'null' || unitDisplay === 'NULL') {
+                        unitDisplay = 'pcs';
+                    }
+                    
+                    tableHtml += `
+                        <tr data-product-id="${item.product_id}" data-total-qty="${item.total_quantity}">
+                            <td><strong>${escapeHtml(item.item_no)}</strong></td>
+                            <td>${escapeHtml(item.description || item.product_name || 'N/A')}</td>
+                            <td><span class="category-plain">${escapeHtml(categoryDisplay)}</span></td>
+                            <td><span class="current-qty-badge">${item.total_quantity}</span></td>
+                            <td><span class="unit-plain">${escapeHtml(unitDisplay)}</span></td>
+                            <td>
+                                <input type="hidden" name="items[${index}][product_id]" value="${item.product_id}">
+                                <input type="hidden" name="items[${index}][total_qty]" value="${item.total_quantity}">
+                                <input type="number" name="items[${index}][deduct_qty]" class="deduct-qty-input" 
+                                       value="0" min="0" max="${item.total_quantity}" step="1" 
+                                       data-max="${item.total_quantity}" 
+                                       data-product-id="${item.product_id}"
+                                       style="width: 100px; padding: 8px; text-align: center;
+                                              border: 2px solid var(--border-color); border-radius: 8px;
+                                              background: var(--bg-primary); color: var(--text-primary);">
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="info-box">
+                        <small><i class="fas fa-info-circle"></i> Items are consolidated by product. Enter quantity to deduct from this site.</small>
+                    </div>
+                `;
+                
+                container.innerHTML = tableHtml;
+                
+                document.querySelectorAll('.deduct-qty-input').forEach(input => {
+                    input.addEventListener('change', function() {
+                        const max = parseInt(this.getAttribute('data-max'));
+                        let value = parseInt(this.value);
+                        if (isNaN(value) || value < 0) {
+                            this.value = 0;
+                        } else if (value > max) {
+                            this.value = max;
+                            showToast(`Maximum deduction is ${max}`, 'error');
+                        }
+                    });
+                    
+                    input.addEventListener('input', function() {
+                        let value = parseInt(this.value);
+                        const max = parseInt(this.getAttribute('data-max'));
+                        if (isNaN(value)) {
+                            this.value = 0;
+                        } else if (value > max) {
+                            this.value = max;
+                        } else if (value < 0) {
+                            this.value = 0;
+                        }
+                    });
+                });
+            } else {
+                // Hide remarks section when no items
+                if (remarksSection) {
+                    remarksSection.style.display = 'none';
+                }
+                
+                container.innerHTML = `
+                    <div class="empty-deployed">
+                        <i class="fas fa-box-open"></i>
+                        <p>No items found deployed to this site.</p>
+                        <div class="sub-text">Pull out items from stock tracker first to deploy them to this site.</div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading items:', error);
+            // Hide remarks section on error
+            if (remarksSection) {
+                remarksSection.style.display = 'none';
+            }
             
-            items.push({
-                movement_id: movementId,
-                product_id: productId,
-                deduct_qty: qty,
-                current_qty: currentQty
+            container.innerHTML = `
+                <div class="empty-deployed">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Error loading items: ${error.message}</p>
+                </div>
+            `;
+        });
+}
+// Deduction form submission
+document.addEventListener('DOMContentLoaded', function() {
+    document.body.addEventListener('submit', function(e) {
+        const form = e.target.closest('#deductionForm');
+        if (form && form.id === 'deductionForm') {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const remarks = document.getElementById('deductionRemarks').value.trim();
+            const items = [];
+            const quantityInputs = document.querySelectorAll('#deductionItemsTableBody .deduct-qty-input');
+            
+            quantityInputs.forEach(input => {
+                const qty = parseInt(input.value);
+                if (qty > 0) {
+                    const row = input.closest('tr');
+                    const productIdInput = row.querySelector('input[name*="[product_id]"]');
+                    const totalQtyInput = row.querySelector('input[name*="[total_qty]"]');
+                    
+                    if (productIdInput && totalQtyInput) {
+                        items.push({
+                            product_id: productIdInput.value,
+                            deduct_qty: qty,
+                            current_qty: totalQtyInput.value
+                        });
+                    }
+                }
+            });
+            
+            if (items.length === 0) {
+                showToast('Please enter at least one item quantity to deduct', 'error');
+                return;
+            }
+            
+            const siteId = document.getElementById('deductionSiteId').value;
+            const siteName = document.getElementById('deductionSiteNameInput').value;
+            
+            const formData = new FormData();
+            formData.append('site_id', siteId);
+            formData.append('site_name', siteName);
+            formData.append('items_json', JSON.stringify(items));
+            formData.append('remarks', remarks);
+            
+            const submitBtn = document.getElementById('saveDeductionBtn');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            
+            fetch('process_deduction.php', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    closeDeductionModal();
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    let errorMsg = data.message || 'An error occurred';
+                    if (data.errors && data.errors.length > 0) {
+                        errorMsg += ': ' + data.errors.join(', ');
+                    }
+                    showToast(errorMsg, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
+                }
+            })
+            .catch(error => {
+                console.error('Fetch error:', error);
+                showToast('Network error: ' + error.message, 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             });
         }
     });
-    
-    if (items.length === 0) {
-        showToast('Please enter at least one item to deduct', 'error');
-        return;
-    }
-    
-    formData.append('items_json', JSON.stringify(items));
-    
-    const submitBtn = document.getElementById('saveDeductionBtn');
-    const originalText = submitBtn.innerHTML;
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    
-    fetch('process_deduction.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showToast(data.message, 'success');
-            closeDeductionModal();
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
-        } else {
-            showToast(data.message, 'error');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = originalText;
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showToast('An error occurred. Please try again.', 'error');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    });
 });
 
-// Validate quantity inputs on change
-document.addEventListener('change', function(e) {
-    if (e.target.classList.contains('deduct-qty')) {
-        const max = parseInt(e.target.getAttribute('data-max'));
-        let value = parseInt(e.target.value);
-        
-        if (isNaN(value) || value < 0) {
-            e.target.value = 0;
-        } else if (value > max) {
-            e.target.value = max;
-            showToast(`Maximum deduction is ${max}`, 'error');
-        }
+// Deduction History Functions
+function openDeductionHistoryModal() {
+    const modal = document.getElementById('deductionHistoryModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        setDefaultHistoryDates();
+        loadDeductionHistory();
     }
-});
+}
+
+function closeDeductionHistoryModal() {
+    const modal = document.getElementById('deductionHistoryModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function loadDeductionHistory() {
+    const fromDate = document.getElementById('historyFromDate').value;
+    const toDate = document.getElementById('historyToDate').value;
+    const siteFilter = document.getElementById('historySiteFilter').value;
+    const searchTerm = document.getElementById('historySearch').value;
+    
+    const container = document.getElementById('historyTableContainer');
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i><p>Loading history...</p></div>';
+    
+    let url = `get_deduction_history.php?from=${encodeURIComponent(fromDate)}&to=${encodeURIComponent(toDate)}&site=${encodeURIComponent(siteFilter)}&search=${encodeURIComponent(searchTerm)}`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('totalDeductions').textContent = data.total_deductions || 0;
+                document.getElementById('totalDeductedQty').textContent = data.total_quantity || 0;
+                document.getElementById('uniqueItems').textContent = data.unique_items || 0;
+                
+                if (data.history && data.history.length > 0) {
+                    let tableHtml = `
+                        <div class="deployed-table-container">
+                            <table class="deployed-table">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Site</th>
+                                        <th>Item No</th>
+                                        <th>Product Name</th>
+                                        <th>Qty Deducted</th>
+                                        <th>Previous</th>
+                                        <th>New</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                    `;
+                    
+                   data.history.forEach(item => {
+    let formattedDate = '—';
+    if (item.deducted_at) {
+        const date = new Date(item.deducted_at);
+        formattedDate = date.toLocaleDateString('en-US', {
+            month: 'short', day: '2-digit', year: 'numeric'
+        });
+    }
+                        let remarksDisplay = item.remarks || '—';
+                        
+                        tableHtml += `
+                            <tr>
+                                <td>${formattedDate}</td>
+                                <td>${escapeHtml(item.site_name || '—')}</td>
+                                <td>${escapeHtml(item.item_no || '—')}</td>
+                                <td>${escapeHtml(item.product_name || '—')}</td>
+                                <td style="color: #e74c3c; font-weight: 700;">${item.quantity_deducted}</td>
+                                <td>${item.previous_quantity}</td>
+                                <td>${item.new_quantity}</td>
+                                <td style="max-width: 250px;">${escapeHtml(remarksDisplay)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    tableHtml += `</tbody></table></div>`;
+                    container.innerHTML = tableHtml;
+                } else {
+                    container.innerHTML = `<div class="empty-deployed"><i class="fas fa-history"></i><p>No deduction history found.</p></div>`;
+                }
+            } else {
+                container.innerHTML = `<div class="empty-deployed"><i class="fas fa-exclamation-triangle"></i><p>Error: ${escapeHtml(data.message)}</p></div>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            container.innerHTML = `<div class="empty-deployed"><i class="fas fa-exclamation-triangle"></i><p>Error loading history.</p></div>`;
+        });
+}
 
 // Close calendar when clicking outside
 document.addEventListener('click', function(e) {
@@ -2687,9 +3579,7 @@ window.onclick = function(event) {
     const modals = ['addSiteModal', 'editSiteModal', 'deleteSiteModal', 'deductionModal', 'deductionHistoryModal', 'viewSiteModal', 'exportModal'];
     modals.forEach(modalId => {
         const modal = document.getElementById(modalId);
-        if (event.target === modal) {
-            modal.style.display = 'none';
-        }
+        if (event.target === modal) modal.style.display = 'none';
     });
 };
 
@@ -2697,7 +3587,7 @@ window.onclick = function(event) {
 document.addEventListener('DOMContentLoaded', function() {
     initializeYearSelects();
     
-    ['from', 'to', 'single', 'exportFrom', 'exportTo'].forEach(calId => {
+    ['single', 'exportFrom', 'exportTo', 'historyFrom', 'historyTo'].forEach(calId => {
         updateCalendar(calId);
     });
 
@@ -2706,16 +3596,17 @@ document.addEventListener('DOMContentLoaded', function() {
         calendarDates.single.selectedDate = singleDate;
         const date = new Date(singleDate);
         document.getElementById('singleDateField').value = date.toLocaleDateString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
-            year: 'numeric'
+            month: '2-digit', day: '2-digit', year: 'numeric'
         });
     }
+    
+    const searchInput = document.getElementById('deployedItemsSearch');
+    if (searchInput) searchInput.addEventListener('keyup', filterDeployedItems);
 });
 
 // Display toast if exists
 <?php if (isset($_SESSION['toast'])): ?>
-    showToast('<?php echo $_SESSION['toast']['message']; ?>', '<?php echo $_SESSION['toast']['type']; ?>');
+    showToast('<?php echo addslashes($_SESSION['toast']['message']); ?>', '<?php echo addslashes($_SESSION['toast']['type']); ?>');
     <?php unset($_SESSION['toast']); ?>
 <?php endif; ?>
 </script>

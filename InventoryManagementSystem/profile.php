@@ -364,14 +364,13 @@ body:not(.light-theme) {
     }
 }
 
-/* Main Wrapper */
+/* Main Wrapper - NO BACKGROUND */
 .profile-wrapper {
     padding: 30px;
     min-height: calc(100vh - 200px);
-    background: linear-gradient(135deg, var(--profile-bg-start), var(--profile-bg-end));
+    background: transparent !important;
     transition: background 0.3s ease;
 }
-
 /* Profile Container */
 .profile-container {
     max-width: 800px;

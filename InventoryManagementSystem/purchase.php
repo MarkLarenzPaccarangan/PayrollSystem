@@ -91,7 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_purchase'])) {
 }
 
 // IMPORTANT: Get purchases - ONLY pending and processing (hindi kasama ang completed) - WITH CATEGORY
-// Sa purchase.php, hanapin ang query at i-update:
 $purchases = $conn->query("SELECT p.*, ci.category FROM purchases p LEFT JOIN canvas_items ci ON p.item_no = ci.item_no WHERE p.status IN ('pending', 'processing') ORDER BY p.purchase_date DESC");
 
 // Get purchase statistics
@@ -106,710 +105,711 @@ require_once 'include/header.php';
 
 <style>
 
-    /* Delivery Date Badge */
-.delivery-date-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 500;
-    background: rgba(52, 152, 219, 0.15);
-    color: #3498db;
-    white-space: nowrap;
-}
+    /* Delivery Date Badge - Keep this one (it's functional) */
+    .delivery-date-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 500;
+        background: rgba(52, 152, 219, 0.15);
+        color: #3498db;
+        white-space: nowrap;
+    }
 
-.delivery-date-badge i {
-    margin-right: 4px;
-    font-size: 10px;
-}
-/* Purchase Page Specific Styles */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 20px;
-    margin-bottom: 24px;
-}
+    .delivery-date-badge i {
+        margin-right: 4px;
+        font-size: 10px;
+    }
 
-.stat-card {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    transition: all 0.3s ease;
-    animation: fadeInUp 0.5s ease;
-    animation-fill-mode: both;
-}
+    /* Purchase Page Specific Styles */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 20px;
+        margin-bottom: 24px;
+    }
 
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.15s; }
-.stat-card:nth-child(3) { animation-delay: 0.2s; }
-.stat-card:nth-child(4) { animation-delay: 0.25s; }
-.stat-card:nth-child(5) { animation-delay: 0.3s; }
+    .stat-card {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s ease;
+        animation: fadeInUp 0.5s ease;
+        animation-fill-mode: both;
+    }
 
-.stat-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 25px rgba(117, 230, 218, 0.2);
-    border-color: #75e6da;
-}
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.15s; }
+    .stat-card:nth-child(3) { animation-delay: 0.2s; }
+    .stat-card:nth-child(4) { animation-delay: 0.25s; }
+    .stat-card:nth-child(5) { animation-delay: 0.3s; }
 
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #75e6da, #6c5ce7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(117, 230, 218, 0.2);
+        border-color: #75e6da;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #75e6da, #6c5ce7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: white;
+        transition: transform 0.3s ease;
+    }
+
+    .stat-card:hover .stat-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    .stat-details h3 {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
+    .stat-trend {
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .stat-trend.positive {
+        color: #75e6da;
+    }
+
+    .stat-trend.negative {
+        color: #d63031;
+    }
+
+    /* Plain text styles for company and category - NO BADGES */
+    .company-text {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .category-text {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    /* Action buttons */
+    .action-btn {
+        width: 35px;
+        height: 35px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        margin: 0 3px;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-2px);
+    }
+
+    .action-btn.view {
+        background: linear-gradient(135deg, #00b894, #75e6da);
+        color: white;
+        box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);
+    }
+
+    .action-btn.edit {
+        background: linear-gradient(135deg, #75e6da, #6c5ce7);
+        color: white;
+        box-shadow: 0 4px 10px rgba(117, 230, 218, 0.3);
+    }
+
+    .action-btn.delete {
+        background: linear-gradient(135deg, #e84393, #d63031);
+        color: white;
+        box-shadow: 0 4px 10px rgba(232, 67, 147, 0.3);
+    }
+
+    .action-btn.order-now {
+        background: linear-gradient(135deg, #75e6da, #00b894);
+        color: white;
+        box-shadow: 0 4px 10px rgba(117, 230, 218, 0.3);
+        padding: 0 12px;
+        width: auto;
+        font-size: 12px;
+    }
+
+    .action-btn.order-now:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(117, 230, 218, 0.4);
+    }
+
+    .action-btn.order-now i {
+        margin-right: 5px;
+    }
+
+    .actions-cell {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    /* Status badges - KEEP THESE (functional status indicators) */
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        display: inline-block;
+    }
+
+    .status-completed {
+        background: rgba(117, 230, 218, 0.15);
+        color: #75e6da;
+    }
+
+    .status-pending {
+        background: rgba(243, 156, 18, 0.15);
+        color: #f39c12;
+    }
+
+    .status-processing {
+        background: rgba(108, 92, 231, 0.15);
+        color: #6c5ce7;
+    }
+
+    .status-cancelled {
+        background: rgba(214, 48, 49, 0.15);
+        color: #d63031;
+    }
+
+    /* Price cell */
+    .price-cell {
+        font-weight: 600;
+        color: #75e6da;
+    }
+
+    /* Table styles */
+    .table-wrapper {
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        overflow-x: auto;
+    }
+
+    .products-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1100px;
+    }
+
+    .products-table th {
+        padding: 15px 10px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 2px solid var(--border-color);
+        white-space: nowrap;
+        background: var(--bg-secondary);
+    }
+
+    .products-table td {
+        padding: 12px 10px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-primary);
+        font-size: 13px;
+    }
+
+    .products-table tbody tr:hover {
+        background: var(--bg-secondary);
+    }
+
+    /* Welcome section */
+    .welcome-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .welcome-text h1 {
+        font-size: 24px;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 5px;
+    }
+
+    .welcome-text p {
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    /* Top bar with search and history button */
+    .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .search-wrapper {
+        position: relative;
+        width: 300px;
+    }
+
+    .search-wrapper i {
+        position: absolute;
+        left: 30px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .search-wrapper input {
+        width: 100%;
+        padding: 12px 10px 12px 35px;
+        background: var(--bg-secondary);
+        border: 2px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .search-wrapper input:focus {
+        border-color: #75e6da;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
+    }
+
+    /* History button sa itaas */
+    .btn-history {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-history:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-history i {
+        font-size: 16px;
+    }
+
+    /* Modal Styles */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(5px);
+        animation: fadeIn 0.3s ease;
+        overflow-y: auto;
+    }
+
+    .modal-content {
+        position: relative;
+        background: var(--bg-primary);
+        margin: 50px auto;
+        width: 90%;
+        max-width: 600px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        animation: slideInDown 0.3s ease;
+        border: 1px solid var(--border-color);
+    }
+
+    .modal-lg {
+        max-width: 700px;
+    }
+
+    .modal-xl {
+        max-width: 1400px;
+        width: 95%;
+    }
+
+    .modal-sm {
+        max-width: 400px;
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #75e6da, #5fd9d0, #4ab9b0);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px 12px 0 0;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: white;
+        font-size: 18px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 80%;
+    }
+
+    .close-btn {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        transition: all 0.3s ease;
+    }
+
+    .close-btn:hover {
+        background: #e84393;
+        transform: rotate(90deg);
+    }
+
+    .modal-body {
+        padding: 20px;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .modal-footer {
+        padding: 16px 20px;
+        background: var(--bg-secondary);
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        border-radius: 0 0 12px 12px;
+    }
+
+    /* Form styles */
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text-primary);
+        font-weight: 500;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-primary);
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        border-color: #75e6da;
+        box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.1);
+        outline: none;
+    }
+
+    .bg-opacity-50 {
+        opacity: 0.7;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #75e6da, #6c5ce7);
+        color: white;
+    }
+
+    .btn-secondary {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #e84393, #d63031);
+        color: white;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: var(--bg-primary);
+        border-radius: 12px;
+        border: 2px dashed var(--border-color);
+    }
+
+    .empty-state i {
+        font-size: 64px;
+        color: var(--text-secondary);
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .empty-state h3 {
+        color: var(--text-primary);
+        margin-bottom: 10px;
+    }
+
+    .empty-state p {
+        color: var(--text-secondary);
+        margin-bottom: 20px;
+    }
+
+    /* No results message */
+    .no-results {
+        text-align: center;
+        padding: 40px;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        margin-top: 20px;
+    }
+
+    .no-results i {
+        font-size: 48px;
+        color: var(--text-secondary);
+        margin-bottom: 15px;
+    }
+
+    .no-results h3 {
+        color: var(--text-primary);
+        margin-bottom: 10px;
+    }
+
+    .no-results p {
+        color: var(--text-secondary);
+    }
+
+    /* Detail table styles */
+    .detail-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    .detail-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .detail-table td:first-child {
+        background: var(--bg-secondary);
+        font-weight: 600;
+        width: 35%;
+    }
+
+    /* History Stats Styles */
+    .history-stats {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+
+    .history-stat-card {
+        background: linear-gradient(135deg, #3498db20, #2980b920);
+        border: 1px solid #3498db40;
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+
+    .history-stat-card .stat-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .history-stat-card .stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #3498db;
+    }
+
+    .history-stat-card .stat-sub {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 5px;
+    }
+
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    .history-table th {
+        background: var(--bg-secondary);
+        padding: 12px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .history-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 13px;
+    }
+
+    .history-table tr:hover {
+        background: var(--bg-secondary);
+    }
+
+    .history-table .amount {
+        font-weight: 600;
+        color: #75e6da;
+    }
+
+    .history-highlight {
+        background: rgba(52, 152, 219, 0.1) !important;
+        border-left: 4px solid #3498db;
+    }
+
+    .history-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        background: #3498db;
+        color: white;
+    }
+
+    /* Summary bar */
+    .summary-bar {
+        background: rgba(52, 152, 219, 0.1);
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 4px solid #3498db;
+    }
+    .action-btn.cancel {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
     color: white;
-    transition: transform 0.3s ease;
+    box-shadow: 0 4px 10px rgba(243, 156, 18, 0.3);
 }
 
-.stat-card:hover .stat-icon {
-    transform: scale(1.1) rotate(5deg);
-}
-
-.stat-details h3 {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-}
-
-.stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 4px;
-}
-
-.stat-trend {
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-
-.stat-trend.positive {
-    color: #75e6da;
-}
-
-.stat-trend.negative {
-    color: #d63031;
-}
-
-/* Company badge */
-.company-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    color: white;
-}
-
-/* Category badge - NEW STYLE */
-.category-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-}
-
-/* Action buttons */
-.action-btn {
-    width: 35px;
-    height: 35px;
-    border-radius: 8px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-    margin: 0 3px;
-}
-
-.action-btn:hover {
+.action-btn.cancel:hover {
     transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(243, 156, 18, 0.4);
 }
 
-.action-btn.view {
-    background: linear-gradient(135deg, #00b894, #75e6da);
-    color: white;
-    box-shadow: 0 4px 10px rgba(0, 184, 148, 0.3);
-}
-
-.action-btn.edit {
-    background: linear-gradient(135deg, #75e6da, #6c5ce7);
-    color: white;
-    box-shadow: 0 4px 10px rgba(117, 230, 218, 0.3);
-}
-
-.action-btn.delete {
-    background: linear-gradient(135deg, #e84393, #d63031);
-    color: white;
-    box-shadow: 0 4px 10px rgba(232, 67, 147, 0.3);
-}
-
-.action-btn.order-now {
-    background: linear-gradient(135deg, #75e6da, #00b894);
-    color: white;
-    box-shadow: 0 4px 10px rgba(117, 230, 218, 0.3);
-    padding: 0 12px;
-    width: auto;
-    font-size: 12px;
-}
-
-.action-btn.order-now:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(117, 230, 218, 0.4);
-}
-
-.action-btn.order-now i {
-    margin-right: 5px;
-}
-
-.actions-cell {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-}
-
-/* Status badges */
-.status-badge {
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-    display: inline-block;
-}
-
-.status-completed {
-    background: rgba(117, 230, 218, 0.15);
-    color: #75e6da;
-}
-
-.status-pending {
-    background: rgba(243, 156, 18, 0.15);
-    color: #f39c12;
-}
-
-.status-processing {
-    background: rgba(108, 92, 231, 0.15);
-    color: #6c5ce7;
-}
-
-.status-cancelled {
-    background: rgba(214, 48, 49, 0.15);
-    color: #d63031;
-}
-
-/* Price cell */
-.price-cell {
-    font-weight: 600;
-    color: #75e6da;
-}
-
-/* Table styles */
-.table-wrapper {
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    padding: 20px;
-    overflow-x: auto;
-}
-
-.products-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 1100px; /* Increased to accommodate category column */
-}
-
-.products-table th {
-    padding: 15px 10px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    border-bottom: 2px solid var(--border-color);
-    white-space: nowrap;
-    background: var(--bg-secondary);
-}
-
-.products-table td {
-    padding: 12px 10px;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
-    font-size: 13px;
-}
-
-.products-table tbody tr:hover {
-    background: var(--bg-secondary);
-}
-
-/* Welcome section */
-.welcome-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.welcome-text h1 {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin-bottom: 5px;
-}
-
-.welcome-text p {
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-/* Top bar with search and history button */
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.search-wrapper {
-    position: relative;
-    width: 300px;
-}
-
-.search-wrapper i {
-    position: absolute;
-    left: 30px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-secondary);
-    font-size: 14px;
-}
-
-.search-wrapper input {
-    width: 100%;
-    padding: 12px 10px 12px 35px;
-    background: var(--bg-secondary);
-    border: 2px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.search-wrapper input:focus {
-    border-color: #75e6da;
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.2);
-}
-
-/* History button sa itaas */
-.btn-history {
-    background: linear-gradient(135deg, #3498db, #2980b9);
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
-}
-
-.btn-history:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(52, 152, 219, 0.4);
-}
-
-.btn-history i {
-    font-size: 16px;
-}
-
-/* Modal Styles */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 9999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(5px);
-    animation: fadeIn 0.3s ease;
-    overflow-y: auto;
-}
-
-.modal-content {
-    position: relative;
-    background: var(--bg-primary);
-    margin: 50px auto;
-    width: 90%;
-    max-width: 600px;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    animation: slideInDown 0.3s ease;
-    border: 1px solid var(--border-color);
-}
-
-.modal-lg {
-    max-width: 700px;
-}
-
-.modal-xl {
-    max-width: 1400px;
-    width: 95%;
-}
-
-.modal-sm {
-    max-width: 400px;
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, #75e6da, #5fd9d0, #4ab9b0);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px 12px 0 0;
-}
-
-.modal-header h2 {
-    margin: 0;
-    color: white;
-    font-size: 18px;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 80%;
-}
-
-.close-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: 1px solid rgba(255,  255, 255, 0.3);
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-    background: #e84393;
-    transform: rotate(90deg);
-}
-
-.modal-body {
-    padding: 20px;
-    max-height: 70vh;
-    overflow-y: auto;
-}
-
-.modal-footer {
-    padding: 16px 20px;
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    border-radius: 0 0 12px 12px;
-}
-
-/* Form styles */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 8px;
-    color: var(--text-primary);
-    font-weight: 500;
-}
-
-.form-control {
-    width: 100%;
-    padding: 10px 12px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 14px;
-    transition: all 0.3s ease;
-}
-
-.form-control:focus {
-    border-color: #75e6da;
-    box-shadow: 0 0 0 3px rgba(117, 230, 218, 0.1);
-    outline: none;
-}
-
-.bg-opacity-50 {
-    opacity: 0.7;
-}
-
-.btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.btn-primary {
-    background: linear-gradient(135deg, #75e6da, #6c5ce7);
-    color: white;
-}
-
-.btn-secondary {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-}
-
-.btn-danger {
-    background: linear-gradient(135deg, #e84393, #d63031);
-    color: white;
-}
-
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
-
-/* Empty state */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    background: var(--bg-primary);
-    border-radius: 12px;
-    border: 2px dashed var(--border-color);
-}
-
-.empty-state i {
-    font-size: 64px;
-    color: var(--text-secondary);
-    margin-bottom: 20px;
-    opacity: 0.5;
-}
-
-.empty-state h3 {
-    color: var(--text-primary);
-    margin-bottom: 10px;
-}
-
-.empty-state p {
-    color: var(--text-secondary);
-    margin-bottom: 20px;
-}
-
-/* No results message */
-.no-results {
-    text-align: center;
-    padding: 40px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    margin-top: 20px;
-}
-
-.no-results i {
-    font-size: 48px;
-    color: var(--text-secondary);
-    margin-bottom: 15px;
-}
-
-.no-results h3 {
-    color: var(--text-primary);
-    margin-bottom: 10px;
-}
-
-.no-results p {
-    color: var(--text-secondary);
-}
-
-/* Detail table styles */
-.detail-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-}
-
-.detail-table td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.detail-table td:first-child {
-    background: var(--bg-secondary);
-    font-weight: 600;
-    width: 35%;
-}
-
-/* History Stats Styles */
-.history-stats {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 15px;
-    margin-bottom: 25px;
-}
-
-.history-stat-card {
-    background: linear-gradient(135deg, #3498db20, #2980b920);
-    border: 1px solid #3498db40;
-    border-radius: 10px;
-    padding: 15px;
-    text-align: center;
-}
-
-.history-stat-card .stat-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    margin-bottom: 5px;
-}
-
-.history-stat-card .stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: #3498db;
-}
-
-.history-stat-card .stat-sub {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 5px;
-}
-
-.history-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-}
-
-.history-table th {
-    background: var(--bg-secondary);
-    padding: 12px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    border-bottom: 2px solid var(--border-color);
-}
-
-.history-table td {
-    padding: 12px;
-    border-bottom: 1px solid var(--border-color);
-    font-size: 13px;
-}
-
-.history-table tr:hover {
-    background: var(--bg-secondary);
-}
-
-.history-table .amount {
-    font-weight: 600;
-    color: #75e6da;
-}
-
-.history-highlight {
-    background: rgba(52, 152, 219, 0.1) !important;
-    border-left: 4px solid #3498db;
-}
-
-.history-badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    background: #3498db;
-    color: white;
-}
-
-/* Summary bar */
-.summary-bar {
-    background: rgba(52, 152, 219, 0.1);
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-left: 4px solid #3498db;
-}
-
-/* Animations */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideInDown {
-    from {
-        transform: translateY(-50px);
-        opacity: 0;
+    /* Animations */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
 
-@keyframes fadeOut {
-    to {
-        opacity: 0;
-        transform: translateY(-50px);
+    @keyframes slideInDown {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
-}
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+    @keyframes fadeOut {
+        to {
+            opacity: 0;
+            transform: translateY(-50px);
+        }
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
 
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
-    to {
-        transform: translateX(0);
-        opacity: 1;
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
-}
 </style>
 
 <div class="welcome-section">
@@ -817,14 +817,10 @@ require_once 'include/header.php';
         <h1>Purchase Management</h1>
         <p>Track and manage purchase orders from canvas</p>
     </div>
-    
 </div>
 
 <!-- Statistics Cards -->
 <div class="stats-grid">
- 
-    
-    
     <div class="stat-card">
         <div class="stat-icon">
             <i class="fas fa-check-circle"></i>
@@ -857,8 +853,6 @@ require_once 'include/header.php';
             <span class="stat-trend negative"><?php echo $totalPurchases ? round(($cancelledPurchases/$totalPurchases)*100, 1) : 0; ?>%</span>
         </div>
     </div>
-    
-   
 </div>
 
 <!-- Top Bar with Search and History Button -->
@@ -875,24 +869,24 @@ require_once 'include/header.php';
     </button>
 </div>
 
-<!-- Purchases Table - ONLY PENDING AND PROCESSING - WITH CATEGORY COLUMN -->
+<!-- Purchases Table - ONLY PENDING AND PROCESSING - WITH CATEGORY COLUMN (NO BADGES) -->
 <div class="table-wrapper">
     <table class="products-table" id="purchasesTable">
-    <thead>
-    <tr>
-        <th>Item No</th>
-        <th>Description</th>
-        <th>Category</th>
-        <th>Company</th>
-        <th>Contact Person</th>
-        <th>Qty</th>
-        <th>Price/Unit</th>
-        <th>Total</th>
-        <th>Delivery Date</th>
-        <th>Status</th>
-        <th>Actions</th>
-    </tr>
-</thead>
+        <thead>
+            <tr>
+                <th>Item No</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Company</th>
+                <th>Contact Person</th>
+                <th>Qty</th>
+                <th>Price/Unit</th>
+                <th>Total</th>
+                <th>Delivery Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
         <tbody id="purchasesPageBody">
             <?php if ($purchases && $purchases->num_rows > 0): ?>
                 <?php while($purchase = $purchases->fetch_assoc()): 
@@ -901,39 +895,36 @@ require_once 'include/header.php';
                                    ($purchase['status'] == 'processing' ? 'status-processing' : 'status-cancelled'));
                 ?>
                     <tr data-purchase-id="<?php echo $purchase['id']; ?>" class="purchase-row">
-      <td><?php echo htmlspecialchars($purchase['item_no'] ?? 'N/A'); ?></td>
-<td><?php echo htmlspecialchars($purchase['description'] ?? 'N/A'); ?></td>
-<td>
-    <?php if (!empty($purchase['category'])): ?>
-        <span class="category-badge">
-            <i class="fas fa-tag"></i> <?php echo htmlspecialchars($purchase['category']); ?>
-        </span>
-    <?php else: ?>
-        <span class="text-muted">—</span>
-    <?php endif; ?>
-</td>
-<td>
-    <span class="company-badge" style="background: <?php echo $purchase['company_color'] ?? '#6c5ce7'; ?>">
-        <?php echo htmlspecialchars($purchase['company_name'] ?? 'N/A'); ?>
-    </span>
-</td>
-<td><?php echo htmlspecialchars($purchase['contact_person'] ?? 'N/A'); ?></td>
-<td><?php echo number_format($purchase['quantity_purchased'] ?? 0); ?></td>
-<td class="price-cell">₱<?php echo number_format($purchase['price_per_unit'] ?? 0, 2); ?></td>
-<td class="price-cell">₱<?php echo number_format($purchase['total_amount'], 2); ?></td>
-<td class="price-cell">
-    <?php 
-    $deliveryDate = $purchase['delivery_date'] ?? '';
-    if (!empty($deliveryDate)):
-    ?>
-        <span class="delivery-date-badge">
-            <i class="fas fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($deliveryDate)); ?>
-        </span>
-    <?php else: ?>
-        <span class="text-muted">—</span>
-    <?php endif; ?>
-</td>
-<td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($purchase['status']); ?></span></td>
+                        <td><?php echo htmlspecialchars($purchase['item_no'] ?? 'N/A'); ?></td>
+                        <td><?php echo htmlspecialchars($purchase['description'] ?? 'N/A'); ?></td>
+                        
+                        <!-- Category Column - Plain Text (No Badge) -->
+                        <td class="category-text">
+                            <?php echo !empty($purchase['category']) ? htmlspecialchars($purchase['category']) : '—'; ?>
+                        </td>
+                        
+                        <!-- Company Column - Plain Text (No Color Badge) -->
+                        <td class="company-text">
+                            <?php echo htmlspecialchars($purchase['company_name'] ?? 'N/A'); ?>
+                        </td>
+                        
+                        <td><?php echo htmlspecialchars($purchase['contact_person'] ?? 'N/A'); ?></td>
+                        <td><?php echo number_format($purchase['quantity_purchased'] ?? 0); ?></td>
+                        <td class="price-cell">₱<?php echo number_format($purchase['price_per_unit'] ?? 0, 2); ?></td>
+                        <td class="price-cell">₱<?php echo number_format($purchase['total_amount'], 2); ?></td>
+                        <td>
+                            <?php 
+                            $deliveryDate = $purchase['delivery_date'] ?? '';
+                            if (!empty($deliveryDate)):
+                            ?>
+                                <span class="delivery-date-badge">
+                                    <i class="fas fa-calendar-alt"></i> <?php echo date('M d, Y', strtotime($deliveryDate)); ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="text-muted">—</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><span class="status-badge <?php echo $status_class; ?>"><?php echo ucfirst($purchase['status']); ?></span></td>
                         <td class="actions-cell">
                             <button class="action-btn view" onclick="viewPurchase(<?php echo $purchase['id']; ?>)" title="View Details">
                                 <i class="fas fa-eye"></i>
@@ -944,15 +935,15 @@ require_once 'include/header.php';
                             <button class="action-btn order-now" onclick="orderNowFromHistory(<?php echo $purchase['id']; ?>)" title="Order Now (Go to Stock Tracker)">
                                 <i class="fas fa-shopping-cart"></i> Order Now
                             </button>
-                            <button class="action-btn delete" onclick="deletePurchase(<?php echo $purchase['id']; ?>, '<?php echo htmlspecialchars($purchase['purchase_number']); ?>')" title="Delete Purchase">
-                                <i class="fas fa-trash"></i>
+                            <button class="action-btn delete" onclick="deletePurchase(<?php echo $purchase['id']; ?>, '<?php echo htmlspecialchars($purchase['purchase_number']); ?>')" title="Cancel Order">
+                                <i class="fas fa-times-circle"></i>
                             </button>
                         </td>
                     </tr>
                 <?php endwhile; ?>
-                    <?php else: ?>
+            <?php else: ?>
                 <tr>
-                    <td colspan="11" style="text-align: center; padding: 60px;"> <!-- Updated colspan to 11 -->
+                    <td colspan="11" style="text-align: center; padding: 60px;">
                         <div class="empty-state">
                             <i class="fas fa-shopping-cart" style="font-size: 64px; color: var(--text-secondary); opacity: 0.5; margin-bottom: 20px;"></i>
                             <h3>No Pending Purchases Found</h3>
@@ -1007,7 +998,7 @@ require_once 'include/header.php';
 <div id="deletePurchaseModal" class="modal">
     <div class="modal-content modal-sm">
         <div class="modal-header">
-            <h2><i class="fas fa-trash"></i> Delete Purchase</h2>
+            <h2><i class="fas fa-times-circle"></i> Cancel Order</h2>
             <button class="close-btn" onclick="closeDeletePurchaseModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -1020,13 +1011,13 @@ require_once 'include/header.php';
                 <i class="fas fa-times"></i> Cancel
             </button>
             <a href="#" id="confirmDeleteBtn" class="btn btn-danger">
-                <i class="fas fa-trash"></i> Delete Purchase
+                <i class="fas fa-times-circle"></i> Cancel Order
             </a>
         </div>
     </div>
 </div>
 
-<!-- Transaction History Modal - WITH CATEGORY COLUMN -->
+<!-- Transaction History Modal - WITH CATEGORY COLUMN (NO BADGES) -->
 <div id="historyPurchaseModal" class="modal">
     <div class="modal-content modal-xl">
         <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9);">
@@ -1045,6 +1036,7 @@ require_once 'include/header.php';
         </div>
     </div>
 </div>
+
 <!-- Order Now Confirmation Modal -->
 <div id="orderNowModal" class="modal">
     <div class="modal-content modal-sm">
@@ -1065,6 +1057,7 @@ require_once 'include/header.php';
         </div>
     </div>
 </div>
+
 <!-- Success/Error Message Display -->
 <?php if(isset($_SESSION['success'])): ?>
     <div class="alert alert-success" style="position: fixed; top: 20px; right: 20px; z-index: 9999; padding: 15px 20px; background: #75e6da; color: #1a1c3c; border-radius: 8px; box-shadow: 0 4px 6px rgba(117, 230, 218, 0.3);">
@@ -1092,10 +1085,10 @@ function orderNowFromHistory(purchaseId) {
     const cells = row.cells;
     const itemNo = cells[0]?.textContent.trim() || 'N/A';
     const description = cells[1]?.textContent.trim() || 'N/A';
-    const company = cells[3]?.textContent.trim() || 'N/A'; // Index changed due to new category column
-    const qty = cells[5]?.textContent.trim() || '0'; // Index changed
-    const price = cells[6]?.textContent.trim() || '0'; // Index changed
-    const total = cells[7]?.textContent.trim() || '0'; // Index changed
+    const company = cells[3]?.textContent.trim() || 'N/A';
+    const qty = cells[5]?.textContent.trim() || '0';
+    const price = cells[6]?.textContent.trim() || '0';
+    const total = cells[7]?.textContent.trim() || '0';
     
     const content = `
         <div style="padding: 10px;">
@@ -1153,11 +1146,6 @@ function closeOrderNowModal() {
     }, 200);
 }
 
-// Sa window.onclick function, idagdag ang:
-if (event.target == document.getElementById('orderNowModal')) {
-    closeOrderNowModal();
-}
-// Update the processOrderNow function in purchase.php
 function processOrderNow() {
     if (!currentOrderId || !currentOrderBtn) {
         closeOrderNowModal();
@@ -1200,7 +1188,7 @@ function processOrderNow() {
                 }, 300);
             }
             
-            // Show success notification with more details
+            // Show success notification
             showNotification(`
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <i class="fas fa-check-circle" style="font-size: 24px;"></i>
@@ -1214,7 +1202,7 @@ function processOrderNow() {
                 </div>
             `, 'success');
             
-            // CRITICAL: Redirect to stock_tracker.php with the correct date
+            // Redirect to stock_tracker.php
             setTimeout(() => {
                 window.location.href = data.redirect_url;
             }, 2000);
@@ -1275,7 +1263,7 @@ document.getElementById('purchaseSearch')?.addEventListener('keyup', function() 
     searchTimeout = setTimeout(searchPurchases, 300);
 });
 
-// ============ VIEW PURCHASE MODAL - FIXED CLOSE BUTTONS ============
+// ============ VIEW PURCHASE MODAL ============
 function viewPurchase(purchaseId) {
     fetch('get_purchase_details.php?id=' + purchaseId)
         .then(response => response.json())
@@ -1300,22 +1288,11 @@ function viewPurchase(purchaseId) {
                             </tr>
                             <tr>
                                 <td>Category:</td>
-                                <td>
-                                    ${p.category ? 
-                                        `<span class="category-badge">
-                                            <i class="fas fa-tag"></i> ${p.category}
-                                        </span>` : 
-                                        '<span class="text-muted">—</span>'
-                                    }
-                                </td>
+                                <td><span class="category-text">${p.category || '—'}</span></td>
                             </tr>
                             <tr>
                                 <td>Company:</td>
-                                <td>
-                                    <span style="display: inline-block; padding: 4px 10px; border-radius: 20px; background: ${p.company_color}; color: white;">
-                                        ${p.company_name}
-                                    </span>
-                                </td>
+                                <td><span class="company-text">${p.company_name}</span></td>
                             </tr>
                             <tr>
                                 <td>Contact Person:</td>
@@ -1335,11 +1312,7 @@ function viewPurchase(purchaseId) {
                             </tr>
                             <tr>
                                 <td>Status:</td>
-                                <td>
-                                    <span class="status-badge ${statusClass}">
-                                        ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}
-                                    </span>
-                                </td>
+                                <td><span class="status-badge ${statusClass}">${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span></td>
                             </tr>
                             <tr>
                                 <td>Date:</td>
@@ -1362,7 +1335,6 @@ function viewPurchase(purchaseId) {
         });
 }
 
-// Close View Purchase Modal
 function closeViewPurchaseModal() {
     const modal = document.getElementById('viewPurchaseModal');
     if (modal) {
@@ -1375,7 +1347,6 @@ function closeViewPurchaseModal() {
     }
 }
 
-// Close History Purchase Modal
 function closeHistoryPurchaseModal() {
     const modal = document.getElementById('historyPurchaseModal');
     if (modal) {
@@ -1384,8 +1355,6 @@ function closeHistoryPurchaseModal() {
             modal.style.display = 'none';
             modal.style.animation = '';
             document.body.style.overflow = 'auto';
-            
-            // Clear the content para hindi ma-display ang lumang search results pag binuksan ulit
             document.getElementById('historyPurchaseContent').innerHTML = '';
         }, 200);
     }
@@ -1416,22 +1385,11 @@ function editPurchase(purchaseId) {
                             </tr>
                             <tr>
                                 <td>Category:</td>
-                                <td>
-                                    ${p.category ? 
-                                        `<span class="category-badge">
-                                            <i class="fas fa-tag"></i> ${p.category}
-                                        </span>` : 
-                                        '<span class="text-muted">—</span>'
-                                    }
-                                </td>
+                                <td><span class="category-text">${p.category || '—'}</span></td>
                             </tr>
                             <tr>
                                 <td>Company:</td>
-                                <td>
-                                    <span style="display: inline-block; padding: 4px 10px; border-radius: 20px; background: ${p.company_color}; color: white;">
-                                        ${p.company_name}
-                                    </span>
-                                </td>
+                                <td><span class="company-text">${p.company_name}</span></td>
                             </tr>
                             <tr>
                                 <td>Contact Person:</td>
@@ -1451,11 +1409,7 @@ function editPurchase(purchaseId) {
                             </tr>
                             <tr>
                                 <td>Current Status:</td>
-                                <td>
-                                    <span class="status-badge ${statusClass}">
-                                        ${p.status.charAt(0).toUpperCase() + p.status.slice(1)}
-                                    </span>
-                                </td>
+                                <td><span class="status-badge ${statusClass}">${p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span></td>
                             </tr>
                             <tr>
                                 <td>Date:</td>
@@ -1530,7 +1484,7 @@ function closeDeletePurchaseModal() {
     }, 200);
 }
 
-// View All Transactions (Completed Only) - WITH CATEGORY COLUMN
+// View All Transactions (Completed Only) - WITH CATEGORY COLUMN (NO BADGES)
 function viewAllTransactions() {
     fetch('get_purchase_history.php')
         .then(response => response.json())
@@ -1546,22 +1500,10 @@ function viewAllTransactions() {
                             <td>${index + 1}</td>
                             <td class="history-item-no">${item.item_no}</td>
                             <td class="history-description">${item.description}</td>
-                            
-                            <!-- NEW CATEGORY CELL -->
-                            <td class="history-category">
-                                ${item.category ? 
-                                    `<span class="category-badge">
-                                        <i class="fas fa-tag"></i> ${item.category}
-                                    </span>` : 
-                                    '<span class="text-muted">—</span>'
-                                }
-                            </td>
-                            
-                            <td class="history-company">
-                                <span class="company-badge" style="background: ${item.company_color};">
-                                    ${item.company_name}
-                                </span>
-                            </td>
+                            <!-- Category Column - Plain Text (No Badge) -->
+                            <td class="history-category category-text">${item.category || '—'}</td>
+                            <!-- Company Column - Plain Text (No Color Badge) -->
+                            <td class="history-company company-text">${item.company_name}</td>
                             <td class="history-contact">${item.contact_person}</td>
                             <td class="history-qty">${item.quantity_purchased}</td>
                             <td class="price-cell history-price">${item.formatted_price}</td>
@@ -1630,7 +1572,7 @@ function viewAllTransactions() {
                                         <th style="width: 50px;">#</th>
                                         <th>Item No</th>
                                         <th>Description</th>
-                                        <th>Category</th> <!-- NEW COLUMN -->
+                                        <th>Category</th>
                                         <th>Company</th>
                                         <th>Contact Person</th>
                                         <th>Qty</th>
@@ -1676,17 +1618,16 @@ function viewAllTransactions() {
         });
 }
 
-// Add this new function for searching transaction history - UPDATED to include category
+// Search function for transaction history - includes category
 function searchHistory() {
     const searchTerm = document.getElementById('historySearch').value.toLowerCase().trim();
     const rows = document.querySelectorAll('#historyTableBody .history-row');
     let visibleCount = 0;
     
     rows.forEach(row => {
-        // Get all searchable columns - INCLUDING CATEGORY
         const itemNo = row.querySelector('.history-item-no')?.textContent.toLowerCase() || '';
         const description = row.querySelector('.history-description')?.textContent.toLowerCase() || '';
-        const category = row.querySelector('.history-category')?.textContent.toLowerCase() || ''; // NEW
+        const category = row.querySelector('.history-category')?.textContent.toLowerCase() || '';
         const company = row.querySelector('.history-company')?.textContent.toLowerCase() || '';
         const contact = row.querySelector('.history-contact')?.textContent.toLowerCase() || '';
         const qty = row.querySelector('.history-qty')?.textContent.toLowerCase() || '';
@@ -1695,9 +1636,7 @@ function searchHistory() {
         const status = row.querySelector('.history-status')?.textContent.toLowerCase() || '';
         const date = row.querySelector('.history-date')?.textContent.toLowerCase() || '';
         
-        // Combine all searchable text - include category
         const rowText = `${itemNo} ${description} ${category} ${company} ${contact} ${qty} ${price} ${total} ${status} ${date}`;
-        
         const matches = rowText.includes(searchTerm);
         
         if (searchTerm === '') {
@@ -1713,7 +1652,6 @@ function searchHistory() {
         }
     });
     
-    // Update search count
     const searchCount = document.getElementById('historySearchCount');
     if (searchCount) {
         if (searchTerm === '') {
@@ -1723,7 +1661,6 @@ function searchHistory() {
         }
     }
     
-    // Show/hide no results message
     const noResultsMsg = document.getElementById('historyNoResults');
     if (noResultsMsg) {
         if (visibleCount === 0 && searchTerm !== '') {
@@ -1749,7 +1686,6 @@ window.onclick = function(event) {
     modals.forEach(modalId => {
         const modal = document.getElementById(modalId);
         if (event.target == modal) {
-            // Use the specific close function for each modal
             if (modalId === 'viewPurchaseModal') {
                 closeViewPurchaseModal();
             } else if (modalId === 'editPurchaseModal') {
@@ -1767,7 +1703,6 @@ window.onclick = function(event) {
 
 // Show notification function
 function showNotification(message, type = 'success') {
-    // Remove existing notification
     const existing = document.querySelector('.custom-notification');
     if (existing) existing.remove();
     

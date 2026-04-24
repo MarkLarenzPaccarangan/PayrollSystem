@@ -1,5 +1,5 @@
 <?php
-// search_products.php - FIXED VERSION WITH STOCK AND CATEGORY
+// search_products.php - DATE-AWARE STOCK CALCULATION FOR PULL OUT MODAL
 require_once 'config.php';
 requireLogin();
 
@@ -14,38 +14,49 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// I-enable ang error reporting para makita ang error
+// Enable error reporting
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-$term = isset($_GET['term']) ? $_GET['term'] : '';
+$term = isset($_GET['term']) ? trim($_GET['term']) : '';
+$pullout_date = isset($_GET['date']) && !empty($_GET['date']) ? $_GET['date'] : date('Y-m-d');
 
 if (empty($term)) {
     echo json_encode([]);
     exit();
 }
 
-// Kunin ang products kasama ang stock at category
+// Get products with stock calculated AS OF the selected pull-out date
 $search = "%$term%";
 $sql = "SELECT 
-            id, 
-            name, 
-            item_no, 
-            description, 
-            category, 
-            quantity, 
-            unit 
-        FROM products 
-        WHERE item_no LIKE ? 
-           OR name LIKE ? 
-           OR description LIKE ? 
-           OR category LIKE ? 
+            p.id, 
+            p.name, 
+            p.item_no, 
+            p.description, 
+            p.category, 
+            p.unit,
+            COALESCE(
+                (SELECT SUM(CASE WHEN sm.type = 'in' THEN sm.quantity ELSE 0 END) 
+                 FROM stock_movements sm 
+                 WHERE sm.product_id = p.id AND DATE(sm.created_at) <= ?), 0
+            ) -
+            COALESCE(
+                (SELECT SUM(CASE WHEN sm.type = 'out' THEN sm.quantity ELSE 0 END) 
+                 FROM stock_movements sm 
+                 WHERE sm.product_id = p.id AND DATE(sm.created_at) <= ?), 0
+            ) as available_stock
+        FROM products p
+        WHERE p.item_no LIKE ? 
+           OR p.name LIKE ? 
+           OR p.description LIKE ? 
+           OR p.category LIKE ? 
         ORDER BY 
             CASE 
-                WHEN item_no = ? THEN 1
-                WHEN item_no LIKE ? THEN 2
+                WHEN p.item_no = ? THEN 1
+                WHEN p.item_no LIKE ? THEN 2
                 ELSE 3
-            END
+            END,
+            p.item_no ASC
         LIMIT 20";
 
 $stmt = $conn->prepare($sql);
@@ -57,15 +68,25 @@ if (!$stmt) {
 $exact_term = $term;
 $like_term = "%$term%";
 
-// 6 parameters lang - isa para sa bawat placeholder
-$stmt->bind_param("ssssss", $like_term, $like_term, $like_term, $like_term, $exact_term, $like_term);
+// 8 parameters: pullout_date (2x), search terms (4x), exact_term, like_term
+$stmt->bind_param("ssssssss", 
+    $pullout_date,     // for stock-in calculation
+    $pullout_date,     // for stock-out calculation
+    $like_term,        // item_no LIKE
+    $like_term,        // name LIKE
+    $like_term,        // description LIKE
+    $like_term,        // category LIKE
+    $exact_term,       // exact match for item_no
+    $like_term         // starts with for item_no
+);
+
 $stmt->execute();
 $result = $stmt->get_result();
 
 $products = [];
 while ($row = $result->fetch_assoc()) {
-    // Siguraduhing may value ang quantity at hindi NULL
-    $quantity = isset($row['quantity']) ? (int)$row['quantity'] : 0;
+    // Ensure quantity is not NULL and is an integer
+    $quantity = isset($row['available_stock']) ? (int)$row['available_stock'] : 0;
     
     $products[] = [
         'id' => (int)$row['id'],
@@ -78,7 +99,10 @@ while ($row = $result->fetch_assoc()) {
     ];
 }
 
-// I-set ang header para sure na JSON
+// Set header to ensure JSON response
 header('Content-Type: application/json');
 echo json_encode($products);
+
+$stmt->close();
+$conn->close();
 ?>
